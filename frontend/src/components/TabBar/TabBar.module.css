@@ -1,4 +1,7 @@
 .bar {
+  position: sticky;
+  bottom: 0;
+  z-index: 10;
   flex-shrink: 0;
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
