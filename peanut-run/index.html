@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Peanut Run</title>
+    <link rel="stylesheet" href="src/peanut-run/peanut-run.css" />
+    <style>
+      body {
+        margin: 0;
+        min-height: 100vh;
+        background: radial-gradient(1200px 600px at 50% -10%, #3a2f7d 0%, #17112e 55%, #0e0a1f 100%) fixed;
+        color: #f3efff;
+        font-family: Inter, 'SF Pro Display', 'Segoe UI', Roboto, system-ui, sans-serif;
+      }
+      main {
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 48px 16px;
+      }
+      h1 {
+        margin: 0 0 6px;
+        font-size: 30px;
+        font-weight: 800;
+        letter-spacing: -0.02em;
+      }
+      p.lead {
+        margin: 0 0 20px;
+        color: rgba(243, 239, 255, 0.7);
+        line-height: 1.5;
+      }
+      kbd {
+        font: inherit;
+        font-size: 0.85em;
+        padding: 0.1em 0.5em;
+        border-radius: 6px;
+        background: rgba(255, 255, 255, 0.1);
+        border: 1px solid rgba(255, 255, 255, 0.18);
+      }
+      #log {
+        margin-top: 16px;
+        font-size: 14px;
+        min-height: 1.4em;
+        color: rgba(243, 239, 255, 0.6);
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Peanut Run</h1>
+      <p class="lead">
+        Help the peanut escape the hungry squirrel. <kbd>Space</kbd>, <kbd>↑</kbd> or <kbd>W</kbd> to jump (hold for
+        higher), or tap. <kbd>M</kbd> toggles sound.
+      </p>
+      <div id="game"></div>
+      <p id="log" aria-live="polite"></p>
+    </main>
+    <script type="module">
+      import { createPeanutRun } from './src/peanut-run/index.js';
+
+      const log = document.getElementById('log');
+      const game = createPeanutRun(document.getElementById('game'), {
+        onGameOver: (score, highScore) => {
+          log.textContent = `Game over: ${score} (best ${highScore})`;
+        },
+        onExit: (score) => {
+          log.textContent = `Player left with ${score} points.`;
+        },
+      });
+      // Exposed for manual testing from the console.
+      window.peanutRun = game;
+    </script>
+  </body>
+</html>
