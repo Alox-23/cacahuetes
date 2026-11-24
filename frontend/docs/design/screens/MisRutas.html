@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mis rutas</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#4A2F1B}a:hover{color:#2A1A0E}
+</style>
+<style>html{background:#E7DCCB}body{display:flex;justify-content:center;min-height:100vh}</style>
+</head>
+<body>
+<div style="width: 390px; height: 844px; box-sizing: border-box; background: #FEF3E2; color: #4A2F1B; font-family: Inter, system-ui, sans-serif; display: flex; flex-direction: column">
+<div style="flex-grow: 1; display: flex; flex-direction: column; gap: 16px; padding: 16px 24px 0">
+<div style="display: flex; align-items: center; height: 44px">
+<h1 style="margin: 0; font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 28px">Mis rutas</h1>
+</div>
+<div style="position: relative">
+<label for="buscar" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%)">Buscar rutas</label>
+<svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#6B5847" stroke-width="2" stroke-linecap="round" style="position: absolute; left: 16px; top: 14px"><circle cx="11" cy="11" r="7"></circle><path d="M16.5 16.5L21 21"></path></svg>
+<input id="buscar" type="search" placeholder="Buscar por ciudad" style="box-sizing: border-box; width: 100%; height: 48px; padding: 0 16px 0 46px; border: 1px solid #A68A6D; border-radius: 16px; background: #FFFFFF; font-family: inherit; font-size: 15px; color: #4A2F1B">
+</div>
+<div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; padding: 4px; background: #F3E0C4; border-radius: 14px">
+<button type="button" aria-pressed="true" style="height: 44px; border: 0; border-radius: 10px; background: #FFFFFF; font-family: inherit; font-size: 14px; font-weight: 600; color: #4A2F1B; cursor: pointer">Próximas</button>
+<button type="button" aria-pressed="false" style="height: 44px; border: 0; border-radius: 10px; background: transparent; font-family: inherit; font-size: 14px; font-weight: 500; color: #5A4636; cursor: pointer">Pasadas</button>
+<button type="button" aria-pressed="false" style="height: 44px; border: 0; border-radius: 10px; background: transparent; font-family: inherit; font-size: 14px; font-weight: 500; color: #5A4636; cursor: pointer">Favoritas</button>
+</div>
+<div style="display: flex; flex-direction: column; gap: 12px">
+<a href="RutaGuardada.html" style="display: flex; gap: 14px; padding: 12px; background: #FFFFFF; border: 1px solid #EBD9BF; border-radius: 20px; text-decoration: none; color: #4A2F1B">
+<svg aria-hidden="true" viewBox="0 0 88 96" style="flex-shrink: 0; width: 88px; height: 96px; border-radius: 12px; background: #EFE2CC">
+<path d="M0 30 H88 M0 66 H88 M30 0 V96 M62 0 V96" stroke="#FFFFFF" stroke-width="5" fill="none"></path>
+<path d="M14 76 L30 30 L62 30 L74 62" stroke="#D4621A" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none"></path>
+<circle cx="14" cy="76" r="5" fill="#4A2F1B"></circle><circle cx="30" cy="30" r="5" fill="#D4621A"></circle><circle cx="62" cy="30" r="5" fill="#D4621A"></circle><circle cx="74" cy="62" r="5" fill="#D4621A"></circle>
+</svg>
+<div style="display: flex; flex-direction: column; justify-content: center; gap: 6px; min-width: 0">
+<span style="font-size: 17px; font-weight: 600">Barcelona en 5 horas</span>
+<span style="font-size: 14px; color: #6B5847">Sáb 5 dic · 10:00 a 15:00</span>
+<span style="font-size: 14px; color: #6B5847">4 paradas · arquitectura, gastronomía</span>
+</div>
+</a>
+<a href="RutaGuardada.html" style="display: flex; gap: 14px; padding: 12px; background: #FFFFFF; border: 1px solid #EBD9BF; border-radius: 20px; text-decoration: none; color: #4A2F1B">
+<svg aria-hidden="true" viewBox="0 0 88 96" style="flex-shrink: 0; width: 88px; height: 96px; border-radius: 12px; background: #EFE2CC">
+<path d="M0 78 C30 66 60 90 88 72 L88 96 L0 96 Z" fill="#F6DDB6"></path>
+<path d="M0 40 H88 M24 0 V96 M56 0 V96" stroke="#FFFFFF" stroke-width="5" fill="none"></path>
+<path d="M12 18 L24 40 L56 40 L56 64 L76 56" stroke="#D4621A" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none"></path>
+<circle cx="12" cy="18" r="5" fill="#4A2F1B"></circle><circle cx="24" cy="40" r="5" fill="#D4621A"></circle><circle cx="56" cy="40" r="5" fill="#D4621A"></circle><circle cx="56" cy="64" r="5" fill="#D4621A"></circle><circle cx="76" cy="56" r="5" fill="#D4621A"></circle>
+</svg>
+<div style="display: flex; flex-direction: column; justify-content: center; gap: 6px; min-width: 0">
+<span style="font-size: 17px; font-weight: 600">Valencia, día completo</span>
+<span style="font-size: 14px; color: #6B5847">Sáb 19 dic · 9:30 a 18:00</span>
+<span style="font-size: 14px; color: #6B5847">6 paradas · con niños</span>
+</div>
+</a>
+<a href="RutaGuardada.html" style="display: flex; gap: 14px; padding: 12px; background: #FFFFFF; border: 1px solid #EBD9BF; border-radius: 20px; text-decoration: none; color: #4A2F1B">
+<svg aria-hidden="true" viewBox="0 0 88 96" style="flex-shrink: 0; width: 88px; height: 96px; border-radius: 12px; background: #EFE2CC">
+<path d="M0 24 H88 M0 58 H88 M44 0 V96" stroke="#FFFFFF" stroke-width="5" fill="none"></path>
+<path d="M72 80 L44 58 L44 24 L16 24" stroke="#D4621A" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none"></path>
+<circle cx="72" cy="80" r="5" fill="#4A2F1B"></circle><circle cx="44" cy="58" r="5" fill="#D4621A"></circle><circle cx="44" cy="24" r="5" fill="#D4621A"></circle><circle cx="16" cy="24" r="5" fill="#D4621A"></circle>
+</svg>
+<div style="display: flex; flex-direction: column; justify-content: center; gap: 6px; min-width: 0">
+<span style="font-size: 17px; font-weight: 600">Sevilla, tarde tranquila</span>
+<span style="font-size: 14px; color: #6B5847">Dom 10 ene · 16:00 a 20:00</span>
+<span style="font-size: 14px; color: #6B5847">3 paradas · a pie</span>
+</div>
+</a>
+</div>
+</div>
+<nav aria-label="Principal" style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); height: 72px; background: #FFFFFF; border-top: 1px solid #EBD9BF">
+<a href="Chat.html" style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; font-size: 12px; font-weight: 500; color: #6B5847; text-decoration: none">
+<svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 2.5c-2.8 0-5 2.1-5 4.8 0 1.5.6 2.5 1.1 3.4.4.7.4 1.4 0 2.1-.6 1-1.6 2.2-1.6 4.2 0 3 2.5 5 5.5 5s5.5-2 5.5-5c0-2-1-3.2-1.6-4.2-.4-.7-.4-1.4 0-2.1.5-.9 1.1-1.9 1.1-3.4 0-2.7-2.2-4.8-5-4.8z"></path><path d="M10.2 8h.01M13.8 8h.01"></path></svg>
+<span>Asistente</span>
+</a>
+<a href="MisRutas.html" aria-current="page" style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; font-size: 12px; font-weight: 600; color: #4A2F1B; text-decoration: none">
+<svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4L3 6.5v13L9 17l6 2.5 6-2.5v-13L15 6.5 9 4zM9 4v13M15 6.5v13"></path></svg>
+<span>Mis rutas</span>
+</a>
+<a href="Perfil.html" style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; font-size: 12px; font-weight: 500; color: #6B5847; text-decoration: none">
+<svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="8" r="4"></circle><path d="M4 20c1.5-4 4.5-5.5 8-5.5s6.500 1.500 8 5.500"></path></svg>
+<span>Perfil</span>
+</a>
+</nav>
+</div>
+</body>
+</html>
