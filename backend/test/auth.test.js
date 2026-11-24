@@ -368,6 +368,65 @@ test('Google de principio a fin: ticket de un uso, invitado reclamado y cuentas 
   assert.equal((await exchange(late.ticket)).status, 400);
 });
 
+test('vincular con una cuenta sin confirmar anula su contraseña y sesiones; una confirmada las conserva', async () => {
+  providerServer();
+  // Someone registered the address without proving it (pre-registration takeover attempt).
+  const squatter = await register('ocupada@example.test');
+  const taken = await googleSignIn('google-sub-squat', 'ocupada@example.test');
+  const owner = await (await exchange(taken.ticket)).json();
+  assert.equal(owner.account.id, squatter.account.id);
+  assert.equal(owner.account.emailVerified, true);
+  const ended = await call('status', { token: squatter.token });
+  assert.equal(ended.status, 401, "the squatter's session is gone");
+  const login = await call('login', { method: 'POST', body: { email: 'ocupada@example.test', password: strongPassword } });
+  assert.equal(login.status, 401, "the squatter's password no longer works");
+  assert.equal((await status(owner.token)).account.id, owner.account.id, 'the new session works');
+
+  // An account whose owner already confirmed the address keeps its password and its sessions.
+  const confirmed = await register('confirmada@example.test');
+  assert.equal((await verify(mailedToken('confirmada@example.test'))).status, 200);
+  const linked = await googleSignIn('google-sub-confirmed', 'confirmada@example.test');
+  assert.equal((await (await exchange(linked.ticket)).json()).account.id, confirmed.account.id);
+  assert.equal((await status(confirmed.token)).account.id, confirmed.account.id);
+  const kept = await call('login', { method: 'POST', body: { email: 'confirmada@example.test', password: strongPassword } });
+  assert.equal(kept.status, 200);
+});
+
+test('claves rotadas: un kid desconocido vuelve a pedir las claves una sola vez', async () => {
+  const rotated = await generateKeyPair('RS256', { extractable: true });
+  let served = { pair: keys.google, kid: 'g1' };
+  let signer = { pair: keys.google, kid: 'g1' };
+  let keyFetches = 0;
+  providerFetch = async (url) => {
+    if (url === 'https://www.googleapis.com/oauth2/v3/certs') {
+      keyFetches++;
+      return Response.json(await jwks(served.pair, served.kid));
+    }
+    if (url === 'https://oauth2.googleapis.com/token') {
+      return Response.json({ id_token: await idToken(signer.pair, signer.kid, claimsQueue.shift()) });
+    }
+    return assert.fail(`Unexpected request to ${url}`);
+  };
+  // Prime the cache with g1, then let it age past the one-second refetch guard.
+  assert.ok((await googleSignIn('google-sub-rotation', 'rotacion@gmail.example')).ticket);
+  await new Promise((resolve) => setTimeout(resolve, 1_100));
+  served = signer = { pair: rotated, kid: 'g2' };
+  keyFetches = 0;
+  assert.ok((await googleSignIn('google-sub-rotation', 'rotacion@gmail.example')).ticket);
+  assert.equal(keyFetches, 1, 'one refetch on the kid miss');
+  // A kid that is not in the fresh set either: refused without fetching again.
+  signer = { pair: keys.appleId, kid: 'nope' };
+  keyFetches = 0;
+  const unknownKid = await googleSignIn('google-sub-rotation', 'rotacion@gmail.example');
+  assert.equal(unknownKid.error, 'invalid_token');
+  assert.equal(keyFetches, 0);
+  // Rotate back to g1 so the cached key set matches the other tests.
+  await new Promise((resolve) => setTimeout(resolve, 1_100));
+  served = signer = { pair: keys.google, kid: 'g1' };
+  assert.ok((await googleSignIn('google-sub-rotation', 'rotacion@gmail.example')).ticket);
+  assert.equal(keyFetches, 1);
+});
+
 test('contraseña en una cuenta creada con Google: 401 como una contraseña incorrecta', async () => {
   providerServer();
   const result = await googleSignIn('google-sub-only', 'solo-google@gmail.example');
