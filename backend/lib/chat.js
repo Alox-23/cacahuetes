@@ -1,3 +1,4 @@
+import { asksForAnotherCity } from './marbella-scope.js';
 import { badRequest } from './http.js';
 import { interests, places } from './catalog.js';
 import { inferDialogue, inferInterests } from './interest-model.js';
@@ -27,6 +28,7 @@ export function chatInput(body, savedProfile = {}) {
   if (message !== undefined && (typeof message !== 'string' || !message.trim() || message.length > 700 || hasChoice)) {
     throw badRequest('Envía un mensaje de hasta 700 caracteres o selecciona una opción.');
   }
+  if (message && asksForAnotherCity(message)) throw badRequest('Cacahuete prepara rutas exclusivamente por Marbella.');
   if (!hasChoice) return { profile, options, message: message?.trim() };
   if (body.questionId === 'mealMinutes' && nextQuestion(profile)?.id === 'mealMinutes' &&
     Number.isInteger(body.answer) && body.answer >= 0 && body.answer <= profile.minutes) {

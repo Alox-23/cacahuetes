@@ -66,15 +66,10 @@ export function onboardingDone(): RichReply {
 
 /* ---------- Request mode ---------- */
 
-export type Slot = 'city' | 'date' | 'time' | 'start'
-export const SLOT_ORDER: Slot[] = ['city', 'date', 'time', 'start']
+export type Slot = 'date' | 'time' | 'start'
+export const SLOT_ORDER: Slot[] = ['date', 'time', 'start']
 
 const SLOT_OPTIONS: Record<Slot, { key: TranslationKey; value: string }[]> = {
-  city: [
-    { key: 'request.opt_city_barcelona', value: 'city:Barcelona' },
-    { key: 'request.opt_city_valencia', value: 'city:Valencia' },
-    { key: 'request.opt_city_sevilla', value: 'city:Sevilla' },
-  ],
   date: [
     { key: 'request.opt_date_today', value: 'date:today' },
     { key: 'request.opt_date_tomorrow', value: 'date:tomorrow' },
@@ -86,8 +81,9 @@ const SLOT_OPTIONS: Record<Slot, { key: TranslationKey; value: string }[]> = {
     { key: 'request.opt_time_allday', value: 'time:allday' },
   ],
   start: [
-    { key: 'request.opt_start_current', value: 'start:current' },
-    { key: 'request.opt_start_hotel', value: 'start:hotel' },
+    { key: 'request.opt_start_naranjos', value: 'start:naranjos' },
+    { key: 'request.opt_start_alameda', value: 'start:alameda' },
+    { key: 'request.opt_start_banus', value: 'start:banus' },
     { key: 'request.opt_start_other', value: 'start:other' },
   ],
 }

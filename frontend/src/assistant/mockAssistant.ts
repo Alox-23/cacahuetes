@@ -1,3 +1,4 @@
+import { asksForAnotherCity, localStart } from '../../../backend/lib/marbella-scope.js'
 /*
  * Simulated assistant (tech spec §7). The single swappable seam is
  * `Assistant.sendMessage`; everything here is scripted and runs in the browser.
@@ -44,7 +45,6 @@ export interface MockAssistant extends Assistant {
 }
 
 type Draft = {
-  city?: string
   date?: string
   timeWindow?: RouteRequest['timeWindow']
   durationMinutes?: number
@@ -130,7 +130,6 @@ function applyOnboardingStep(step: number, values: Record<string, string[]>, ans
 /* ---------- request helpers ---------- */
 
 function mergeParsed(draft: Draft, parsed: ParsedRequest) {
-  if (parsed.city) draft.city = parsed.city
   if (parsed.date) draft.date = parsed.date
   if (parsed.start) draft.start = parsed.start
   if (parsed.startHour) {
@@ -147,8 +146,6 @@ function mergeParsed(draft: Draft, parsed: ParsedRequest) {
 
 function filled(draft: Draft, slot: Slot): boolean {
   switch (slot) {
-    case 'city':
-      return Boolean(draft.city)
     case 'date':
       return Boolean(draft.date)
     case 'time':
@@ -160,7 +157,6 @@ function filled(draft: Draft, slot: Slot): boolean {
 
 function knownList(draft: Draft): string[] {
   const parts: string[] = []
-  if (draft.city) parts.push(t('request.known_city'))
   if (draft.date) parts.push(t('request.known_date'))
   if (draft.timeWindow) parts.push(t('request.known_time'))
   if (draft.start) parts.push(t('request.known_start'))
@@ -172,7 +168,7 @@ function knownList(draft: Draft): string[] {
 
 function toRequest(draft: Draft): RouteRequest {
   const request: RouteRequest = {
-    city: draft.city as string,
+    city: 'Marbella',
     date: draft.date as string,
     timeWindow: draft.timeWindow as RouteRequest['timeWindow'],
     start: draft.start as RouteRequest['start'],
@@ -280,7 +276,7 @@ export function createAssistant(deps: AssistantDeps): MockAssistant {
     const known = knownList(draft)
     const paragraphs = [...lead]
     if (known.length === 0) {
-      paragraphs.push(`${t('request.generic')} ${t('request.genericAsk')}`)
+      paragraphs.push(`${t('request.generic')} ${question}`)
     } else {
       const ask =
         missing.length === 1
@@ -295,9 +291,6 @@ export function createAssistant(deps: AssistantDeps): MockAssistant {
     const [slot, value] = option.split(':')
     const today = now()
     switch (slot) {
-      case 'city':
-        draft.city = value
-        return true
       case 'date':
         draft.date = isoDate(value === 'today' ? today : value === 'tomorrow' ? addDays(today, 1) : nextWeekday(today, 6))
         return true
@@ -311,24 +304,36 @@ export function createAssistant(deps: AssistantDeps): MockAssistant {
           awaitingOtherStart = true
           return true
         }
-        draft.start = { label: value === 'hotel' ? t('request.opt_start_hotel') : t('request.opt_start_current') }
+        const point = localStart(value)
+        if (!point) return false
+        draft.start = { label: point }
+        awaitingOtherStart = false
         return true
       default:
         return false
     }
   }
 
+  const localScopeReply = (): RichReply => ({ kind: 'question', text: t('request.localOnly'),
+    options: [{ label: t('request.opt_city_marbella'), value: 'city:Marbella' }] })
+
   async function request(input: { text?: string; option?: string }): Promise<RichReply> {
     if (input.option) {
+      if (input.option.startsWith('city:')) {
+        return input.option === 'city:Marbella' ? askNext([]) : localScopeReply()
+      }
       if (!applySlotOption(input.option)) return askNext([t('request.notUnderstood')])
       if (awaitingOtherStart) return { kind: 'question', text: t('request.askOther') }
       return askNext([])
     }
     const text = (input.text ?? '').trim()
     if (!text) return askNext([])
-    if (awaitingOtherStart) {
+    if (asksForAnotherCity(text)) return localScopeReply()
+    const nearby = localStart(text)
+    if (awaitingOtherStart || (asked === 'start' && nearby)) {
+      if (!nearby) return { kind: 'question', text: t('request.askOther'), options: slotOptions('start') }
       awaitingOtherStart = false
-      draft.start = { label: text }
+      draft.start = { label: nearby }
       return askNext([])
     }
     const parsed = parseRequest(text, now())
@@ -339,14 +344,18 @@ export function createAssistant(deps: AssistantDeps): MockAssistant {
         const from = parsed.startHour ?? parsed.timeWindow?.from ?? draft.timeWindow?.from ?? DEFAULT_START_HOUR
         parsed.timeWindow = windowFromDuration(hints.durationMinutes, from)
       }
-      if ((parsed.city ?? draft.city) === 'Marbella' && hints.start) parsed.start ??= hints.start
+      if (hints.start) parsed.start ??= hints.start
       parsed.recognized ||= Boolean(parsed.timeWindow || parsed.start || Object.keys(parsed.overrides).length)
+    }
+    if (parsed.start) {
+      const point = localStart(parsed.start.label)
+      parsed.start = point ? { label: point } : undefined
+      if (!point) delete draft.start
     }
     if (!parsed.recognized) {
       // While asking for the start point, any free text is taken as the address.
       if (asked === 'start') {
-        draft.start = { label: text }
-        return askNext([])
+        return { kind: 'question', text: t('request.askOther'), options: slotOptions('start') }
       }
       const knowsSomething = SLOT_ORDER.some((s) => filled(draft, s))
       return askNext(knowsSomething || summaryShown ? [t('request.notUnderstood')] : [])
@@ -357,6 +366,7 @@ export function createAssistant(deps: AssistantDeps): MockAssistant {
 
   async function change(input: { text?: string; option?: string }): Promise<RichReply> {
     const greeting = (text: string): RichReply => ({ kind: 'question', text, options: quickRefineOptions() })
+    if (input.text && asksForAnotherCity(input.text)) return greeting(t('request.localChange'))
     if (!input.text && !input.option) return greeting(t('change.greeting'))
     if (!routeId || !deps.getRoute || !deps.refineRoute || !deps.undo) return greeting(t('change.notUnderstood'))
 

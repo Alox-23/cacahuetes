@@ -1,3 +1,4 @@
+import { isMarbella, localStart } from '../../../backend/lib/marbella-scope.js'
 /*
  * Mock implementation of the shared DataModule (docs/contract/types.ts).
  * Everything lives in localStorage through `JsonStorage`; no network calls.
@@ -121,9 +122,13 @@ export function createDataModule(
     return { ...DEFAULT_PREFERENCES, ...(readPrefs() ?? {}), ...(request.overrides ?? {}) }
   }
 
+  function isLocalRoute(route: Route) {
+    return isMarbella(route.request.city) && route.stops.every(stop => findPlace(stop.placeId))
+  }
+
   function versionsOf(id: string): Route[] {
     const versions = readRoutes()[id]
-    if (!versions || versions.length === 0) throw new Error(t('data.routeNotFound'))
+    if (!versions?.length || !isLocalRoute(versions[versions.length - 1])) throw new Error(t('data.routeNotFound'))
     return versions
   }
 
@@ -273,12 +278,19 @@ export function createDataModule(
       await tick()
       const prefs = effectivePrefs(request)
       const catalog = getCityCatalog(request.city)
+      const start = localStart(request.start.label)
+      if (!start) throw new Error(t('request.askOther'))
+      request = { ...request, city: catalog.city, start: { label: start } }
+      if (request.mustInclude.some(label => !catalog.places.some(p => matchesMustInclude(p, label)))) {
+        throw new Error(t('data.placeNotFound'))
+      }
       const window = toMinutes(request.timeWindow.to) - toMinutes(request.timeWindow.from)
       const count = window >= 7 * 60 ? 5 : 4
 
+      const origin = catalog.places.find(p => p.name === start)!
       const picked = catalog.places
         .filter((p) => p.kind !== 'pause')
-        .map((p) => ({ p, score: scorePlace(p, request, prefs) }))
+        .map((p) => ({ p, score: scorePlace(p, request, prefs) - legBetween(catalog, origin.id, p.id).walk / 3 }))
         .sort((a, b) => b.score - a.score || a.p.order - b.p.order)
         .slice(0, count)
         .map((x) => x.p)
@@ -338,7 +350,7 @@ export function createDataModule(
     async listRoutes() {
       await tick()
       return Object.values(readRoutes())
-        .filter((v) => v.length > 0)
+        .filter((v) => v.length > 0 && isLocalRoute(v[v.length - 1]))
         .map((v) => clone(v[v.length - 1]))
     },
 

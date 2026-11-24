@@ -36,7 +36,7 @@ Documentación de [Vercel Functions](https://vercel.com/docs/functions/runtimes/
 
 Aplica `npm run migrate` también en instalaciones existentes para crear las tablas de rutas y preferencias. En `frontend/`, copia `.env.example` a `.env.local` y arranca Vite. Para Cloudflare Pages, define `VITE_CACAHUETE_API_URL` con la URL completa de la función en Vercel antes de compilar. Añade el origen público de Pages a `FRONTEND_ORIGINS`.
 
-El adaptador HTTP implementa `frontend/src/contract/types.ts`. El chat conserva el cuestionario, las opciones y el resumen que el visitante confirma. Las peticiones de texto pasan por el intérprete de Cacahuete y las rutas se crean al confirmar. Marbella utiliza el planificador entrenado. Barcelona, Valencia y Sevilla utilizan el catálogo de muestra del frontend. Las demás ciudades usan sus paradas genéricas. Los tiempos entre paradas son estimaciones. Si el punto de partida es una etiqueta como «Mi hotel», el horario empieza en la primera parada.
+El adaptador HTTP implementa `frontend/src/contract/types.ts`. El chat conserva el cuestionario, las opciones y el resumen que el visitante confirma. Las peticiones de texto pasan por el intérprete de Cacahuete y las rutas se crean al confirmar. El único destino es Marbella. El chat propone puntos de salida del catálogo y acepta sus nombres o alias. Los horarios parten de ese lugar. La API devuelve HTTP 400 si la ciudad, la salida o un imprescindible quedan fuera del catálogo. Las rutas antiguas de otras ciudades se conservan en la base y quedan fuera de las consultas. Los tiempos de desplazamiento son estimaciones.
 
 | Acción | Método | Entrada y resultado |
 | --- | --- | --- |

@@ -1,7 +1,7 @@
 {
   "app": {
-    "name": "[NOMBRE APP]",
-    "documentTitle": "[NOMBRE APP] · Rutas a tu medida"
+    "name": "Cacahuete Marbella",
+    "documentTitle": "Cacahuete · Rutas por Marbella"
   },
   "common": {
     "back": "Volver",
@@ -26,25 +26,25 @@
   },
   "main": {
     "enter": "Entrar",
-    "title": "Tu ruta por la ciudad, hecha a tu medida",
-    "subtitle": "Cuéntale al asistente de IA qué quieres ver y recibe un recorrido ordenado, con horarios y tiempos de trayecto.",
-    "exampleTitle": "Ejemplo · Barcelona, 5 horas",
+    "title": "Marbella a tu ritmo",
+    "subtitle": "Elige desde dónde sales y cuánto tiempo tienes. Cacahuete te propone paradas por el casco antiguo, el paseo marítimo o Puerto Banús.",
+    "exampleTitle": "Un paseo por el centro de Marbella",
     "exampleStops": {
       "s1": {
-        "name": "Sagrada Família",
+        "name": "Plaza de los Naranjos",
         "time": "10:00"
       },
       "s2": {
-        "name": "Casa Batlló",
-        "time": "11:40"
+        "name": "Plaza de la Iglesia de la Encarnación",
+        "time": "10:25"
       },
       "s3": {
-        "name": "Mercat de la Boqueria",
-        "time": "13:00"
+        "name": "Parque de la Alameda",
+        "time": "10:50"
       },
       "s4": {
-        "name": "Barri Gòtic",
-        "time": "14:15"
+        "name": "Avenida del Mar",
+        "time": "11:10"
       }
     },
     "cta": "Planificar mi ruta",
@@ -52,7 +52,7 @@
   },
   "onboarding": {
     "placeholder": "O escríbelo con tus palabras",
-    "intro1": "¡Hola! Soy Cacahuete, tu asistente de IA para planificar rutas.",
+    "intro1": "¡Hola! Soy Cacahuete, tu asistente de IA para descubrir Marbella.",
     "intro2": "Antes de empezar, 4 preguntas rápidas. Solo te las hago esta vez: las guardo y podrás cambiarlas cuando quieras.",
     "stepLabel": "Pregunta {index} de {total}",
     "q1": "¿Qué te gusta ver? Elige todo lo que quieras.",
@@ -96,7 +96,7 @@
     },
     "transportShort": {
       "a_pie": "a pie",
-      "transporte_publico": "metro",
+      "transporte_publico": "bus",
       "coche": "coche",
       "bici": "bici"
     },
@@ -120,12 +120,12 @@
   "chat": {
     "title": "Asistente",
     "savedPreferences": "Tus preferencias guardadas",
-    "heading": "Soy Cacahuete. ¿Qué ruta te preparo hoy?",
-    "helper": "Escríbelo con tus palabras: ciudad, día, tiempo y lo que no te quieres perder.",
+    "heading": "¿Qué te apetece hacer en Marbella?",
+    "helper": "Dime el día, cuánto tiempo tienes y qué rincón de Marbella quieres conocer.",
     "suggestionsLabel": "Sugerencias",
-    "suggestion1": "5 horas en Barcelona, arquitectura y tapas",
-    "suggestion2": "Un día en Valencia con niños",
-    "suggestion3": "Tarde tranquila en Sevilla, a pie",
+    "suggestion1": "Casco antiguo y tapas en Marbella, 5 horas",
+    "suggestion2": "Un día en familia por la Alameda y la Fontanilla",
+    "suggestion3": "Puerto Banús y Playa del Duque a pie por la tarde",
     "placeholder": "Escribe tu petición"
   },
   "conversation": {
@@ -134,26 +134,20 @@
     "note": "El asistente solo pregunta lo que falta. Tus preferencias guardadas se aplican solas."
   },
   "request": {
-    "generic": "Cuéntame ciudad, día, cuánto tiempo tienes y desde dónde sales.",
-    "genericAsk": "Empecemos por la ciudad: ¿adónde vas?",
+    "generic": "Vamos a preparar tu paseo por Marbella.",
     "known": "Hecho, ya tengo {list}.",
     "missingOne": "Solo me falta un dato: {question}",
     "missingMany": "Me faltan {count} datos. Primero: {question}",
     "notUnderstood": "No te he entendido del todo.",
-    "askOther": "Vale. Escríbeme la dirección o el sitio desde el que sales.",
-    "known_city": "ciudad",
+    "askOther": "¿Qué lugar de Marbella tienes cerca? Puedes salir de la Plaza de los Naranjos, la Alameda o Puerto Banús.",
     "known_date": "día",
     "known_time": "duración",
     "known_start": "punto de salida",
     "mustOne": "un imprescindible",
     "mustMany": "{count} imprescindibles",
-    "q_city": "¿a qué ciudad vas?",
     "q_date": "¿qué día haces la ruta?",
     "q_time": "¿cuánto tiempo tienes?",
-    "q_start": "¿desde dónde sales?",
-    "opt_city_barcelona": "Barcelona",
-    "opt_city_valencia": "Valencia",
-    "opt_city_sevilla": "Sevilla",
+    "q_start": "¿desde qué punto de Marbella sales?",
     "opt_date_today": "Hoy",
     "opt_date_tomorrow": "Mañana",
     "opt_date_saturday": "Este sábado",
@@ -162,8 +156,14 @@
     "opt_time_allday": "Todo el día",
     "opt_start_current": "Mi ubicación actual",
     "opt_start_hotel": "Mi hotel",
-    "opt_start_other": "Otra dirección",
-    "tapas": "Tapas"
+    "opt_start_other": "Otro punto de Marbella",
+    "tapas": "Tapas",
+    "localOnly": "Cacahuete prepara rutas exclusivamente por Marbella. ¿Quieres planear una aquí?",
+    "localChange": "Esta ruta recorre Marbella. ¿Qué parada de Marbella quieres cambiar?",
+    "opt_city_marbella": "Planear en Marbella",
+    "opt_start_naranjos": "Plaza de los Naranjos",
+    "opt_start_banus": "Puerto Banús",
+    "opt_start_alameda": "Parque de la Alameda"
   },
   "summary": {
     "title": "Esto es lo que entendí",
@@ -204,7 +204,7 @@
     "leg": "{minutes} min {mode}",
     "legMode": {
       "a_pie": "a pie",
-      "transporte_publico": "en metro",
+      "transporte_publico": "en transporte público",
       "coche": "en coche",
       "bici": "en bici"
     },
@@ -233,8 +233,8 @@
     "notUnderstood": "No he entendido el cambio. Prueba con una de estas opciones o dímelo de otra forma.",
     "undone": "Deshecho. La ruta vuelve a como estaba y termina a las {time}.",
     "nothingToUndo": "No hay ningún cambio que deshacer.",
-    "legToTransit": "De {from} a {to} vas en metro en lugar de a pie.",
-    "legsToTransit": "Vas en metro en lugar de a pie en {count} trayectos.",
+    "legToTransit": "De {from} a {to} vas en transporte público en lugar de a pie.",
+    "legsToTransit": "Vas en transporte público en lugar de a pie en {count} trayectos.",
     "noLongWalks": "No quedaban trayectos largos a pie, así que no he cambiado ninguno.",
     "pauseAdded": "Pausa de {minutes} min para café después de {after}.",
     "foodAdded": "He añadido {name} para comer después de {after}.",

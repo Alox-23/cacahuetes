@@ -41,8 +41,8 @@ function storage() {
     removeItem: key => values.delete(key) };
 }
 const request = {
-  city: 'Barcelona', date: '2026-12-10', timeWindow: { from: '10:00', to: '15:00' },
-  start: { label: 'Mi hotel' }, mustInclude: ['Sagrada Família', 'Tapas'],
+  city: 'Marbella', date: '2026-12-10', timeWindow: { from: '10:00', to: '15:00' },
+  start: { label: 'Plaza de los Naranjos' }, mustInclude: ['Plaza de los Naranjos', 'Tapas'],
   overrides: { interests: ['arquitectura', 'gastronomia'] }
 };
 
@@ -59,8 +59,8 @@ test('adaptador HTTP: crear, editar, deshacer, registrarse, guardar, valorar y b
   assert.deepEqual(hints.overrides.needs, ['sin escaleras']);
   const route = await data.createRoute(request);
   assert.deepEqual(route.request, request);
-  assert.ok(route.stops.some(s => s.placeId === 'bcn-sagrada-familia'));
-  assert.ok(route.stops.some(s => s.placeId === 'bcn-bar-del-pla'));
+  assert.ok(route.stops.some(s => s.placeId === 'naranjos'));
+  assert.ok(route.stops.some(s => s.placeId === 'mercado-central'));
   assert.equal(route.stops[0].arrive, '10:00');
   assert.deepEqual(await createHttpDataModule(endpoint, browser).getRoute(route.id), route);
   assert.deepEqual(await stranger.listRoutes(), []);
@@ -78,7 +78,7 @@ test('adaptador HTTP: crear, editar, deshacer, registrarse, guardar, valorar y b
   assert.equal(swapped.stops[0].placeId, candidates[0].id);
   assert.deepEqual(await data.undo(route.id), route);
   const paused = await data.refineRoute(route.id, { type: 'text', value: 'añade una pausa para café' });
-  assert.ok(paused.stops.some(s => s.placeId === 'bcn-cafe'));
+  assert.ok(paused.stops.some(s => s.placeId === 'marbella-cafe'));
   assert.deepEqual(await data.undo(route.id), route);
   const email = 'alex@example.org', password = 'fruta-y-rutas-1234';
   assert.equal((await data.register(email, password)).kind, 'account');
@@ -96,19 +96,20 @@ test('adaptador HTTP: crear, editar, deshacer, registrarse, guardar, valorar y b
   assert.deepEqual(await data.listRoutes(), []);
 });
 
-test('Valencia, Sevilla y Marbella respetan la ciudad, las horas y las opciones de la visita', async () => {
+test('solo Marbella: destino, salida, catálogo, fechas y accesibilidad', async () => {
   const data = createHttpDataModule(endpoint, storage());
-  for (const [city, prefix] of [['Valencia', 'vlc-'], ['Sevilla', 'svq-'], ['Marbella', '']]) {
-    const req = { ...request, city, mustInclude: [], overrides: { needs: ['sin escaleras'], pace: 'relajado' } };
-    const route = await data.createRoute(req);
-    assert.ok(route.stops.length);
-    assert.ok(route.stops.every(s => s.placeId.startsWith(prefix) && s.arrive < req.timeWindow.to));
-    if (city === 'Marbella') {
-      assert.ok(!route.stops.some(s => s.placeId === 'grabado'));
-      assert.equal(typeof (await data.getPlace(route.stops[0].placeId)).lat, 'number');
-    }
-    assert.equal(route.stops.at(-1).travelToNext, undefined);
+  for (const city of ['Valencia', 'Sevilla', 'Barcelona', 'Florencia']) {
+    await assert.rejects(() => data.createRoute({ ...request, city }), /exclusivamente por Marbella/);
   }
+  await assert.rejects(() => data.getPlace('bcn-sagrada-familia'), /desconocido/);
+  await assert.rejects(() => data.createRoute({ ...request, start: { label: 'Puerta del Sol' } }), /salida/);
+  await assert.rejects(() => data.interpretRequest('Quiero una ruta por Málaga'), /exclusivamente/);
+  const local = await data.createRoute({ ...request, city: '  MARBELLA ', start: { label: 'Banus' },
+    mustInclude: ['Playa del Duque'], overrides: { needs: ['sin escaleras'], pace: 'relajado' } });
+  assert.equal(local.request.city, 'Marbella');
+  assert.equal(local.request.start.label, 'Puerto Banús');
+  assert.ok(local.stops.some(s => s.placeId === 'playa-duque'));
+  assert.ok(!local.stops.some(s => s.placeId === 'grabado'));
   await assert.rejects(() => data.createRoute({ ...request, date: '2026-02-30' }), /fecha/);
   await assert.rejects(() => data.createRoute({ ...request, timeWindow: { from: '18:00', to: '17:00' } }), /franja/);
   assert.equal(await data.getPreferences(), null);
@@ -122,10 +123,20 @@ test('un mensaje con varios cambios se guarda y se deshace como una unidad', asy
   const route = await data.createRoute({ ...request, timeWindow: { from: '09:00', to: '18:00' } });
   const steps = await data.refineConversation(route, ['menos_caminar', 'anadir_pausa']);
   assert.equal(steps.length, 2);
-  assert.ok(steps[1].stops.some(stop => stop.placeId === 'bcn-cafe'));
+  assert.ok(steps[1].stops.some(stop => stop.placeId === 'marbella-cafe'));
   assert.equal(steps[1].version, route.version + 1);
   await assert.rejects(() => data.refineConversation(route, ['mas_barato']), /ha cambiado/);
   assert.deepEqual(await data.undo(route.id), route);
   await assert.rejects(() => data.refineConversation(route, ['anadir_pausa', 'desconocido']), /reconocido/);
   assert.deepEqual(await data.getRoute(route.id), route);
+});
+
+test('una ruta anterior de otra ciudad se conserva sin aparecer en la app de Marbella', async () => {
+  const data = createHttpDataModule(endpoint, storage());
+  const route = await data.createRoute(request);
+  await db.query("UPDATE travel_routes SET itinerary=jsonb_set(itinerary,'{request,city}',to_jsonb('Valencia'::text)) WHERE id=$1", [route.id]);
+  assert.deepEqual(await data.listRoutes(), []);
+  await assert.rejects(() => data.getRoute(route.id), /encontrado/);
+  await assert.rejects(() => data.undo(route.id), /encontrado/);
+  assert.equal((await db.query('SELECT id FROM travel_routes WHERE id=$1', [route.id])).rows.length, 1);
 });

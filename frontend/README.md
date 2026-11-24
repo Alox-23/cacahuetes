@@ -78,8 +78,8 @@ answer is sent as a comma-separated `option` string.
 
 - **Onboarding:** 4 fixed questions; free text matches option labels and synonyms (accent-insensitive).
   "Omitir" saves the defaults from `data/defaults.ts`.
-- **Request:** slots city → date → time → start, asked one at a time with quick replies. The three suggestions
-  have prepared parses; free text goes through `parser.ts` (cities, "N horas", "un día", "tarde", "noche",
+- **Request:** Marbella is fixed; slots date → time → local starting point, asked one at a time with quick replies. The three suggestions
+  have prepared parses; free text goes through `parser.ts` (Marbella landmarks, "N horas", "un día", "tarde", "noche",
   weekdays, "hoy", "mañana" — see the rule at the top of the file — and must-include places).
 - **Change:** quick actions and phrases ("menos caminar", "pausa", "café", "barato", "comida"…) map to
   `refineRoute` calls; one sentence can trigger several. "Deshacer" undoes every change of that reply.
@@ -89,4 +89,4 @@ answer is sent as a comma-separated `option` string.
 
 - The Route screen is a list placeholder (`// TODO(feature-2)`), no map.
 - Transcripts live in memory: reloading mid-conversation starts it again (preferences and routes persist).
-- Catalog data (places, times, `[HORARIO]`, `[PRECIO]`) is sample content.
+- The live API and standalone demo use the same Marbella landmarks and coordinates. Travel and visit times are estimates.

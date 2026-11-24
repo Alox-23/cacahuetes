@@ -67,7 +67,7 @@ function publicRoute(path, start, scenario, mealMinutes) {
 }
 
 export function buildRoutes({ profile, avoidStops, scenario }, premium) {
-  const start = starts[profile.start];
+  const start = starts[profile.start] ?? places.find(place => place.id === profile.start);
   const mealMinutes = profile.mealMinutes ?? 0;
   const sightseeingMinutes = profile.minutes - mealMinutes;
   const candidates = listPlaces(scenario).map((place) => ({

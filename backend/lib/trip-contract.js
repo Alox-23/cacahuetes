@@ -1,3 +1,4 @@
+import { isMarbella, localStart } from './marbella-scope.js';
 import { badRequest, object } from './http.js';
 
 export const defaults = {
@@ -43,8 +44,10 @@ export const clock = value => [Math.floor(value / 60), value % 60].map(n => Stri
 
 export function tripRequest(raw) {
   object(raw, 'request');
-  const city = shortText(raw.city, 'city');
-  const label = shortText(raw.start?.label, 'start.label', 240);
+  const city = 'Marbella';
+  if (!isMarbella(shortText(raw.city, 'city'))) throw badRequest('Cacahuete prepara rutas exclusivamente por Marbella.');
+  const label = localStart(shortText(raw.start?.label, 'start.label', 240));
+  if (!label) throw badRequest('Elige un punto de salida del catálogo de Marbella.');
   const date = shortText(raw.date, 'date', 10);
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || new Date(date + 'T12:00:00Z').toJSON()?.slice(0, 10) !== date) {
     throw badRequest('La fecha debe ser un día válido en formato AAAA-MM-DD.');

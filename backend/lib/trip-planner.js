@@ -1,8 +1,8 @@
 import { randomUUID } from 'node:crypto';
-import { places, starts } from './catalog.js';
-import { genericPlaces, sampleCities } from './destination-catalog.js';
+import { places } from './catalog.js';
+import { asksForAnotherCity } from './marbella-scope.js';
 import { ApiError, badRequest, object } from './http.js';
-import { normalize, interpretWithRules, questions } from './onboarding.js';
+import { normalize } from './onboarding.js';
 import { walkingMinutes } from './route-features.js';
 import { buildRoutes } from './routes.js';
 import { clock, minutes, shortText } from './trip-contract.js';
@@ -10,23 +10,20 @@ import { clock, minutes, shortText } from './trip-contract.js';
 const paceMap = { relajado: 'tranquilo', equilibrado: 'normal', intenso: 'activo' };
 const interestMap = { arquitectura: 'historia', museos: 'arte', arte_urbano: 'arte', vida_nocturna: 'gastronomia' };
 const accessibility = p => p.needs.some(n => /silla de ruedas|sin escalones|sin escaleras|movilidad reducida/.test(normalize(n)));
-const marbella = {
-  name: 'Marbella', legs: {}, places: [...places.map((p, order) => ({
-    ...p, kind: p.id === 'mercado-central' ? 'food' : 'sight', paid: p.budget !== 'gratis',
-    why: p.description, aliases: [p.id], order,
-    categories: [...p.tags, ...Object.keys(interestMap).filter(i => p.tags.includes(interestMap[i]))]
-  })), { ...genericPlaces.find(p => p.kind === 'pause'), id: 'marbella-cafe' }]
+const catalog = {
+  places: [...places.map((p, order) => ({
+    ...p, paid: p.budget !== 'gratis', why: p.description, order
+  })), {
+    id: 'marbella-cafe', name: 'Pausa para café', kind: 'pause', categories: ['gastronomia'],
+    aliases: [], visitMinutes: 20, why: 'Descanso junto a la parada anterior.'
+  }]
 };
-const catalogs = [marbella, ...sampleCities];
-function catalogFor(name) {
-  return catalogs.find(c => normalize(c.name) === normalize(name)) ?? { name, places: genericPlaces, legs: {} };
-}
 function asPlace(p) {
   return { id: p.id, name: p.name, categories: p.categories, why: p.why,
     ...(p.lat !== undefined ? { lat: p.lat, lon: p.lon } : {}) };
 }
 export function lookupPlace(id) {
-  const place = catalogs.flatMap(c => c.places).concat(genericPlaces).find(p => p.id === id);
+  const place = catalog.places.find(p => p.id === id);
   if (!place) throw new ApiError(404, 'PLACE_NOT_FOUND', 'Lugar desconocido.');
   return asPlace(place);
 }
@@ -45,30 +42,20 @@ function routeName(request) {
   const label = hours === 0 ? `${rest} min` : rest ? `${hours} h ${rest} min` : hours === 1 ? '1 hora' : `${hours} horas`;
   return `${request.city} en ${label}`;
 }
-function leg(catalog, a, b, prefs) {
-  const segment = catalog.legs[`${a.id}|${b.id}`] ?? catalog.legs[`${b.id}|${a.id}`];
-  const walk = a.kind === 'pause' || b.kind === 'pause' ? 3 : segment?.walk ??
-    (a.lat !== undefined && b.lat !== undefined ? walkingMinutes(a, b, paceMap[prefs.pace]) : 15);
+function leg(a, b, prefs) {
+  const walk = a.kind === 'pause' || b.kind === 'pause' ? 3 : walkingMinutes(a, b, paceMap[prefs.pace]);
   const modes = prefs.transport;
   if (!modes.length || (modes.includes('a_pie') && (walk <= 20 || modes.length === 1))) return { mode: 'a_pie', minutes: walk };
   const mode = modes.find(m => m !== 'a_pie') ?? 'a_pie';
-  return { mode, minutes: mode === 'bici' ? Math.ceil(walk / 3) : segment?.transit ?? Math.ceil(walk / 2) };
-}
-
-function anchor(catalog, label) {
-  const key = normalize(label);
-  const match = catalog.places.find(p => [p.id, p.name, ...p.aliases].some(alias => normalize(alias) === key));
-  if (match || catalog !== marbella) return match;
-  const start = interpretWithRules(questions[0], label);
-  return start ? { ...starts[start], id: start } : undefined;
+  return { mode, minutes: mode === 'bici' ? Math.ceil(walk / 3) : Math.ceil(walk / 2) };
 }
 
 // Only estimate an approach leg if the label identifies an actual point in the catalog.
 function schedule(route, catalog, prefs, oldLegs = new Map()) {
   let time = minutes(route.request.timeWindow.from);
   const points = route.stops.map(s => catalog.places.find(p => p.id === s.placeId));
-  const start = anchor(catalog, route.request.start.label);
-  if (start && start.id !== points[0]?.id && points.length) time += leg(catalog, start, points[0], prefs).minutes;
+  const start = places.find(p => p.name === route.request.start.label);
+  if (start && start.id !== points[0]?.id && points.length) time += leg(start, points[0], prefs).minutes;
   route.stops.forEach((s, i) => {
     s.order = i + 1;
     s.arrive = clock(time);
@@ -76,7 +63,7 @@ function schedule(route, catalog, prefs, oldLegs = new Map()) {
     if (i + 1 === points.length) delete s.travelToNext;
     else {
       const pair = points[i].id + '|' + points[i + 1].id;
-      s.travelToNext = oldLegs.get(pair) ?? leg(catalog, points[i], points[i + 1], prefs);
+      s.travelToNext = oldLegs.get(pair) ?? leg(points[i], points[i + 1], prefs);
       time += s.travelToNext.minutes;
     }
   });
@@ -84,7 +71,7 @@ function schedule(route, catalog, prefs, oldLegs = new Map()) {
 }
 
 function marbellaRanking(request, prefs, premium) {
-  const start = interpretWithRules(questions[0], request.start.label) ?? 'naranjos';
+  const start = places.find(p => p.name === request.start.label).id;
   const interests = prefs.interests.map(i => Object.hasOwn(interestMap, i) ? interestMap[i] : i);
   if (prefs.company === 'con_ninos') interests.push('familia');
   const profile = { start, minutes: minutes(request.timeWindow.to) - minutes(request.timeWindow.from),
@@ -95,12 +82,11 @@ function marbellaRanking(request, prefs, premium) {
 }
 
 export function createTrip(request, prefs, premium) {
-  const catalog = catalogFor(request.city);
   const cap = premium ? 5 : 3;
-  const ranked = catalog === marbella ? marbellaRanking(request, prefs, premium) : [];
+  const ranked = marbellaRanking(request, prefs, premium);
   const score = p => (ranked.includes(p.id) ? 100 - ranked.indexOf(p.id) : 0)
     + p.categories.filter(c => prefs.interests.includes(c)).length * 4
-    + (prefs.company === 'con_ninos' && p.kids ? 2 : 0) - (prefs.budget === 'bajo' && p.paid ? 2 : 0)
+    + (prefs.company === 'con_ninos' && p.tags.includes('familia') ? 2 : 0) - (prefs.budget === 'bajo' && p.paid ? 2 : 0)
     - (p.kind === 'food' ? 6 : 0);
   const candidates = catalog.places.filter(p => p.kind !== 'pause' && !(p.stairs && accessibility(prefs)))
     .sort((a, b) => score(b) - score(a) || a.order - b.order);
@@ -112,7 +98,7 @@ export function createTrip(request, prefs, premium) {
     return match;
   }));
   const route = { id: randomUUID(), name: routeName(request), request, stops: [], version: 1, saved: false, favorite: false };
-  const suggested = catalog === marbella && ranked.length ? ranked.map(id => candidates.find(p => p.id === id)) : candidates;
+  const suggested = ranked.length ? ranked.map(id => candidates.find(p => p.id === id)) : candidates;
   for (const p of new Set([...required, ...suggested])) {
     if (route.stops.length >= cap) {
       if (required.has(p)) throw badRequest('Hay demasiadas paradas imprescindibles para este plan.');
@@ -120,9 +106,6 @@ export function createTrip(request, prefs, premium) {
     }
     const previous = route.stops;
     route.stops = [...previous, stopFor(p)];
-    if (catalog !== marbella) {
-      route.stops.sort((a, b) => catalog.places.find(p => p.id === a.placeId).order - catalog.places.find(p => p.id === b.placeId).order);
-    }
     if (!schedule(route, catalog, prefs)) {
       route.stops = previous;
       if (required.has(p)) throw badRequest('Los imprescindibles no caben en esa franja horaria.');
@@ -148,7 +131,6 @@ function replacements(route, i, catalog, prefs) {
 }
 export function alternatives(route, order, prefs) {
   const i = stopIndex(route, order);
-  const catalog = catalogFor(route.request.city);
   return replacements(route, i, catalog, prefs).filter(p => {
     const candidate = structuredClone(route);
     candidate.stops[i] = stopFor(p);
@@ -169,7 +151,6 @@ function existingLegs(route) {
 
 export function refineTrip(route, action, prefs) {
   object(action, 'action');
-  const catalog = catalogFor(route.request.city);
   const legs = existingLegs(route);
   if (['remove_stop', 'lock_stop', 'swap_stop'].includes(action.type)) {
     const i = stopIndex(route, action.order);
@@ -190,6 +171,7 @@ export function refineTrip(route, action, prefs) {
     let changes;
     if (action.type === 'text') {
       const text = normalize(shortText(action.value, 'text', 1000));
+      if (asksForAnotherCity(text)) throw badRequest('Solo se pueden ajustar rutas por Marbella.');
       changes = Object.keys(quickText).filter(k => quickText[k].test(text)).sort((a, b) => text.search(quickText[a]) - text.search(quickText[b]));
     } else if (action.type === 'quick' && typeof action.value === 'string' && Object.hasOwn(quickText, action.value)) {
       changes = [action.value];

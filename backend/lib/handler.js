@@ -8,6 +8,7 @@ import { takeTurn, validateProfile, validateTurn } from './onboarding.js';
 import { authorizeAgent, rateLimit, trialInfo, visitorNetwork } from './quota.js';
 import { buildRoutes, routeInput } from './routes.js';
 import { claimGuest, guestForLogin, tripAction, tripMethods } from './trip-api.js';
+import { isMarbella } from './marbella-scope.js';
 
 const methods = new Map([
   ['health', 'GET'], ['catalog', 'GET'], ['status', 'GET'], ['register', 'POST'], ['login', 'POST'],
@@ -94,6 +95,9 @@ export function createHandler(database = getPool) {
       }
 
       const body = await readJson(request);
+      if (body.city !== undefined && !isMarbella(body.city)) {
+        throw new ApiError(400, 'UNSUPPORTED_CITY', 'Cacahuete prepara rutas exclusivamente por Marbella.');
+      }
       if (action === 'chat') {
         const turn = chatInput(body, account?.profile);
         const quota = await authorizeAgent(db, account, network);

@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { asksForAnotherCity } from './marbella-scope.js';
 import { starts } from './catalog.js';
 import { applyMessage } from './chat.js';
 import { ApiError, badRequest, readJson } from './http.js';
@@ -30,6 +31,7 @@ export async function claimGuest(db, owner, accountId) {
 export const guestForLogin = request => request.headers.has('x-guest-token') ? guestOwner(request) : null;
 
 const notFound = () => new ApiError(404, 'ROUTE_NOT_FOUND', 'No se ha encontrado esa ruta.');
+const localTrip = "lower(trim(itinerary->'request'->>'city')) = 'marbella'";
 const view = row => ({ ...row.itinerary, saved: row.saved });
 
 async function readPreferences(db, owner) {
@@ -49,13 +51,14 @@ export async function tripAction(db, action, request, account, localIp) {
     return;
   }
   if (action === 'listRoutes') {
-    const { rows } = await db.query('SELECT itinerary,saved FROM travel_routes WHERE owner_key=$1 ORDER BY created_at DESC', [owner]);
+    const { rows } = await db.query(`SELECT itinerary,saved FROM travel_routes WHERE owner_key=$1 AND ${localTrip} ORDER BY created_at DESC`, [owner]);
     return rows.map(view);
   }
   const authorize = () => authorizeAgent(db, account, account ? null : visitorNetwork(request, localIp));
   if (action === 'interpretRequest') {
     const body = await readJson(request);
     const text = shortText(body.text, 'text', 1000);
+    if (asksForAnotherCity(text)) throw badRequest('Cacahuete prepara rutas exclusivamente por Marbella.');
     await authorize();
     const { updated, source } = applyMessage(text, {});
     const overrides = {};
@@ -86,11 +89,11 @@ export async function tripAction(db, action, request, account, localIp) {
   }
   if (action === 'saveRoute') {
     if (!account) throw new ApiError(401, 'UNAUTHENTICATED', 'Inicia sesión para guardar la ruta.');
-    const { rows } = await db.query('UPDATE travel_routes SET saved=true WHERE id=$1 AND owner_key=$2 RETURNING itinerary,saved', key);
+    const { rows } = await db.query(`UPDATE travel_routes SET saved=true WHERE id=$1 AND owner_key=$2 AND ${localTrip} RETURNING itinerary,saved`, key);
     if (!rows[0]) throw notFound();
     return view(rows[0]);
   }
-  const { rows: [row] } = await db.query('SELECT itinerary,saved,revision,preferences FROM travel_routes WHERE id=$1 AND owner_key=$2', key);
+  const { rows: [row] } = await db.query(`SELECT itinerary,saved,revision,preferences FROM travel_routes WHERE id=$1 AND owner_key=$2 AND ${localTrip}`, key);
   if (!row) throw notFound();
   if (action === 'getRoute') return view(row);
   if (action === 'getAlternatives') return alternatives(row.itinerary, Number(params.get('order')), row.preferences);
