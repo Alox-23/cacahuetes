@@ -204,6 +204,19 @@ Engineering:
 - [ ] The feature 2 acceptance checklist passes on mobile.
 - [ ] Visual check against the seven desktop designs at 1,440 × 900 and against the mobile chat designs at 390 × 844 (headless Firefox screenshots of `npm run preview`).
 
-## 12. Out of scope
+## 12. Addendum (2026-11-24, later the same day): port onto `dev`
+
+After this plan was written, `dev` gained its own feature 2 implementation (`7c781da`) and the fran-backend integration (`27f16d4`, `5288aee`): an HTTP data module (`src/data/httpData.ts`), an assistant wired to the backend through `interpretRequest` / `refineConversation` in `src/App.tsx`, and a Marbella catalogue. A first implementation of this plan was built in parallel from the older base and lives on the local branch `alex-desktop` (`de68003`). It is a **reference to port from**, not something to merge.
+
+The decision is to rebuild the desktop version on top of `dev`, keeping dev's feature 2 code. This changes the plan as follows:
+
+- **§2 and phase 2 no longer apply as written.** Feature 2 exists on `dev`; do not re-implement it and do not replace its files with the `alex-desktop` versions. Dev's pages, components, data modules, seeds, catalogue, assistant and tests are the base.
+- **§4.2 becomes a refactor, not a build.** Extract the content of dev's existing feature 2 pages into content components only where a desktop host needs them (route view, stop detail, alternatives, save-as-guest / register / login forms, saved route view, rate form, the three settings forms, My routes list). Keep dev's markup, behaviour and data calls; the mobile pages become thin wrappers around the extracted content. Do not restructure pages that desktop does not reuse.
+- **Both data paths must keep working.** The app runs on the mock module when `VITE_CACAHUETE_API_URL` is unset and on `createHttpDataModule` when it is set. Everything added here (thread, creation state, `useRoute` revision counter, panels) goes through the `DataModule` and assistant seams and must not assume the mock. Do not change `backend/`.
+- **`move_stop` (§6)**: add it to the contract and the mock. The HTTP module has no backend endpoint for it; in HTTP mode the reorder controls are hidden (feature-detect an optional capability on the data module rather than checking the endpoint variable in UI code). Note it in the README as pending backend work.
+- **Phases 1, 3, 4, 5 and 6 stand**, ported from `alex-desktop` where the code applies and adapted to dev's component names, hooks (`src/pages/routeHooks.ts`), state additions and i18n keys. Dev's 67 tests must keep passing, changed only where this plan deliberately changes behaviour.
+- **Naming**: `origin/alex-frontend` has a separate "feature 3" spec (Peanut Run while the route is created) that is not on `dev`. It is out of scope here; keep the creation progress self-contained so that feature can replace the mobile creating screen later.
+
+## 13. Out of scope
 
 Backend, real AI, real maps or geocoding, a two-column tablet layout, a collapsible sidebar, a draggable divider, extra keyboard shortcuts, message timestamps, message editing, dark mode, and anything the feature 2 tech spec already lists as out of scope.
