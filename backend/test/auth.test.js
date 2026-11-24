@@ -1,6 +1,10 @@
 import assert from 'node:assert/strict';
 import { after, before, test } from 'node:test';
+import { createHash } from 'node:crypto';
+import { readFile } from 'node:fs/promises';
 import { PGlite } from '@electric-sql/pglite';
+import { SignJWT, exportJWK, exportPKCS8, exportSPKI, generateKeyPair, importSPKI, jwtVerify } from 'jose';
+import { defaults } from '../lib/trip-contract.js';
 import { createHandler } from '../lib/handler.js';
 import { applySchema } from '../lib/schema.js';
 
@@ -19,6 +23,11 @@ const realFetch = globalThis.fetch;
 const outbox = [];
 let providerFetch = async (url) => assert.fail(`Unexpected request to ${url}`);
 
+const google = { clientId: 'cacahuete-test.apps.googleusercontent.com', secret: 'google-test-secret' };
+const apple = { clientId: 'es.example.cacahuete.web', team: 'TEAM123456', keyId: 'KEY1234567' };
+const keys = {};
+const guestToken = 'ab'.repeat(32);
+
 before(async () => {
   process.env.FRONTEND_ORIGINS = origin;
   process.env.QUOTA_SECRET = 'auth-test-secret-with-more-than-32-characters';
@@ -26,6 +35,16 @@ before(async () => {
   process.env.APP_URL = appUrl;
   process.env.MAIL_FROM = 'Cacahuete <no-reply@example.test>';
   process.env.RESEND_API_KEY = 'test';
+  process.env.GOOGLE_CLIENT_ID = google.clientId;
+  process.env.GOOGLE_CLIENT_SECRET = google.secret;
+  process.env.APPLE_CLIENT_ID = apple.clientId;
+  process.env.APPLE_TEAM_ID = apple.team;
+  process.env.APPLE_KEY_ID = apple.keyId;
+  keys.google = await generateKeyPair('RS256', { extractable: true });
+  keys.appleId = await generateKeyPair('RS256', { extractable: true });
+  keys.appleClient = await generateKeyPair('ES256', { extractable: true });
+  // Stored the way a dashboard often keeps it: one line with escaped newlines.
+  process.env.APPLE_PRIVATE_KEY = (await exportPKCS8(keys.appleClient.privateKey)).replace(/\n/g, '\\n');
   globalThis.fetch = async (url, init = {}) => {
     const target = String(url);
     if (target === 'https://api.resend.com/emails') {
@@ -161,4 +180,238 @@ test('Premium exige un correo confirmado', async (t) => {
   const response = await call('checkout', { method: 'POST', token });
   assert.equal(response.status, 403);
   assert.equal(await errorCode(response), 'EMAIL_NOT_VERIFIED');
+});
+
+// ---- Google and Apple sign-in -------------------------------------------------------------
+
+const jwks = async (pair, kid) => ({ keys: [{ ...(await exportJWK(pair.publicKey)), kid, alg: 'RS256', use: 'sig' }] });
+const idToken = (pair, kid, claims) => new SignJWT(claims)
+  .setProtectedHeader({ alg: 'RS256', kid }).setIssuedAt().setExpirationTime('5m').sign(pair.privateKey);
+
+// Claims of the id_token returned for the next authorization code.
+let claimsQueue = [];
+
+/** Answers the provider endpoints with the test keys; returns the recorded token requests. */
+function providerServer(onToken) {
+  const tokenRequests = [];
+  providerFetch = async (url, init) => {
+    if (url === 'https://www.googleapis.com/oauth2/v3/certs') return Response.json(await jwks(keys.google, 'g1'));
+    if (url === 'https://appleid.apple.com/auth/keys') return Response.json(await jwks(keys.appleId, 'a1'));
+    if (url === 'https://oauth2.googleapis.com/token' || url === 'https://appleid.apple.com/auth/token') {
+      assert.ok(init.signal, 'token requests carry a timeout');
+      const body = new URLSearchParams(init.body);
+      tokenRequests.push({ url, body });
+      onToken?.(url, body);
+      const claims = claimsQueue.shift();
+      if (!claims) return Response.json({ error: 'invalid_grant' }, { status: 400 });
+      const token = url.includes('google')
+        ? await idToken(keys.google, 'g1', claims)
+        : await idToken(keys.appleId, 'a1', claims);
+      return Response.json({ access_token: 'unused', id_token: token });
+    }
+    return assert.fail(`Unexpected request to ${url}`);
+  };
+  return tokenRequests;
+}
+
+async function start(provider) {
+  const response = await call('oauthStart', { method: 'POST', body: { provider } });
+  assert.equal(response.status, 200);
+  const { url, state } = await response.json();
+  const authorize = new URL(url);
+  return { authorize, state, nonce: authorize.searchParams.get('nonce') };
+}
+
+/** Google returns with a top-level GET navigation (no Origin header). */
+const googleReturn = (query) =>
+  handle(new Request(`${base}?action=oauthCallback&${new URLSearchParams(query)}`), nextIp());
+
+/** Apple returns with a cross-site form_post from its own origin. */
+const appleReturn = (fields) => handle(new Request(`${base}?action=oauthCallback`, {
+  method: 'POST',
+  headers: { origin: 'https://appleid.apple.com', 'content-type': 'application/x-www-form-urlencoded' },
+  body: new URLSearchParams(fields).toString()
+}), nextIp());
+
+function fragment(response) {
+  assert.equal(response.status, 302);
+  const location = response.headers.get('location');
+  assert.ok(location.startsWith(`${appUrl}/auth/callback#`), location);
+  assert.ok(!location.includes('?'), 'nothing travels in the query');
+  return Object.fromEntries(new URLSearchParams(location.split('#')[1]));
+}
+
+const exchange = (ticket, headers) => call('oauthExchange', { method: 'POST', body: { ticket }, headers });
+const googleClaims = (sub, email, nonce, extra = {}) =>
+  ({ iss: 'https://accounts.google.com', aud: google.clientId, sub, email, email_verified: true, nonce, ...extra });
+
+async function googleSignIn(sub, email, extra = {}) {
+  const { state, nonce, authorize } = await start('google');
+  claimsQueue.push(googleClaims(sub, email, nonce, extra));
+  const result = fragment(await googleReturn({ code: 'google-code', state }));
+  assert.equal(result.state, state);
+  return { ...result, authorize };
+}
+
+test('oauthStart: URL de Google con PKCE; proveedor desconocido o sin configurar', async (t) => {
+  const { authorize, state, nonce } = await start('google');
+  assert.equal(authorize.origin + authorize.pathname, 'https://accounts.google.com/o/oauth2/v2/auth');
+  assert.equal(authorize.searchParams.get('client_id'), google.clientId);
+  assert.equal(authorize.searchParams.get('redirect_uri'), `${base}?action=oauthCallback`);
+  assert.equal(authorize.searchParams.get('state'), state);
+  assert.match(state, /^[A-Za-z0-9_-]{43}$/);
+  assert.match(nonce, /^[A-Za-z0-9_-]{43}$/);
+  assert.equal(authorize.searchParams.get('code_challenge_method'), 'S256');
+  assert.match(authorize.searchParams.get('code_challenge'), /^[A-Za-z0-9_-]{43}$/);
+  assert.equal(authorize.searchParams.get('scope'), 'openid email');
+  const { rows } = await db.query('SELECT state_hash FROM oauth_states');
+  assert.ok(rows.every((row) => row.state_hash !== state), 'states are stored hashed');
+
+  const appleStart = await start('apple');
+  assert.equal(appleStart.authorize.searchParams.get('response_mode'), 'form_post');
+  assert.equal(appleStart.authorize.searchParams.get('code_challenge'), null);
+
+  const unknown = await call('oauthStart', { method: 'POST', body: { provider: 'github' } });
+  assert.equal(unknown.status, 400);
+  assert.deepEqual((await (await call('status')).json()).auth, { providers: ['google', 'apple'], mail: true });
+
+  const saved = process.env.APPLE_CLIENT_ID;
+  delete process.env.APPLE_CLIENT_ID;
+  t.after(() => { process.env.APPLE_CLIENT_ID = saved; });
+  const unconfigured = await call('oauthStart', { method: 'POST', body: { provider: 'apple' } });
+  assert.equal(unconfigured.status, 503);
+  assert.equal(await errorCode(unconfigured), 'PROVIDER_UNAVAILABLE');
+  assert.deepEqual((await (await call('status')).json()).auth.providers, ['google']);
+
+  // Only the provider callback skips the Origin allow-list.
+  const foreign = await call('oauthStart', {
+    method: 'POST', body: { provider: 'google' }, clientOrigin: 'https://appleid.apple.com'
+  });
+  assert.equal(foreign.status, 403);
+  const evil = await call('oauthExchange', { method: 'POST', body: { ticket: 'x' }, clientOrigin: 'https://evil.example.test' });
+  assert.equal(evil.status, 403);
+  assert.equal((await call('oauthCallback', { method: 'PUT', body: {} })).status, 405);
+});
+
+test('Google de principio a fin: ticket de un uso, invitado reclamado y cuentas vinculadas', async () => {
+  const requests = providerServer();
+  // Preferences saved as a guest move to the account on sign-in, as with password login.
+  const saved = await call('savePreferences', { method: 'PUT', body: defaults, headers: { 'x-guest-token': guestToken } });
+  assert.equal(saved.status, 204);
+
+  const first = await googleSignIn('google-sub-1', ' Viajera@Gmail.Example ');
+  assert.match(first.ticket, /^[A-Za-z0-9_-]{43}$/);
+  const [tokenRequest] = requests;
+  assert.equal(tokenRequest.body.get('client_id'), google.clientId);
+  assert.equal(tokenRequest.body.get('client_secret'), google.secret);
+  assert.equal(tokenRequest.body.get('redirect_uri'), `${base}?action=oauthCallback`);
+  assert.equal(tokenRequest.body.get('grant_type'), 'authorization_code');
+  assert.equal(tokenRequest.body.get('code'), 'google-code');
+  // PKCE: the verifier sent to the token endpoint hashes to the challenge of its own authorization.
+  assert.equal(createHash('sha256').update(tokenRequest.body.get('code_verifier')).digest('base64url'),
+    first.authorize.searchParams.get('code_challenge'));
+  const { rows } = await db.query('SELECT ticket_hash FROM login_tickets');
+  assert.ok(rows.every((row) => row.ticket_hash !== first.ticket), 'tickets are stored hashed');
+
+  const response = await exchange(first.ticket, { 'x-guest-token': guestToken });
+  assert.equal(response.status, 200);
+  const signedIn = await response.json();
+  assert.equal(signedIn.account.email, 'viajera@gmail.example');
+  assert.equal(signedIn.account.emailVerified, true);
+  assert.equal(signedIn.quota.plan, 'free');
+  assert.equal((await status(signedIn.token)).account.id, signedIn.account.id);
+  assert.deepEqual(await (await call('getPreferences', { token: signedIn.token })).json(), defaults);
+  const reused = await exchange(first.ticket);
+  assert.equal(reused.status, 400);
+  assert.equal(await errorCode(reused), 'INVALID_TICKET');
+
+  const again = await googleSignIn('google-sub-1', 'viajera@gmail.example');
+  assert.equal((await (await exchange(again.ticket)).json()).account.id, signedIn.account.id);
+
+  // A Google identity whose email matches an existing password account links to it and verifies it.
+  const { account } = await register('enlazada@example.test');
+  assert.equal(account.emailVerified, false);
+  const linked = await googleSignIn('google-sub-2', 'enlazada@example.test');
+  const linkedAccount = (await (await exchange(linked.ticket)).json()).account;
+  assert.equal(linkedAccount.id, account.id);
+  assert.equal(linkedAccount.emailVerified, true);
+
+  // Google must say the email is verified.
+  const unverified = await googleSignIn('google-sub-3', 'sin-verificar@gmail.example', { email_verified: false });
+  assert.equal(unverified.error, 'email_unverified');
+  assert.equal(unverified.ticket, undefined);
+
+  // An expired ticket is refused.
+  const late = await googleSignIn('google-sub-1', 'viajera@gmail.example');
+  await db.query("UPDATE login_tickets SET expires_at = now() - interval '1 second'");
+  assert.equal((await exchange(late.ticket)).status, 400);
+});
+
+test('contraseña en una cuenta creada con Google: 401 como una contraseña incorrecta', async () => {
+  providerServer();
+  const result = await googleSignIn('google-sub-only', 'solo-google@gmail.example');
+  assert.equal((await exchange(result.ticket)).status, 200);
+  const { rows: [row] } = await db.query("SELECT password_hash FROM accounts WHERE email = 'solo-google@gmail.example'");
+  assert.equal(row.password_hash, null);
+  const attempt = await call('login', { method: 'POST', body: { email: 'solo-google@gmail.example', password: strongPassword } });
+  assert.equal(attempt.status, 401);
+  const unknown = await call('login', { method: 'POST', body: { email: 'nadie@example.test', password: strongPassword } });
+  assert.equal(unknown.status, 401);
+  assert.deepEqual((await attempt.json()).error, (await unknown.json()).error);
+});
+
+test('Apple: form_post desde appleid.apple.com, email_verified como texto y client_secret ES256', async () => {
+  let secret;
+  providerServer((url, body) => { if (url.includes('apple')) secret = body.get('client_secret'); });
+  const { state, nonce } = await start('apple');
+  claimsQueue.push({
+    iss: 'https://appleid.apple.com', aud: apple.clientId, sub: '001234.apple-sub',
+    email: 'abc123@privaterelay.appleid.com', email_verified: 'true', nonce
+  });
+  const result = fragment(await appleReturn({ code: 'apple-code', state, user: '{"name":{"firstName":"Ignorado"}}' }));
+  assert.equal(result.state, state);
+  assert.ok(result.ticket, JSON.stringify(result));
+  const response = await exchange(result.ticket);
+  assert.equal(response.status, 200);
+  const { account } = await response.json();
+  assert.equal(account.email, 'abc123@privaterelay.appleid.com');
+  assert.equal(account.emailVerified, true);
+
+  const publicKey = await importSPKI(await exportSPKI(keys.appleClient.publicKey), 'ES256');
+  const { payload, protectedHeader } = await jwtVerify(secret, publicKey, {
+    issuer: apple.team, audience: 'https://appleid.apple.com', subject: apple.clientId
+  });
+  assert.equal(protectedHeader.kid, apple.keyId);
+  assert.ok(payload.exp - payload.iat <= 300);
+});
+
+test('state erróneo, caducado o reutilizado; cancelación; nonce y audiencia incorrectos', async () => {
+  providerServer();
+  assert.equal(fragment(await googleReturn({ code: 'x', state: 'A'.repeat(43) })).error, 'invalid_state');
+  assert.deepEqual(fragment(await googleReturn({ code: 'x' })), { error: 'invalid_state' });
+
+  const used = await googleSignIn('google-sub-state', 'state@gmail.example');
+  assert.ok(used.ticket);
+  const replay = fragment(await googleReturn({ code: 'google-code', state: used.state }));
+  assert.equal(replay.error, 'invalid_state');
+
+  const old = await start('google');
+  await db.query("UPDATE oauth_states SET expires_at = now() - interval '1 second'");
+  assert.equal(fragment(await googleReturn({ code: 'x', state: old.state })).error, 'invalid_state');
+
+  const cancelled = await start('google');
+  const denied = fragment(await googleReturn({ error: 'access_denied', state: cancelled.state }));
+  assert.deepEqual(denied, { state: cancelled.state, error: 'access_denied' });
+
+  const wrong = await start('google');
+  claimsQueue.push(googleClaims('google-sub-nonce', 'nonce@gmail.example', 'otro-nonce'));
+  assert.equal(fragment(await googleReturn({ code: 'google-code', state: wrong.state })).error, 'invalid_token');
+
+  const audience = await start('google');
+  claimsQueue.push(googleClaims('google-sub-aud', 'aud@gmail.example', audience.nonce, { aud: 'otra-app' }));
+  assert.equal(fragment(await googleReturn({ code: 'google-code', state: audience.state })).error, 'invalid_token');
+
+  const refused = await start('google');
+  assert.equal(fragment(await googleReturn({ code: 'rechazado', state: refused.state })).error, 'exchange_failed');
+  claimsQueue = [];
 });
