@@ -1,40 +1,40 @@
-# API de Cacahuete
+# Cacahuete en la intranet
 
-Cacahuete recoge preferencias y propone rutas turísticas a pie por Marbella. El catálogo incluye el casco antiguo, el paseo marítimo y Puerto Banús. Está pensado para conectar un frontend en Cloudflare Pages con una API de JavaScript en Vercel y un PostgreSQL externo.
-
-## En local
-
-Desde `backend/`, con Node.js 22 y una base PostgreSQL vacía:
+El portátil sirve el frontend y la API desde el mismo puerto. Necesita Node 22.13 o posterior de la serie 22, PostgreSQL local y Ollama. Prepara las dependencias y el modelo mientras tengas conexión. Desde la raíz, en PowerShell:
 
 ```powershell
-npm ci
-Copy-Item .env.example .env
+npm --prefix backend ci
+npm --prefix frontend ci
+$env:VITE_CACAHUETE_API_URL = '/api/cacahuete'
+npm --prefix frontend run build
+ollama pull qwen2.5:7b
+Copy-Item backend/.env.example backend/.env
+ipconfig
 ```
 
-Antes de migrar, rellena `DATABASE_URL` y `QUOTA_SECRET` en `.env`. Puedes generar el secreto con `node -e "console.log(require('node:crypto').randomBytes(32).toString('hex'))"`. Mantén el mismo valor entre despliegues para conservar la validez de las cuotas existentes.
+Crea una base local vacía y configura en `backend/.env` su `DATABASE_URL` y un `QUOTA_SECRET` de al menos 32 caracteres. Para generar el secreto ejecuta `node -e "console.log(require('node:crypto').randomBytes(32).toString('hex'))"`. Conserva el archivo únicamente en el portátil. Usa la IPv4 del adaptador Wi-Fi o Ethernet conectado al evento para definir `FRONTEND_ORIGINS` y `APP_URL`, por ejemplo `http://192.168.1.40:3000`. Mantén vacías las credenciales de servicios externos y usa el modo invitado durante el evento.
 
 ```powershell
-npm run migrate
-npm run dev
+npm --prefix backend run migrate
+ollama list
+npm --prefix backend run dev
 ```
 
-`npm test` comprueba los flujos con el motor de PostgreSQL embebido de PGlite. Las peticiones externas de las pruebas se simulan.
+Ollama debe estar abierto en el portátil. Si no está en la bandeja del sistema, ejecuta `ollama serve` en otra terminal. El modelo elegido es Qwen2.5 7B cuantizado, con soporte de español y una descarga de 4,7 GB. El consumo de RAM y la latencia dependen del contexto y del equipo. Antes de abrir al público, calienta el modelo con `ollama run qwen2.5:7b "Saluda en español"` y comprueba una duda sobre una parada con el portátil desconectado de internet. [Ficha del modelo](https://ollama.com/library/qwen2.5:7b)
 
-## En Vercel y Cloudflare
+Node escucha en `0.0.0.0` y usa `PORT=3000` por defecto. En PowerShell **como administrador**, para una red del evento con perfil privado:
 
-1. Importa el repositorio en Vercel, selecciona `backend` como **Root Directory**, **Other** como **Framework Preset** y deja vacíos los comandos de build y la carpeta de salida. Para la rama `fran-backend`, usa un despliegue Preview que admita peticiones del navegador si se va a probar desde Cloudflare.
-2. Conecta PostgreSQL, por ejemplo Neon desde el Marketplace. Configura `DATABASE_URL` con la URL del pool y ejecuta `npm run migrate` una vez con esa misma base antes de conectar el frontend.
-3. Configura `QUOTA_SECRET` y `FRONTEND_ORIGINS` en el entorno del despliegue. En la última, indica orígenes completos separados por comas, como `https://ejemplo.pages.dev,https://turismo.ejemplo.org`, sin barras finales. El navegador llama directamente a Vercel por HTTPS. Cloudflare Pages puede servir la web desde su dominio propio o el de Pages.
-4. La función de Vercel carga `model/interests.json` desde el proyecto. Para el escenario de afluencia de la demo, establece `DEMO_SCENARIOS=true`. `PARTNER_PLACE_IDS` acepta los ID de socios confirmados, separados por comas.
-5. Despliega y consulta `https://TU_API.vercel.app/api/cacahuete?action=health`. En el frontend, usa la URL de Vercel como base pública. Las claves de PostgreSQL y Stripe se configuran solo en el servidor.
+```powershell
+New-NetFirewallRule -DisplayName "Cacahuete intranet" -Direction Inbound -Action Allow -Protocol TCP -LocalPort 3000 -Profile Private -RemoteAddress LocalSubnet
+```
 
-Documentación de [Vercel Functions](https://vercel.com/docs/functions/runtimes/node-js) y [PostgreSQL en Vercel](https://vercel.com/docs/postgres).
+Desde un móvil conectado a la misma red abre `http://192.168.1.40:3000/`, sustituyendo la IP de ejemplo. Comprueba también `/api/cacahuete?action=health`. Si cambias el puerto, actualiza la regla y ambos orígenes. La red debe permitir conexiones entre sus clientes. Solo Node necesita ser accesible desde los móviles.
+
+El chat llama a `OLLAMA_BASE_URL` (por defecto `http://localhost:11434/v1`) con `OLLAMA_MODEL=qwen2.5:7b`. Admite 500 caracteres por mensaje y 20 peticiones al agente por minuto e IP. Admite dos generaciones simultáneas; a los 30 s de cola o 20 s de generación usa la plantilla. Para comprobar el plan B, detén Ollama y vuelve a pedir una ruta. Las pruebas se ejecutan con `npm --prefix backend test`.
+
+Para mostrar fotos sin conexión, coloca fotos autorizadas en `frontend/public/places/<id-del-catálogo>.jpg` antes de compilar. También puedes incorporarlas a `frontend/dist/places/` después. La ficha muestra la mascota local si la foto falta o está dañada.
 
 ## Contrato para el frontend
-
-### Integración con `alex-frontend`
-
-Aplica `npm run migrate` también en instalaciones existentes para crear las tablas de rutas y preferencias. El script aplica en orden todos los archivos `db/*.sql` y se puede repetir sin efectos. En `frontend/`, copia `.env.example` a `.env.local` y arranca Vite. Para Cloudflare Pages, define `VITE_CACAHUETE_API_URL` con la URL completa de la función en Vercel antes de compilar. Añade el origen público de Pages a `FRONTEND_ORIGINS`.
 
 El adaptador HTTP implementa `frontend/src/contract/types.ts`. El chat conserva el cuestionario, las opciones y el resumen que el visitante confirma. Las peticiones de texto pasan por el intérprete de Cacahuete y las rutas se crean al confirmar. El único destino es Marbella. El chat propone puntos de salida del catálogo y acepta sus nombres o alias. Los horarios parten de ese lugar. La API devuelve HTTP 400 si la ciudad, la salida o un imprescindible quedan fuera del catálogo. Las rutas antiguas de otras ciudades se conservan en la base y quedan fuera de las consultas. Los tiempos de desplazamiento son estimaciones.
 
