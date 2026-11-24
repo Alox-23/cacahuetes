@@ -1,9 +1,9 @@
 import assert from 'node:assert/strict';
 import { createHmac } from 'node:crypto';
-import { readFile } from 'node:fs/promises';
 import { after, before, test } from 'node:test';
 import { PGlite } from '@electric-sql/pglite';
 import { createHandler } from '../lib/handler.js';
+import { applySchema } from '../lib/schema.js';
 
 const origin = 'https://marbella.example.test';
 const webhookSecret = 'whsec_cacahuete_test';
@@ -22,9 +22,9 @@ before(async () => {
   process.env.DEMO_SCENARIOS = 'true';
   process.env.PARTNER_PLACE_IDS = 'encarnacion,avenida-mar,mercado-central';
   delete process.env.VERCEL;
-  const migration = await readFile(new URL('../db/001_init.sql', import.meta.url), 'utf8');
-  await db.exec(migration);
-  await db.exec(migration);
+  // Applying the schema twice proves every migration is idempotent.
+  await applySchema(db);
+  await applySchema(db);
 });
 
 after(() => db.close());

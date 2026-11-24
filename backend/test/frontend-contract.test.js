@@ -1,11 +1,11 @@
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
 import { createServer } from 'node:http';
 import { once } from 'node:events';
 import { before, after, test } from 'node:test';
 import { PGlite } from '@electric-sql/pglite';
 import { createHttpDataModule } from '../../frontend/src/data/httpData.ts';
 import { createHandler } from '../lib/handler.js';
+import { applySchema } from '../lib/schema.js';
 import { defaults } from '../lib/trip-contract.js';
 
 const db = new PGlite();
@@ -16,7 +16,7 @@ before(async () => {
   process.env.FRONTEND_ORIGINS = origin;
   process.env.QUOTA_SECRET = 'integration-guest-quota-test-only-12345';
   delete process.env.VERCEL;
-  await db.exec(await readFile(new URL('../db/001_init.sql', import.meta.url), 'utf8'));
+  await applySchema(db);
   server = createServer(async (req, res) => {
     const body = [];
     for await (const chunk of req) body.push(chunk);
