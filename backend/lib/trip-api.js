@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 import { asksForAnotherCity } from './marbella-scope.js';
+import { narrate } from './llm.js';
 import { starts } from './catalog.js';
 import { applyMessage } from './chat.js';
 import { ApiError, badRequest, readJson } from './http.js';
@@ -9,7 +10,7 @@ import { alternatives, createTrip, lookupPlace, refineTrip } from './trip-planne
 
 export const tripMethods = new Map([
   ['getPreferences', 'GET'], ['savePreferences', 'PUT'], ['createRoute', 'POST'], ['refineRoute', 'POST'],
-  ['interpretRequest', 'POST'], ['refineConversation', 'POST'], ['undo', 'POST'], ['getRoute', 'GET'], ['listRoutes', 'GET'], ['saveRoute', 'POST'],
+  ['routeQuestion', 'POST'], ['interpretRequest', 'POST'], ['refineConversation', 'POST'], ['undo', 'POST'], ['getRoute', 'GET'], ['listRoutes', 'GET'], ['saveRoute', 'POST'],
   ['deleteRoute', 'DELETE'], ['rateRoute', 'PUT'], ['getPlace', 'GET'], ['getAlternatives', 'GET']
 ]);
 function guestOwner(request) {
@@ -54,10 +55,10 @@ export async function tripAction(db, action, request, account, localIp) {
     const { rows } = await db.query(`SELECT itinerary,saved FROM travel_routes WHERE owner_key=$1 AND ${localTrip} ORDER BY created_at DESC`, [owner]);
     return rows.map(view);
   }
-  const authorize = () => authorizeAgent(db, account, account ? null : visitorNetwork(request, localIp));
+  const authorize = () => authorizeAgent(db, account, visitorNetwork(request, localIp));
   if (action === 'interpretRequest') {
     const body = await readJson(request);
-    const text = shortText(body.text, 'text', 1000);
+    const text = shortText(body.text, 'text', 500);
     if (asksForAnotherCity(text)) throw badRequest('Cacahuete prepara rutas exclusivamente por Marbella.');
     await authorize();
     const { updated, source } = applyMessage(text, {});
@@ -68,7 +69,9 @@ export async function tripAction(db, action, request, account, localIp) {
     if (updated.interests?.includes('familia')) overrides.company = 'con_ninos';
     const interests = updated.interests?.filter(i => i !== 'familia').map(i => i === 'arte' ? 'museos' : i);
     if (interests?.length) overrides.interests = interests;
-    return { overrides, durationMinutes: updated.minutes, start: updated.start ? { label: starts[updated.start].name } : undefined,
+    const openQuestion = /[¿?]|^(?:cuéntame|dime|háblame|qué|cómo|cuándo|cuánto|dónde)\b/iu.test(text);
+    const message = openQuestion ? await narrate(text, { ...await readPreferences(db, owner), ...updated }, null) : null;
+    return { ...(message && { message }), overrides, durationMinutes: updated.minutes, start: updated.start ? { label: starts[updated.start].name } : undefined,
       interpretation: source };
   }
   if (action === 'createRoute') {
@@ -95,6 +98,13 @@ export async function tripAction(db, action, request, account, localIp) {
   }
   const { rows: [row] } = await db.query(`SELECT itinerary,saved,revision,preferences FROM travel_routes WHERE id=$1 AND owner_key=$2 AND ${localTrip}`, key);
   if (!row) throw notFound();
+  if (action === 'routeQuestion') {
+    const text = shortText((await readJson(request)).text, 'text', 500);
+    if (asksForAnotherCity(text)) throw badRequest('Cacahuete prepara rutas exclusivamente por Marbella.');
+    await authorize();
+    const { stops, name, request: trip } = row.itinerary;
+    return { message: await narrate(text, row.preferences, { stops, name, timeWindow: trip.timeWindow }) };
+  }
   if (action === 'getRoute') return view(row);
   if (action === 'getAlternatives') return alternatives(row.itinerary, Number(params.get('order')), row.preferences);
 

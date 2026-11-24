@@ -1,7 +1,7 @@
 import { authenticate, createSession, login, publicAccount, register, saveProfile } from './accounts.js';
 import { startCheckout, stripeWebhook } from './billing.js';
 import { listPlaces, starts } from './catalog.js';
-import { chatInput, chatTurn } from './chat.js';
+import { chatInput, chatReply } from './chat.js';
 import { getPool } from './db.js';
 import { ApiError, badRequest, configuredOrigins, json, readJson } from './http.js';
 import { takeTurn, validateProfile, validateTurn } from './onboarding.js';
@@ -128,7 +128,7 @@ export function createHandler(database = getPool) {
         }
         return json(await startCheckout(db, account), 200, headers);
       }
-      const network = account ? null : visitorNetwork(request, localIp);
+      const network = account && action === 'status' ? null : visitorNetwork(request, localIp);
       if (action === 'status') {
         let guestTrial;
         if (!account) {
@@ -149,7 +149,7 @@ export function createHandler(database = getPool) {
       if (action === 'chat') {
         const turn = chatInput(body, account?.profile);
         const quota = await authorizeAgent(db, account, network);
-        const result = chatTurn(turn, quota.plan === 'premium');
+        const result = await chatReply(turn, quota.plan === 'premium');
         if (account && result.state === 'route' && result.accepted) await saveProfile(db, account, result.profile);
         return json({ ...result, quota }, 200, headers);
       }

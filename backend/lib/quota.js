@@ -45,6 +45,7 @@ export function trialInfo(account, row = account) {
 
 export async function authorizeAgent(db, account, networkKey) {
   const subject = account ? account.id : networkKey;
+  if (account && networkKey) await rateLimit(db, `agent:${networkKey}`, 20);
   await rateLimit(db, `agent:${subject}`, 20);
   let row;
   if (account) {
