@@ -66,3 +66,24 @@
     height: 180px;
   }
 }
+
+/* Desktop panel: keeps the whole route visible in a narrow panel, capped at the design's 330 px. */
+.wide {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 900 / 330;
+  max-height: 330px;
+}
+
+.interactive {
+  cursor: pointer;
+}
+
+.active .marker {
+  fill: var(--color-primary);
+  stroke: var(--color-selected);
+}
+
+.active text {
+  fill: var(--color-on-primary);
+}

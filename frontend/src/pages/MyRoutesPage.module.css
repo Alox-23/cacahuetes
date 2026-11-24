@@ -53,11 +53,6 @@
   text-decoration: none;
 }
 
-.card:hover {
-  border-color: var(--color-primary);
-  color: var(--color-text);
-}
-
 .cardText {
   display: flex;
   flex-direction: column;
@@ -74,4 +69,11 @@
 .cardMeta {
   font-size: 14px;
   color: var(--color-text-muted);
+}
+
+@media (hover: hover) {
+  .card:hover {
+    border-color: var(--color-primary);
+    color: var(--color-text);
+  }
 }

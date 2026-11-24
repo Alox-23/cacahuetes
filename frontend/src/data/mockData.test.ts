@@ -3,6 +3,8 @@ import type { RouteRequest } from '../contract/types'
 import { routeEnd } from '../lib/route'
 import { findPlace } from './catalog'
 import { DEFAULT_PREFERENCES } from './defaults'
+import { canMoveStops } from './capabilities'
+import { createHttpDataModule } from './httpData'
 import { createDataModule } from './mockData'
 import { STORAGE_KEYS, createStorage, memoryBackend } from './storage'
 
@@ -376,3 +378,40 @@ describe('mock data module · saved routes belong to the account', () => {
     expect((await data.listRoutes()).map((r) => r.id)).toEqual([route.id])
   })
 })
+
+describe('move_stop (feature 3, mock only)', () => {
+  it('reorders, recalculates times, bumps the version and can be undone', async () => {
+    const storage = createStorage(memoryBackend())
+    const data = createDataModule(storage, { latency: 0 })
+    await data.savePreferences(DEFAULT_PREFERENCES)
+    const route = await data.createRoute(localRequest)
+    const names = route.stops.map((s) => s.name)
+    const next = await data.refineRoute(route.id, { type: 'move_stop', order: 1, to: 3 })
+    expect(next.version).toBe(2)
+    expect(next.stops.map((s) => s.name)).toEqual([names[1], names[2], names[0], ...names.slice(3)])
+    expect(next.stops.map((s) => s.order)).toEqual(route.stops.map((s) => s.order))
+    expect(next.stops[0].arrive).toBe(route.request.timeWindow.from)
+    expect(next.stops[next.stops.length - 1].travelToNext).toBeUndefined()
+    expect(next.stops.slice(0, -1).every((s) => s.travelToNext)).toBe(true)
+    expect(await data.undo(route.id)).toEqual(route)
+  })
+
+  it('declares the capability; the HTTP module does not', () => {
+    expect(canMoveStops(createDataModule(createStorage(memoryBackend()), { latency: 0 }))).toBe(true)
+    expect(canMoveStops(createHttpDataModule('http://localhost/api/cacahuete', memoryLocalStorage()))).toBe(false)
+  })
+})
+
+function memoryLocalStorage(): Storage {
+  const map = new Map<string, string>()
+  return {
+    get length() {
+      return map.size
+    },
+    clear: () => map.clear(),
+    getItem: (k) => map.get(k) ?? null,
+    key: (i) => [...map.keys()][i] ?? null,
+    removeItem: (k) => void map.delete(k),
+    setItem: (k, v) => void map.set(k, v),
+  }
+}

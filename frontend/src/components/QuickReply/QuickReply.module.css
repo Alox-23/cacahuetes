@@ -13,12 +13,24 @@
   cursor: pointer;
 }
 
-.reply:hover {
-  border-color: var(--color-primary-hover);
-  color: var(--color-primary-hover);
+.selected {
+  background: var(--color-selected);
+  border: 2px solid var(--color-primary);
+  padding: 0 15.5px;
 }
 
 .reply:disabled {
   opacity: 0.45;
   cursor: not-allowed;
+}
+
+.selected:disabled {
+  opacity: 0.8;
+}
+
+@media (hover: hover) {
+  .reply:hover:not(:disabled) {
+    border-color: var(--color-primary-hover);
+    color: var(--color-primary-hover);
+  }
 }

@@ -57,6 +57,7 @@ export type RefineAction =
   | { type: "quick"; value: "menos_caminar" | "mas_comida" | "mas_barato" | "anadir_pausa" }
   | { type: "remove_stop" | "lock_stop"; order: number }
   | { type: "swap_stop"; order: number; placeId: string }
+  | { type: "move_stop"; order: number; to: number }   // Añadido en feature 3: reordenar paradas (pendiente en el backend)
   | { type: "text"; value: string };
 
 export type Place = {

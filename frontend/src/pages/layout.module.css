@@ -130,21 +130,12 @@
   text-decoration: none;
 }
 
-.textAction:hover {
-  color: var(--color-primary-hover);
-}
-
 .start {
   align-self: flex-start;
 }
 
 .danger {
   color: var(--color-danger);
-}
-
-.danger:hover {
-  color: var(--color-danger);
-  text-decoration: underline;
 }
 
 .secondaryButton {
@@ -169,4 +160,15 @@
   border: 0;
   display: flex;
   flex-direction: column;
+}
+
+@media (hover: hover) {
+  .textAction:hover {
+    color: var(--color-primary-hover);
+  }
+
+  .danger:hover {
+    color: var(--color-danger);
+    text-decoration: underline;
+  }
 }

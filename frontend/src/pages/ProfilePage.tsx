@@ -1,6 +1,7 @@
 /* Perfil (Perfil.html): user card (or guest card), settings list, preference chips and sign out. */
 import { useState } from 'react'
-import { Button, Card, Chip, ConfirmSheet, ListRow, Screen } from '../components'
+import { Card, Chip, ConfirmSheet, ListRow, Screen } from '../components'
+import { ProfileCard } from '../features/profile/ProfileCard'
 import { budgetChip, companyLabel, interestLabel, paceLabel } from '../assistant/format'
 import type { Preferences } from '../contract/types'
 import { t } from '../i18n'
@@ -15,7 +16,7 @@ function profileChips(p: Preferences): string[] {
 
 export function ProfilePage() {
   const data = useData()
-  const { session, isAccount, refreshSession } = useSession()
+  const { isAccount, refreshSession } = useSession()
   const { preferences } = usePreferences()
   const toast = useToast()
   const [confirming, setConfirming] = useState(false)
@@ -34,34 +35,13 @@ export function ProfilePage() {
     }
   }
 
-  const name = session.name || session.email || ''
   return (
     <Screen className={styles.page}>
       <div className={styles.titleRow}>
         <h1 className={layout.h1}>{t('profile.title')}</h1>
       </div>
 
-      <Card padding="16px 20px" className={styles.userCard}>
-        <div className={styles.user}>
-          <div aria-hidden="true" className={styles.avatar}>
-            {isAccount ? name.charAt(0).toLocaleUpperCase('es') : t('profile.guestAvatar')}
-          </div>
-          <div className={styles.userText}>
-            <span className={styles.userName}>{isAccount ? name : t('profile.guestName')}</span>
-            <span className={styles.userMeta}>{isAccount ? session.email : t('profile.guestText')}</span>
-          </div>
-        </div>
-        {!isAccount && (
-          <div className={styles.guestActions}>
-            <Button to="/register" className={styles.guestButton}>
-              {t('profile.register')}
-            </Button>
-            <Button to="/login" variant="secondary" className={styles.guestButton}>
-              {t('profile.login')}
-            </Button>
-          </div>
-        )}
-      </Card>
+      <ProfileCard />
 
       <nav aria-label={t('profile.menuLabel')}>
         <Card className={layout.listCard}>

@@ -11,6 +11,10 @@ type OnboardingFormProps = {
   /** Selected option values ("field:value"). */
   onSubmit: (values: string[]) => void
   onQuick: (option: Option) => void
+  /** History: show the answer with every control disabled and no "Listo". */
+  readOnly?: boolean
+  /** Comma-separated option values that were sent for this question. */
+  chosen?: string
 }
 
 const fieldOf = (value: string) => value.split(':')[0]
@@ -21,7 +25,8 @@ const fieldOf = (value: string) => value.split(':')[0]
  *  - form steps → multi-select chips (aria-pressed), single groups as a radio
  *    segmented control, and "Listo".
  */
-export function OnboardingForm({ reply, onSubmit, onQuick }: OnboardingFormProps) {
+export function OnboardingForm({ reply, onSubmit, onQuick, readOnly = false, chosen }: OnboardingFormProps) {
+  const picked = chosen ? chosen.split(',') : []
   const options = reply.options ?? []
   const fields = [...new Set(options.map((o) => fieldOf(o.value)))]
   const groups = fields.map((field) => {
@@ -42,9 +47,42 @@ export function OnboardingForm({ reply, onSubmit, onQuick }: OnboardingFormProps
     return (
       <div className={styles.options}>
         {options.map((o) => (
-          <QuickReply key={o.value} label={o.label} onClick={() => onQuick(o)} />
+          <QuickReply
+            key={o.value}
+            label={o.label}
+            disabled={readOnly}
+            selected={readOnly ? picked.includes(o.value) : undefined}
+            onClick={() => onQuick(o)}
+          />
         ))}
       </div>
+    )
+  }
+
+  if (readOnly) {
+    return (
+      <>
+        {groups.map((g) =>
+          g.multiple ? (
+            <div key={g.field} role="group" aria-label={groupLabel(g.field)} className={styles.options}>
+              {g.items.map((o) => (
+                <OptionChip key={o.value} selected={picked.includes(o.value)} disabled onToggle={() => undefined}>
+                  {o.label}
+                </OptionChip>
+              ))}
+            </div>
+          ) : (
+            <SegmentedControl
+              key={g.field}
+              label={groupLabel(g.field)}
+              options={g.items.map((o) => ({ label: o.label, value: o.value }))}
+              value={g.items.find((o) => picked.includes(o.value))?.value ?? ''}
+              onChange={() => undefined}
+              disabled
+            />
+          ),
+        )}
+      </>
     )
   }
 

@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
+import { BREAKPOINTS } from '../lib/breakpoints'
 
 const root = resolve(__dirname, '../..')
 const tokens = JSON.parse(readFileSync(resolve(root, 'docs/design/tokens.json'), 'utf8'))
@@ -37,6 +38,40 @@ describe('design tokens', () => {
       for (const [key, value] of Object.entries(group)) {
         expect(declared(`${prefix}-${kebab(key)}`), `${prefix}.${key}`).toBe(`${value}px`)
       }
+    }
+  })
+
+  it('desktop group: every width is a --desktop-* variable (px)', () => {
+    const d = tokens.desktop
+    const expected: Record<string, number> = {
+      'desktop-sidebar-width': d.sidebarWidth,
+      'desktop-chat-min': d.chatColumn.min,
+      'desktop-chat-max': d.chatColumn.max,
+      'desktop-chat-wide-max': d.chatWideMax,
+      'desktop-reading-max': d.readingMax,
+      'desktop-dialog-width': d.dialogWidth,
+      'desktop-chat-header-height': d.chatHeaderHeight,
+      'desktop-max-content': d.breakpoint.maxContent,
+    }
+    for (const [name, value] of Object.entries(expected)) {
+      expect(declared(name), name).toBe(`${value}px`)
+    }
+  })
+
+  it('desktop breakpoints are the documented constants', () => {
+    expect(BREAKPOINTS.tablet).toBe(tokens.desktop.breakpoint.tablet)
+    expect(BREAKPOINTS.desktop).toBe(tokens.desktop.breakpoint.desktop)
+    expect(BREAKPOINTS.maxContent).toBe(tokens.desktop.breakpoint.maxContent)
+    // Media queries repeat them literally.
+    const global = readFileSync(resolve(root, 'src/styles/global.css'), 'utf8')
+    expect(global).toContain(`(min-width: ${tokens.desktop.breakpoint.tablet}px)`)
+  })
+
+  it('chatBubble group: every value is a --chat-bubble-* variable', () => {
+    const squash = (s: string | undefined) => s?.replace(/\s+/g, '').toUpperCase()
+    for (const [key, value] of Object.entries<string | number>(tokens.chatBubble)) {
+      const expected = typeof value === 'number' ? `${value}px` : value
+      expect(squash(declared(`chat-bubble-${kebab(key)}`)), key).toBe(squash(expected))
     }
   })
 

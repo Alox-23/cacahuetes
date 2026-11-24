@@ -1,14 +1,17 @@
+/* Spec 4: wide bubbles that overlap the user's side; measurements from tokens. */
 .bubble {
   align-self: flex-start;
-  /* Design: max-width 318px content-box (+ 2×16 padding + 2×2 border) = 354px border-box. */
-  max-width: min(354px, 100%);
+  max-width: var(--chat-bubble-assistant-max-width);
+  box-sizing: border-box;
   display: flex;
   flex-direction: column;
   gap: 12px;
-  padding: 14px 16px;
-  border-radius: var(--radius-bubble) var(--radius-bubble) var(--radius-bubble) 4px;
+  padding: var(--chat-bubble-padding-assistant);
+  border-radius: var(--chat-bubble-radius) var(--chat-bubble-radius) var(--chat-bubble-radius) var(--chat-bubble-tail-corner-radius);
   background: var(--color-surface);
-  border: 2px solid var(--color-mascot-shell);
+  border: var(--chat-bubble-assistant-border);
+  box-shadow: var(--chat-bubble-shadow);
+  color: var(--color-text);
   font-size: var(--font-size-body);
   line-height: 1.45;
   overflow-wrap: anywhere;

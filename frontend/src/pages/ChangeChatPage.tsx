@@ -31,7 +31,7 @@ export function ChangeChatPage() {
   useEffect(() => {
     if (!route) return
     setCurrentRouteId(route.id)
-    ensure({ key: route.id, route, greet: true })
+    ensure({ key: route.id, route, greet: true, greetIfEmpty: true })
   }, [route, ensure, setCurrentRouteId])
 
   if (missing) {
@@ -58,10 +58,11 @@ export function ChangeChatPage() {
         messages={messages}
         pending={pending}
         before={chip}
-        renderReply={(reply, isLast) => (
+        renderReply={(reply, isLast, chosen) => (
           <ReplyView
             reply={reply}
             interactive={isLast}
+            chosen={chosen}
             routeHref={`/route/${id}`}
             onOption={(o) => void send({ option: o.value }, o.label)}
             onUndo={() => void send({ option: 'undo' }, t('common.undo'))}

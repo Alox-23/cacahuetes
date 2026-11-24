@@ -34,6 +34,20 @@ body {
   overflow-x: hidden;
 }
 
+/* Tablet (768–1023, src/lib/breakpoints.ts): still the mobile layout, wider column. */
+@media (min-width: 768px) {
+  .app-frame {
+    width: min(100%, 560px);
+  }
+}
+
+/* Desktop (>= 1024): the whole window, capped at --desktop-max-content and centred. */
+@media (min-width: 1024px) {
+  .app-frame {
+    width: min(100%, var(--desktop-max-content));
+  }
+}
+
 h1,
 h2,
 h3,
@@ -63,10 +77,6 @@ a {
   color: var(--color-primary);
 }
 
-a:hover {
-  color: var(--color-primary-hover);
-}
-
 :focus-visible {
   outline: 2px solid var(--color-accent);
   outline-offset: 2px;
@@ -91,5 +101,11 @@ a:hover {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+  }
+}
+
+@media (hover: hover) {
+  a:hover {
+    color: var(--color-primary-hover);
   }
 }

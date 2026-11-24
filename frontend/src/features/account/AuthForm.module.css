@@ -16,10 +16,6 @@
   font-weight: 600;
 }
 
-.oauthButton:hover {
-  border-color: var(--color-primary);
-}
-
 .oauthButton:disabled {
   opacity: 0.45;
 }
@@ -46,4 +42,17 @@
 .footer {
   gap: 18px;
   padding-top: 18px;
+}
+
+/* Desktop dialog (DeskCrearCuenta.html): one column, submit at the end of the block. */
+.desktopForm {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+@media (hover: hover) {
+  .oauthButton:hover {
+    border-color: var(--color-primary);
+  }
 }

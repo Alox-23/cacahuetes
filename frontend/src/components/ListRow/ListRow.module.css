@@ -16,10 +16,6 @@
   text-decoration: none;
 }
 
-.row:hover {
-  color: var(--color-primary-hover);
-}
-
 .last {
   border-bottom: 0;
 }
@@ -37,4 +33,10 @@
 
 .chevron {
   color: var(--color-text-muted);
+}
+
+@media (hover: hover) {
+  .row:hover {
+    color: var(--color-primary-hover);
+  }
 }

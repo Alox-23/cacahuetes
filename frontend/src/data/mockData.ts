@@ -34,6 +34,7 @@ import {
 } from './catalog'
 import { DEFAULT_ACCOUNT_SETTINGS, DEFAULT_PREFERENCES } from './defaults'
 import { exampleRoutes } from './seeds'
+import type { DataCapabilities } from './capabilities'
 import { STORAGE_KEYS, createStorage, type JsonStorage } from './storage'
 
 type RouteStore = Record<string, Route[]>
@@ -125,7 +126,7 @@ function scorePlace(place: CatalogPlace, request: RouteRequest, prefs: Preferenc
 export function createDataModule(
   storage: JsonStorage = createStorage(),
   options: DataModuleOptions = {},
-): DataModule {
+): DataModule & DataCapabilities {
   const latency = options.latency ?? 30
   const newId = options.newId ?? defaultId
   const now = options.now ?? (() => new Date())
@@ -291,6 +292,17 @@ export function createDataModule(
         }
         break
       }
+      case 'move_stop': {
+        // Feature 3: move a stop to position `to` (1-based); legs and times are recomputed.
+        const from = route.stops.findIndex((s) => s.order === action.order)
+        const to = Math.max(0, Math.min(route.stops.length - 1, action.to - 1))
+        if (from >= 0 && from !== to) {
+          const [moved] = route.stops.splice(from, 1)
+          route.stops.splice(to, 0, moved)
+          relink(route, catalog, prefs.transport, route.stops.map((_, i) => i))
+        }
+        break
+      }
     }
   }
 
@@ -359,6 +371,9 @@ export function createDataModule(
   }
 
   return {
+    // Feature 3: the mock understands { type: "move_stop" } (the HTTP module does not yet).
+    capabilities: { moveStop: true },
+
     async getPreferences() {
       await tick()
       return readPrefs()

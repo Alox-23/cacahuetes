@@ -13,8 +13,19 @@
   cursor: pointer;
 }
 
-.chip:hover {
-  border-color: var(--color-primary);
+.chip:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.selected:disabled {
+  opacity: 0.8;
+}
+
+@media (hover: hover) {
+  .chip:hover:not(:disabled) {
+    border-color: var(--color-primary);
+  }
 }
 
 .selected {

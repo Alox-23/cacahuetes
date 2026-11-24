@@ -23,11 +23,13 @@
   text-decoration: none;
 }
 
-.tab:hover {
-  color: var(--color-primary-hover);
-}
-
 .active {
   font-weight: 600;
   color: var(--color-text);
+}
+
+@media (hover: hover) {
+  .tab:hover {
+    color: var(--color-primary-hover);
+  }
 }

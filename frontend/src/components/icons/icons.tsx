@@ -114,3 +114,43 @@ export function StarIcon({ size = 40, filled = false, ...rest }: IconProps & { f
     </svg>
   )
 }
+
+export function ChevronDownIcon({ size = 18, ...rest }: IconProps) {
+  return (
+    <svg {...base(size)} strokeWidth={2} {...rest}>
+      <path d="M6 9l6 6 6-6" />
+    </svg>
+  )
+}
+
+export function ChevronUpIcon({ size = 18, ...rest }: IconProps) {
+  return (
+    <svg {...base(size)} strokeWidth={2} {...rest}>
+      <path d="M6 15l6-6 6 6" />
+    </svg>
+  )
+}
+
+export function ChatIcon({ size = 22, ...rest }: IconProps) {
+  return (
+    <svg {...base(size)} strokeWidth={2} {...rest}>
+      <path d="M4 5h16v11H10l-6 4z" />
+    </svg>
+  )
+}
+
+export function CloseIcon({ size = 24, ...rest }: IconProps) {
+  return (
+    <svg {...base(size)} strokeWidth={2} {...rest}>
+      <path d="M6 6l12 12M18 6L6 18" />
+    </svg>
+  )
+}
+
+export function GripIcon({ size = 18, ...rest }: IconProps) {
+  return (
+    <svg {...base(size)} strokeWidth={2} {...rest}>
+      <path d="M9 6h.01M15 6h.01M9 12h.01M15 12h.01M9 18h.01M15 18h.01" />
+    </svg>
+  )
+}

@@ -12,7 +12,9 @@
   color: var(--color-primary);
 }
 
-.button:hover {
-  color: var(--color-primary-hover);
-  border-color: var(--color-primary-hover);
+@media (hover: hover) {
+  .button:hover:not(:disabled) {
+    color: var(--color-primary-hover);
+    border-color: var(--color-primary-hover);
+  }
 }

@@ -16,10 +16,6 @@
   text-align: left;
 }
 
-.option:hover {
-  border-color: var(--color-primary);
-}
-
 .selected {
   /* 2 px border: keep the outer size with 1 px less padding */
   padding: 7px 19px;
@@ -44,4 +40,10 @@
 .check {
   flex-shrink: 0;
   color: var(--color-primary);
+}
+
+@media (hover: hover) {
+  .option:hover:not(.selected) {
+    border-color: var(--color-primary-hover);
+  }
 }

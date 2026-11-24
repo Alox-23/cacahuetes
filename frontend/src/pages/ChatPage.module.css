@@ -118,6 +118,8 @@
   cursor: pointer;
 }
 
-.suggestion:hover {
-  border-color: var(--color-border-input);
+@media (hover: hover) {
+  .suggestion:hover {
+    border-color: var(--color-border-input);
+  }
 }

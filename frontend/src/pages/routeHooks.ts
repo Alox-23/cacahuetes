@@ -3,17 +3,23 @@ import { useLocation, useNavigate } from 'react-router-dom'
 import type { Place, Route } from '../contract/types'
 import { hintsOf } from '../lib/placeHints'
 import type { Activity } from '../lib/routeText'
-import { useData } from '../state/AppState'
+import { useAppState, useData } from '../state/AppState'
 
 export type LoadState<T> = { status: 'loading' } | { status: 'missing' } | { status: 'ready'; value: T }
 
-/** Load a route by id; re-runs when `id` or `version` changes. */
+/** Load a route by id; refetches when `id` changes or any route mutation bumps the provider's revision. */
 export function useRoute(id: string) {
-  const data = useData()
+  const { data, routeRevision } = useAppState()
   const [state, setState] = useState<LoadState<Route>>({ status: 'loading' })
+  const [loadedId, setLoadedId] = useState(id)
+  // A new id shows "loading"; a new revision of the same route refetches in place
+  // (a change made elsewhere, e.g. by the chat next to the desktop panel).
+  if (loadedId !== id) {
+    setLoadedId(id)
+    setState({ status: 'loading' })
+  }
   useEffect(() => {
     let alive = true
-    setState({ status: 'loading' })
     data.getRoute(id).then(
       (value) => alive && setState({ status: 'ready', value }),
       () => alive && setState({ status: 'missing' }),
@@ -21,7 +27,7 @@ export function useRoute(id: string) {
     return () => {
       alive = false
     }
-  }, [data, id])
+  }, [data, id, routeRevision])
   const setRoute = (value: Route) => setState({ status: 'ready', value })
   return { state, route: state.status === 'ready' ? state.value : null, setRoute }
 }

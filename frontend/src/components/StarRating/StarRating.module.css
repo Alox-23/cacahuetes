@@ -18,3 +18,9 @@
 .on {
   color: var(--color-accent);
 }
+
+@media (hover: hover) {
+  .star:hover {
+    color: var(--color-accent);
+  }
+}

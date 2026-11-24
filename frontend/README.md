@@ -1,4 +1,4 @@
-# Frontend · rutas turísticas (features 1 and 2)
+# Frontend · rutas turísticas (features 1–3)
 
 Mobile-first web app in Spanish where a guest answers four questions inside the chat, asks the AI assistant
 **Cacahuete** for a route, confirms "Esto es lo que entendí", watches the route being created and asks for
@@ -8,8 +8,13 @@ editable preferences and account settings. The app can use the Cacahuete HTTP AP
 [the backend README](../backend/README.md)) or run the standalone demo, where the assistant is a client-side
 script and all data lives in `localStorage`.
 
+Feature 3 makes it one responsive codebase: below 768 px it is the mobile app; from 1,024 px a desktop window with a
+sidebar, an always-visible chat and a right panel that appears when there is a route, a saved route or settings to show.
+
 - Tech specs: [`docs/tech-specs/feature-1-base-y-asistente.md`](docs/tech-specs/feature-1-base-y-asistente.md),
-  [`docs/tech-specs/feature-2-ruta-mis-rutas-perfil.md`](docs/tech-specs/feature-2-ruta-mis-rutas-perfil.md)
+  [`docs/tech-specs/feature-2-ruta-mis-rutas-perfil.md`](docs/tech-specs/feature-2-ruta-mis-rutas-perfil.md),
+  [`docs/tech-specs/feature-3-version-de-escritorio.md`](docs/tech-specs/feature-3-version-de-escritorio.md)
+  (desktop and chat interface; §12 explains how it was ported onto this branch)
 - Design package (read only): [`docs/`](docs/README-paquete.md) — screens in `docs/design/screens/*.html`
 
 ## Run
@@ -30,30 +35,43 @@ Copy `.env.example` to `.env.local` in this directory and restart Vite. For depl
 `VITE_CACAHUETE_API_URL` to the full public function URL before building. Leaving it unset starts the standalone demo.
 To start from scratch, clear the site's `localStorage` (keys `rt.*`).
 
+## Layouts
+
+| Width | Arrangement |
+| --- | --- |
+| < 768 px | Mobile screens, column `min(100%, 430px)`, bottom tab bar |
+| 768–1,023 px | The same mobile screens in a centred `min(100%, 560px)` column |
+| ≥ 1,024 px | Desktop shell capped at 1,440 px: sidebar 240 px · chat · right panel (only when there is something to show) |
+
+`useLayout()` (`src/lib/useLayout.tsx`) picks the route tree with `matchMedia`; widths stay in CSS. Tests force a
+layout with `<LayoutProvider value="desktop">`. Both layouts share the URLs, the conversation and the route state,
+so resizing never loses the place.
+
 ## URLs
 
-| URL | Screen |
-| --- | --- |
-| `/` | Inicio |
-| `/onboarding` | Four questions in the chat (redirects to `/chat` once preferences exist) |
-| `/chat` | Main chat (redirects to `/onboarding` until preferences exist) |
-| `/chat/conversation` | Request, clarifying questions and "Esto es lo que entendí" |
-| `/creating` | Creating the route (redirects to `/chat` without a pending request) |
-| `/route/:id` | Ruta: map, stops, quick changes, "Deshacer", save and share |
-| `/route/:id/change` | Change the route by chat |
-| `/route/:id/stop/:order` | Detalle de lugar: why, hours, price; change, remove, lock |
-| `/route/:id/stop/:order/alternatives` | Cambiar parada: three alternatives |
-| `/route/:id/save` | Guardar como invitado (accounts are redirected to the route) |
-| `/register`, `/login` | Crear cuenta, Entrar (signed-in users are redirected to `/my-routes`) |
-| `/my-routes` | Mis rutas: search, Próximas / Pasadas / Favoritas; empty state for guests and new accounts |
-| `/my-routes/:id` | Ruta guardada: favourite, reuse, share, rate, start, delete (accounts only) |
-| `/my-routes/:id/rate` | Valorar ruta (accounts only) |
-| `/profile` | Perfil (account or guest card) |
-| `/preferences` | Preferencias de viaje |
-| `/account` | Cuenta (accounts only; guests go to `/login`) |
+One URL space for both layouts.
 
-The tab bar is on every screen: `/my-routes*` highlights Mis rutas; `/profile`, `/preferences`, `/account`,
-`/login` and `/register` highlight Perfil; everything else highlights Asistente.
+| URL | Mobile / tablet | Desktop |
+| --- | --- | --- |
+| `/` | Inicio | Inicio in two columns, no sidebar or chat; "Entrar" opens the login dialog over it |
+| `/onboarding` | Four questions in the chat (redirects to `/chat` once preferences exist) | The questions in the full-width chat; "Omitir" in the chat header |
+| `/chat` | Main chat (redirects to `/onboarding` until preferences exist) | Full-width chat with the suggestions and a collapsible preferences strip |
+| `/chat/conversation` | Request, clarifying questions and "Esto es lo que entendí" | The same conversation in the full-width chat |
+| `/creating` | Creating the route (redirects to `/chat` without a creation in progress) | Progress bubble in the chat, no panel yet |
+| `/route/:id` | Ruta: map, stops, quick changes, "Deshacer", save and share | Route panel next to the chat; map and list linked; reorder (mock data only) |
+| `/route/:id/change` | Change the route by chat | Redirects to `/route/:id` (the chat is already next to the route) |
+| `/route/:id/stop/:order` | Detalle de lugar: why, hours, price; change, remove, lock | Slide-over on the stop list |
+| `/route/:id/stop/:order/alternatives` | Cambiar parada: three alternatives | Dialog over the stop detail |
+| `/route/:id/save` | Guardar como invitado (accounts are redirected to the route) | Dialog "Crea una cuenta para guardarla" (register and save in one step) |
+| `/register`, `/login` | Crear cuenta, Entrar (signed-in users are redirected to `/my-routes`) | Dialog over the view that opened it (`location.state.background`) |
+| `/my-routes` | Mis rutas: search, Próximas / Pasadas / Favoritas; empty state for guests and new accounts | Sidebar "Mis rutas" open, no panel |
+| `/my-routes/:id` | Ruta guardada: favourite, reuse, share, rate, start, delete (accounts only) | Saved route panel; the chat opens it with quick replies |
+| `/my-routes/:id/rate` | Valorar ruta (accounts only) | Dialog over the saved route |
+| `/profile`, `/preferences`, `/account` | Perfil, Preferencias de viaje, Cuenta (accounts only; guests go to `/login`) | Settings panel with tabs Datos personales / Preferencias / Cuenta |
+
+On mobile the tab bar is on every screen: `/my-routes*` highlights Mis rutas; `/profile`, `/preferences`,
+`/account`, `/login` and `/register` highlight Perfil; everything else highlights Asistente. On desktop the sidebar
+replaces it.
 
 ## Trying feature 2
 
@@ -80,10 +98,21 @@ src/
   i18n/es.json, i18n/index.ts        every user-visible string; t(), tDynamic(), useT()
   data/                              mock DataModule: storage.ts, catalog.ts, mockData.ts, defaults.ts
   assistant/                         simulated assistant: mockAssistant.ts, parser.ts, script.ts, format.ts
-  state/AppState.tsx                 provider + hooks (preferences, session, current route, chats)
+  state/AppState.tsx                 provider + hooks: preferences, session, one conversation thread, route creation,
+                                     route revision (every mutation through `useData()` refreshes route views)
+  state/thread.ts                    thread items, mode views, persistence helpers (pure, unit-tested)
   components/                        shared UI (CSS Modules), exported from components/index.ts
-  pages/                             screens; pages/chat/ holds the shared transcript renderers
-  lib/                               small helpers (text, time, route text, filters, share, validation, tabs)
+                                     (incl. Dialog, SlideOver, useModal for desktop)
+  features/<area>/                   content shared by both layouts, extracted from the feature 2 pages:
+                                     route/ (RouteView, StopDetail, AlternativesList, useRouteScreen),
+                                     account/AuthForm, myRoutes/ (SavedRouteView, RateForm, useSavedRouteScreen),
+                                     profile/ (PreferencesForm, AccountForm, useAccountForm, ProfileCard)
+  pages/                             mobile screens (thin wrappers around features/ where desktop reuses the content);
+                                     pages/chat/ holds the shared transcript renderers
+  shell/                             desktop: DesktopRoutes (guards, dialogs), DesktopShell, Sidebar, ChatDock (the
+                                     one desktop chat), DesktopPanels, DesktopDialogs, DesktopMain (Inicio)
+  lib/                               small helpers (text, time, route text, filters, share, validation, tabs,
+                                     breakpoints, useLayout)
 ```
 
 Feature 2 components: `RouteMap` (schematic SVG, variants `full` / `card` / `thumb`, layout deterministic from the
@@ -108,6 +137,26 @@ The HTTP adapter (`src/data/httpData.ts`) implements these four methods and the 
 The mock also attaches optional presentation hints to `Place` objects (`activity`, `visitMinutes`, `travel`, see
 `src/lib/placeHints.ts`), used for "Visita / Paseo / Comida / Pausa" and the alternatives subtitle. They are not
 part of the contract; screens fall back gracefully when a real API omits them.
+
+## Contract addition (feature 3)
+
+`RefineAction` gains `{ type: "move_stop"; order: number; to: number }` (marked `// Añadido en feature 3`): move a
+stop and recompute legs and times, as a new undoable version. **Pending backend work:** the mock implements it and
+declares `capabilities: { moveStop: true }` (`src/data/capabilities.ts`); the HTTP adapter has no endpoint for it,
+so the desktop reorder controls (drag and drop, up/down buttons) are hidden when the API is used.
+
+## Chat (spec 4)
+
+- One component everywhere: mobile screens, desktop full width (column centred at 680 px) and desktop next to a
+  panel (400–480 px). Bubbles: assistant `min(100%, 520px)`, user `min(80%, 460px)`, radius 22 with a 6 px corner.
+- The input is a textarea that grows to four lines: Enter sends, Shift+Enter breaks the line (not during IME input).
+- New messages scroll into view only when the reader is near the bottom; otherwise a "Mensaje nuevo" button appears.
+- Answered questions stay in the history with their options disabled and the chosen one pressed; each user bubble
+  has a hidden "Tú:" for screen readers.
+- **One thread**: every item carries its assistant mode and that mode's epoch. Mobile screens show one mode's live
+  epoch (feature 1 behaviour); the desktop chat shows the whole thread, older items read-only. The last 200 items are
+  kept in `rt.thread` and come back after a reload as history: the assistants start fresh and change mode is re-armed
+  for the current route silently, so the desktop route view does not greet again under the restored history.
 
 ## API integration
 
@@ -141,7 +190,12 @@ answer is sent as a comma-separated `option` string.
 
 ## Known limits
 
+- Desktop reorder is mock-only until the API supports `move_stop` (see above).
+- The desktop chat answers "Cambiar la hora" / "Añadir una parada" (saved-route quick replies) with the change
+  assistant's generic reply: the script has no time or add-stop recipes.
+- A reload restores the conversation as read-only history; an answer in progress is not resumed and a creation
+  interrupted by a reload shows as cancelled.
+
 - The map is schematic (no tiles, no geocoding): marker positions depend only on the number of stops.
 - Auth is simulated: no password check, no recovery, Google/Apple are mock sign-ins. Data is per device.
-- Transcripts live in memory: reloading mid-conversation starts it again (preferences and routes persist).
 - The live API and standalone demo use the same Marbella landmarks and coordinates. Travel and visit times are estimates.

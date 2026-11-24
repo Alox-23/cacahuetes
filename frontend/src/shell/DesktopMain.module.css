@@ -1,0 +1,153 @@
+.page {
+  box-sizing: border-box;
+  max-width: 1200px;
+  min-height: 100dvh;
+  margin: 0 auto;
+  padding: 24px 48px 64px;
+  display: flex;
+  flex-direction: column;
+  gap: 72px;
+}
+
+.top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 56px;
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--font-heading);
+  font-weight: 700;
+  font-size: 20px;
+}
+
+.columns {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 64px;
+}
+
+.message {
+  flex: 1 1 420px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 24px;
+}
+
+.title {
+  font-family: var(--font-heading);
+  font-weight: 700;
+  font-size: 60px;
+  line-height: 1.05;
+}
+
+.subtitle {
+  max-width: 520px;
+  font-size: 19px;
+  line-height: 1.5;
+  color: var(--color-text-muted);
+}
+
+.note {
+  font-size: var(--font-size-body);
+  color: var(--color-text-muted);
+}
+
+.card {
+  flex: 1 1 420px;
+  min-width: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sheet);
+}
+
+.map {
+  height: 260px;
+}
+
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 20px 28px 24px;
+}
+
+.cardTitle {
+  font-size: var(--font-size-label);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-height: 58px;
+  border-bottom: 1px solid var(--color-divider);
+}
+
+.row:last-child {
+  border-bottom: 0;
+}
+
+.badge {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 14px;
+  background: var(--color-selected);
+  font-size: var(--font-size-label);
+  font-weight: 600;
+}
+
+.text {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.name {
+  font-size: var(--font-size-body);
+  font-weight: 600;
+}
+
+.detail {
+  font-size: var(--font-size-label);
+  color: var(--color-text-muted);
+}
+
+.time {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-text-muted);
+}
+
+.medium {
+  min-height: 48px;
+  padding: 0 22px;
+  border-radius: var(--radius-input);
+  font-size: var(--font-size-body);
+  white-space: nowrap;
+}

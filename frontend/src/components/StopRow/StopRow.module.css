@@ -76,11 +76,6 @@
   inset: 0;
 }
 
-.link:hover {
-  color: var(--color-primary-hover);
-  text-decoration: underline;
-}
-
 .detail {
   font-size: var(--font-size-label);
   color: var(--color-text-muted);
@@ -91,4 +86,11 @@
   font-size: 14px;
   font-weight: 500;
   color: var(--color-text-muted);
+}
+
+@media (hover: hover) {
+  .link:hover {
+    color: var(--color-primary-hover);
+    text-decoration: underline;
+  }
 }

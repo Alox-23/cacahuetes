@@ -55,6 +55,31 @@
   --size-tab-bar-height: 72px;
 
   /*
+   * desktop (tokens.json "desktop"). Breakpoints cannot be CSS variables inside
+   * media queries: they live in src/lib/breakpoints.ts (tablet 768, desktop 1024)
+   * and are written literally in @media rules.
+   */
+  --desktop-sidebar-width: 240px;
+  --desktop-chat-min: 400px;
+  --desktop-chat-max: 480px;
+  --desktop-chat-wide-max: 680px;
+  --desktop-reading-max: 720px;
+  --desktop-dialog-width: 440px;
+  --desktop-chat-header-height: 72px;
+  --desktop-max-content: 1440px;
+
+  /* chatBubble (tokens.json "chatBubble", spec 4) */
+  --chat-bubble-assistant-max-width: min(100%, 520px);
+  --chat-bubble-user-max-width: min(80%, 460px);
+  --chat-bubble-radius: 22px;
+  --chat-bubble-tail-corner-radius: 6px;
+  --chat-bubble-gap: 10px;
+  --chat-bubble-padding-assistant: 14px 18px;
+  --chat-bubble-padding-user: 12px 18px;
+  --chat-bubble-shadow: 0 1px 3px rgba(74,47,27,0.18);
+  --chat-bubble-assistant-border: 2px solid #E9C48A;
+
+  /*
    * Values used by the design HTML files that tokens.json does not name.
    * Kept here (and only here) so component CSS never needs a raw hex value.
    */
@@ -67,4 +92,6 @@
   --shadow-floating: 0 1px 4px rgba(21, 34, 38, 0.18); /* floating back button over the map */
   --shadow-sheet: 0 -2px 10px rgba(21, 34, 38, 0.08);  /* white sheet over the map */
   --shadow-toast: 0 4px 16px rgba(21, 34, 38, 0.16);
+  --shadow-dialog: 0 12px 40px rgba(42, 26, 14, 0.25); /* desktop dialogs and slide-over */
+  --color-row-hover: #FBEAD0;      /* hovered rows and list items (between background and track) */
 }

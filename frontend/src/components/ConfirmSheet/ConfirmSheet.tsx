@@ -1,5 +1,7 @@
 import { useEffect, useId, useRef, type KeyboardEvent } from 'react'
 import { t } from '../../i18n'
+import { useLayout } from '../../lib/useLayout'
+import { Dialog } from '../Dialog/Dialog'
 import styles from './ConfirmSheet.module.css'
 
 type ConfirmSheetProps = {
@@ -18,7 +20,29 @@ type ConfirmSheetProps = {
  * sign out). Closes on backdrop tap and Escape; focus moves into the sheet,
  * stays inside while open and returns to the trigger on close.
  */
-export function ConfirmSheet({ open, title, text, confirmLabel, onConfirm, onCancel, busy = false }: ConfirmSheetProps) {
+export function ConfirmSheet(props: ConfirmSheetProps) {
+  const desktop = useLayout() === 'desktop'
+  // Desktop: the same confirmation as a centred dialog (feature 3 §8).
+  if (desktop) return props.open ? <ConfirmDialog {...props} /> : null
+  return <BottomSheet {...props} />
+}
+
+function ConfirmDialog({ title, text, confirmLabel, onConfirm, onCancel, busy = false }: ConfirmSheetProps) {
+  return (
+    <Dialog title={title} description={text} onClose={busy ? () => undefined : onCancel} size="small">
+      <div className={styles.actions}>
+        <button type="button" className={styles.danger} onClick={onConfirm} disabled={busy}>
+          {confirmLabel}
+        </button>
+        <button type="button" className={styles.cancel} onClick={onCancel} disabled={busy} data-autofocus>
+          {t('confirm.cancel')}
+        </button>
+      </div>
+    </Dialog>
+  )
+}
+
+function BottomSheet({ open, title, text, confirmLabel, onConfirm, onCancel, busy = false }: ConfirmSheetProps) {
   const titleId = useId()
   const textId = useId()
   const sheet = useRef<HTMLDivElement>(null)

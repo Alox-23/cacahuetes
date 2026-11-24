@@ -50,11 +50,13 @@
   cursor: pointer;
 }
 
-.change:hover {
-  color: var(--color-primary-hover);
-}
-
 .muted {
   font-size: var(--font-size-label);
   color: var(--color-text-muted);
+}
+
+@media (hover: hover) {
+  .change:hover {
+    color: var(--color-primary-hover);
+  }
 }

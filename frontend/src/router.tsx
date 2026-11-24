@@ -18,6 +18,8 @@ import { RoutePage } from './pages/RoutePage'
 import { SavedRoutePage } from './pages/SavedRoutePage'
 import { SaveGuestPage } from './pages/SaveGuestPage'
 import { StopPage } from './pages/StopPage'
+import { useLayout } from './lib/useLayout'
+import { DesktopRoutes } from './shell/DesktopRoutes'
 import { usePreferences, useSession } from './state/AppState'
 
 /** /chat… needs onboarding done; otherwise go answer the four questions. */
@@ -58,8 +60,14 @@ function SaveGuestRoute() {
   )
 }
 
-/** URL map (tech specs feature 1 §2 and feature 2 §2). */
+/** One URL space, two arrangements (feature 3 §5): the layout picks the route tree. */
 export function AppRoutes() {
+  const layout = useLayout()
+  return layout === 'desktop' ? <DesktopRoutes /> : <MobileRoutes />
+}
+
+/** Mobile and tablet screens (URL map of tech specs feature 1 §2 and feature 2 §2). */
+function MobileRoutes() {
   return (
     <Routes>
       <Route path="/" element={<MainPage />} />

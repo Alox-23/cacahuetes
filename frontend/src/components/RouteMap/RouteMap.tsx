@@ -6,10 +6,10 @@
  * behind the same props.
  */
 import { cx } from '../../lib/cx'
-import { START, THUMB_START, layoutStops, layoutThumb, type Point } from './layout'
+import { START, THUMB_START, WIDE_START, layoutStops, layoutThumb, layoutWide, type Point } from './layout'
 import styles from './RouteMap.module.css'
 
-export type RouteMapVariant = 'full' | 'card' | 'thumb'
+export type RouteMapVariant = 'full' | 'card' | 'thumb' | 'wide'
 
 type RouteMapProps = {
   /** Only the count and order matter. */
@@ -20,15 +20,55 @@ type RouteMapProps = {
   /** Accessible name (full and card). Thumbnails are decorative. */
   label?: string
   className?: string
+  /** Desktop ('wide'): stop order highlighted, linked with the stop list. */
+  highlighted?: number | null
+  onHighlight?: (order: number | null) => void
+  onSelect?: (order: number) => void
 }
 
 const line = (points: Point[]) => points.map(([x, y], i) => `${i === 0 ? 'M' : 'L'}${x} ${y}`).join(' ')
 
 /* ---------- component ---------- */
 
-export function RouteMap({ stops, variant = 'full', height, label, className }: RouteMapProps) {
+export function RouteMap({ stops, variant = 'full', height, label, className, highlighted = null, onHighlight, onSelect }: RouteMapProps) {
   const n = stops.length
   const a11y = variant === 'thumb' || !label ? { 'aria-hidden': true as const } : { role: 'img', 'aria-label': label }
+
+  if (variant === 'wide') {
+    const points = layoutWide(n)
+    const interactive = Boolean(onHighlight || onSelect)
+    return (
+      <svg {...a11y} focusable="false" viewBox="0 0 900 330" preserveAspectRatio="xMidYMid slice" className={cx(styles.map, styles.wide, className)}>
+        <path className={styles.water} d="M0 300 C200 262 470 336 900 284 L900 400 L0 400 Z" />
+        <path className={styles.streets} d="M0 110 H900 M0 230 H900 M190 0 V400 M400 0 V400 M620 0 V400 M800 0 V400" strokeWidth="9" />
+        <path className={styles.streets} d="M60 40 L300 190 L520 300 L640 250 L860 200" strokeWidth="6" />
+        <path className={styles.route} d={line([WIDE_START, ...points])} strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" />
+        <circle className={styles.start} cx={WIDE_START[0]} cy={WIDE_START[1]} r="11" strokeWidth="4" />
+        <g className={styles.labels} textAnchor="middle">
+          {points.map(([x, y], i) => {
+            const order = stops[i].order
+            const active = highlighted === order
+            return (
+              <g
+                key={i}
+                data-order={order}
+                data-highlighted={active || undefined}
+                className={cx(active && styles.active, interactive && styles.interactive)}
+                onMouseEnter={onHighlight ? () => onHighlight(order) : undefined}
+                onMouseLeave={onHighlight ? () => onHighlight(null) : undefined}
+                onClick={onSelect ? () => onSelect(order) : undefined}
+              >
+                <circle className={styles.marker} cx={x} cy={y} r={active ? 19 : 16} strokeWidth="2" />
+                <text x={x} y={y + 5} fontSize="15">
+                  {order}
+                </text>
+              </g>
+            )
+          })}
+        </g>
+      </svg>
+    )
+  }
 
   if (variant === 'thumb') {
     const points = layoutThumb(n)

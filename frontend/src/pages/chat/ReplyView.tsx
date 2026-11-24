@@ -10,9 +10,11 @@ type ReplyViewProps = {
   reply: RichReply
   /** Only the latest reply has live controls. */
   interactive: boolean
+  /** Option value the user picked for this reply (answered questions in the history). */
+  chosen?: string
   onOption?: (option: Option) => void
   /** Replaces the default quick replies (onboarding forms). */
-  renderOptions?: (reply: RichReply) => ReactNode
+  renderOptions?: (reply: RichReply, interactive: boolean, chosen?: string) => ReactNode
   /** Rendered for kind "summary". */
   renderSummary?: (reply: RichReply, interactive: boolean) => ReactNode
   onUndo?: () => void
@@ -34,7 +36,7 @@ function Paragraphs({ items }: { items: string[] }) {
  * Renders any assistant reply. Uses the mock's optional `display` hints when
  * present and falls back to the plain contract fields (text, options, changes).
  */
-export function ReplyView({ reply, interactive, onOption, renderOptions, renderSummary, onUndo, routeHref }: ReplyViewProps) {
+export function ReplyView({ reply, interactive, chosen, onOption, renderOptions, renderSummary, onUndo, routeHref }: ReplyViewProps) {
   const d = reply.display ?? {}
   const intro = d.intro && d.intro.length > 0 ? (
     <AssistantBubble>
@@ -88,13 +90,20 @@ export function ReplyView({ reply, interactive, onOption, renderOptions, renderS
           <span className={styles.stepLabel}>{t('onboarding.stepLabel', { index: d.step.index, total: d.step.total })}</span>
         )}
         {hasPrompt ? <span className={styles.prompt}>{d.prompt}</span> : <Paragraphs items={reply.text.split('\n')} />}
-        {interactive && options.length > 0 &&
+        {options.length > 0 &&
           (renderOptions ? (
-            renderOptions(reply)
+            renderOptions(reply, interactive, chosen)
           ) : (
             <div className={styles.options}>
               {options.map((o) => (
-                <QuickReply key={o.value} label={o.label} onClick={() => onOption?.(o)} />
+                <QuickReply
+                  key={o.value}
+                  label={o.label}
+                  // Answered questions stay visible with their options disabled (spec 4).
+                  disabled={!interactive}
+                  selected={interactive ? undefined : chosen === o.value}
+                  onClick={() => onOption?.(o)}
+                />
               ))}
             </div>
           ))}

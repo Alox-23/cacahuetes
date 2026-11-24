@@ -16,6 +16,8 @@
   box-shadow: var(--shadow-floating);
 }
 
-.button:hover {
-  color: var(--color-primary-hover);
+@media (hover: hover) {
+  .button:hover {
+    color: var(--color-primary-hover);
+  }
 }

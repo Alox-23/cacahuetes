@@ -10,11 +10,12 @@ type SegmentedControlProps<T extends string> = {
   onChange: (value: T) => void
   /** Accessible name of the radio group. */
   label: string
+  disabled?: boolean
   className?: string
 }
 
 /** Single choice as a radio group (arrow keys move the selection). */
-export function SegmentedControl<T extends string>({ options, value, onChange, label, className }: SegmentedControlProps<T>) {
+export function SegmentedControl<T extends string>({ options, value, onChange, label, disabled = false, className }: SegmentedControlProps<T>) {
   const refs = useRef<(HTMLButtonElement | null)[]>([])
 
   function onKeyDown(event: KeyboardEvent<HTMLButtonElement>, index: number) {
@@ -40,6 +41,7 @@ export function SegmentedControl<T extends string>({ options, value, onChange, l
             role="radio"
             aria-checked={checked}
             tabIndex={checked ? 0 : -1}
+            disabled={disabled}
             className={cx(styles.segment, checked && styles.checked)}
             onClick={() => onChange(option.value)}
             onKeyDown={(e) => onKeyDown(e, index)}

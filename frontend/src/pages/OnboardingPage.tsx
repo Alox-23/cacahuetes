@@ -19,7 +19,7 @@ export function OnboardingPage() {
   }, [ensure])
 
   const last = messages[messages.length - 1]
-  const complete = last?.role === 'assistant' && last.reply.display?.complete === true
+  const complete = last?.kind === 'assistant' && last.reply.display?.complete === true
   useEffect(() => {
     if (complete) navigate('/chat', { replace: true })
   }, [complete, navigate])
@@ -35,13 +35,16 @@ export function OnboardingPage() {
       <MessageList
         messages={messages}
         pending={pending}
-        renderReply={(reply, isLast) => (
+        renderReply={(reply, isLast, chosen) => (
           <ReplyView
             reply={reply}
             interactive={isLast}
-            renderOptions={(r) => (
+            chosen={chosen}
+            renderOptions={(r, interactive, picked) => (
               <OnboardingForm
                 reply={r}
+                readOnly={!interactive}
+                chosen={picked}
                 onQuick={(o) => void send({ option: o.value }, o.label)}
                 onSubmit={(values) => void send({ option: values.join(',') }, describeSelection(values))}
               />

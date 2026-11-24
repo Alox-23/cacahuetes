@@ -38,19 +38,23 @@
     "exampleStops": {
       "s1": {
         "name": "Plaza de los Naranjos",
-        "time": "10:00"
+        "time": "10:00",
+        "detail": "Paseo 20 min · luego 5 min a pie"
       },
       "s2": {
         "name": "Plaza de la Iglesia de la Encarnación",
-        "time": "10:25"
+        "time": "10:25",
+        "detail": "Visita 20 min · luego 5 min a pie"
       },
       "s3": {
         "name": "Parque de la Alameda",
-        "time": "10:50"
+        "time": "10:50",
+        "detail": "Paseo 15 min · luego 5 min a pie"
       },
       "s4": {
         "name": "Avenida del Mar",
-        "time": "11:10"
+        "time": "11:10",
+        "detail": "Paseo 30 min · fin de la ruta"
       }
     },
     "cta": "Planificar mi ruta",
@@ -132,7 +136,9 @@
     "suggestion1": "Casco antiguo y tapas en Marbella, 5 horas",
     "suggestion2": "Un día en familia por la Alameda y la Fontanilla",
     "suggestion3": "Puerto Banús y Playa del Duque a pie por la tarde",
-    "placeholder": "Escribe tu petición"
+    "placeholder": "Escribe tu petición",
+    "you": "Tú:",
+    "newMessage": "Mensaje nuevo"
   },
   "conversation": {
     "placeholder": "Responde o añade algo",
@@ -494,7 +500,31 @@
       "10": "nov",
       "11": "dic"
     },
-    "short": "{weekday} {day} {month}"
+    "short": "{weekday} {day} {month}",
+    "long": "{weekday} {day} de {month}",
+    "weekdayLong": {
+      "0": "domingo",
+      "1": "lunes",
+      "2": "martes",
+      "3": "miércoles",
+      "4": "jueves",
+      "5": "viernes",
+      "6": "sábado"
+    },
+    "monthLong": {
+      "0": "enero",
+      "1": "febrero",
+      "2": "marzo",
+      "3": "abril",
+      "4": "mayo",
+      "5": "junio",
+      "6": "julio",
+      "7": "agosto",
+      "8": "septiembre",
+      "9": "octubre",
+      "10": "noviembre",
+      "11": "diciembre"
+    }
   },
   "data": {
     "routeNameHours": "{city} en {duration}",
@@ -519,5 +549,46 @@
     "8": "ocho",
     "9": "nueve",
     "10": "diez"
+  },
+  "desktop": {
+    "routeCreated": "Ruta creada: {count} paradas, de {from} a {to}. La tienes a la derecha.",
+    "creatingTitle": "Estoy creando tu ruta",
+    "creatingHint": "La ruta aparecerá a la derecha cuando esté lista.",
+    "creationDone": "Ruta creada.",
+    "creationCancelled": "Has cancelado la creación de la ruta.",
+    "creationFailed": "No he podido crear la ruta. Pídemela otra vez.",
+    "moved": "{name} pasa a la posición {position}.",
+    "moveUp": "Subir {name}",
+    "moveDown": "Bajar {name}",
+    "reorderHint": "Arrastra una parada o usa los botones de subir y bajar para cambiar el orden.",
+    "chatLabel": "Chat con el asistente",
+    "panelRoute": "Ruta",
+    "panelSaved": "Ruta guardada",
+    "panelSettings": "Perfil",
+    "routesToggle": "Mis rutas",
+    "noRoutes": "Aún no tienes rutas",
+    "enter": "Entrar",
+    "openedSaved": "Has abierto «{name}», guardada para el {date}.",
+    "openedQuestion": "¿Quieres cambiar algo antes de salir?",
+    "quickTime": "Cambiar la hora",
+    "quickStop": "Añadir una parada",
+    "quickNew": "Pedir otra ruta",
+    "settingsHello": "Aquí sigo. ¿Qué ruta te preparo hoy?",
+    "settingsHint": "También puedes pedirme que cambie tus preferencias, por ejemplo «prefiero un ritmo intenso».",
+    "placeholderCreating": "Escribe mientras tanto",
+    "placeholderSaved": "Pide un cambio o una ruta nueva",
+    "prefsStrip": "Tus preferencias guardadas",
+    "stopDetailLabel": "Detalle de la parada",
+    "close": "Cerrar",
+    "savedMeta": "Guardada · {date} · {time} · {stops}",
+    "tabsLabel": "Secciones del perfil",
+    "tabPersonal": "Datos personales",
+    "tabPreferences": "Preferencias",
+    "tabAccount": "Cuenta",
+    "prefsIntro": "Cacahuete aplica estas preferencias a cada ruta.",
+    "discard": "Descartar",
+    "saveAndCreate": "Crear cuenta y guardar",
+    "exampleLabel": "Ruta de ejemplo",
+    "mainNote": "Sin registro. Cuatro preguntas rápidas, solo la primera vez."
   }
 }

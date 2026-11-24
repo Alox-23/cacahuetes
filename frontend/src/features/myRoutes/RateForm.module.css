@@ -38,3 +38,10 @@
   color: var(--color-text-muted);
   text-align: center;
 }
+
+/* Desktop dialog: one column, submit at the end of the block. */
+.desktop {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}

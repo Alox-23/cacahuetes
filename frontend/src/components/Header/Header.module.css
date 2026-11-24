@@ -20,10 +20,6 @@
   cursor: pointer;
 }
 
-.back:hover {
-  color: var(--color-primary-hover);
-}
-
 .title {
   min-width: 0;
   font-family: var(--font-heading);
@@ -42,4 +38,10 @@
   min-width: 0;
   font-size: 16px;
   font-weight: 600;
+}
+
+@media (hover: hover) {
+  .back:hover {
+    color: var(--color-primary-hover);
+  }
 }

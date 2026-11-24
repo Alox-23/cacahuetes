@@ -1,0 +1,184 @@
+.dock {
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.header {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: var(--desktop-chat-header-height);
+  padding: 0 24px;
+  border-bottom: 1px solid var(--color-divider);
+}
+
+.names {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.3;
+}
+
+.name {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.role {
+  font-size: var(--font-size-label);
+  color: var(--color-text-muted);
+}
+
+.skip {
+  margin-left: auto;
+  min-height: var(--size-touch-target);
+  padding: 0 12px;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--color-primary);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.strip {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 4px 24px 8px;
+  border-bottom: 1px solid var(--color-divider);
+}
+
+.wide .strip {
+  padding-inline: max(24px, calc((100% - var(--desktop-chat-wide-max)) / 2));
+}
+
+.stripRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.stripToggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: var(--size-touch-target);
+  padding: 0 8px 0 0;
+  border: 0;
+  background: transparent;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-label);
+  font-weight: 600;
+}
+
+.stripChange {
+  display: flex;
+  align-items: center;
+  min-height: var(--size-touch-target);
+  padding-left: 12px;
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.stripChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding-bottom: 4px;
+}
+
+.stripChips[hidden] {
+  display: none;
+}
+
+.logWrap {
+  min-height: 0;
+}
+
+/* Full width: the conversation is a centred column of at most 680 px. */
+.wide .log {
+  padding-inline: max(20px, calc((100% - var(--desktop-chat-wide-max)) / 2));
+}
+
+.inputWrap {
+  flex-shrink: 0;
+}
+
+.wide .inputWrap {
+  display: flex;
+  justify-content: center;
+}
+
+.wide .input {
+  width: min(100%, var(--desktop-chat-wide-max));
+}
+
+.progressTitle {
+  font-weight: 600;
+}
+
+.intro {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding-top: 8px;
+}
+
+.introText {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.heading {
+  font-family: var(--font-heading);
+  font-weight: 700;
+  font-size: var(--font-size-h1);
+  line-height: 1.15;
+}
+
+.helper {
+  font-size: var(--font-size-body);
+  line-height: 1.45;
+  color: var(--color-text-muted);
+}
+
+.suggestions {
+  list-style: none;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.suggestion {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-height: 52px;
+  padding: 6px 16px;
+  border-radius: var(--radius-button);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: var(--font-size-body);
+  text-align: left;
+}
+
+@media (hover: hover) {
+  .suggestion:hover {
+    border-color: var(--color-primary-hover);
+    color: var(--color-primary-hover);
+  }
+
+  .skip:hover,
+  .stripToggle:hover {
+    color: var(--color-primary-hover);
+    background: var(--color-row-hover);
+  }
+}

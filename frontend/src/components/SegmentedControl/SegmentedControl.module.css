@@ -28,3 +28,11 @@
   color: var(--color-text);
   font-weight: 600;
 }
+
+.segment:disabled {
+  cursor: not-allowed;
+}
+
+.track:has(.segment:disabled) {
+  opacity: 0.8;
+}

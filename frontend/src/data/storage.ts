@@ -19,6 +19,8 @@ export const STORAGE_KEYS = {
   /** Saved route id → account email (routes belong to the account). */
   owners: 'rt.routeOwners',
   currentRoute: 'rt.currentRoute',
+  /** Feature 3: the conversation (last 200 items), restored as read-only history. */
+  thread: 'rt.thread',
 } as const
 
 /** In-memory backend: used in tests and when localStorage is unavailable. */

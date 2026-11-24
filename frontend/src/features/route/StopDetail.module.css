@@ -114,3 +114,23 @@
   font-size: var(--font-size-label);
   color: var(--color-text-muted);
 }
+
+/* Desktop: inside the slide-over over the stop list (the map stays visible). */
+.desktop {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+}
+
+.desktop .photo {
+  height: 180px;
+}
+
+.desktop .sheet {
+  overflow: visible;
+  box-shadow: none;
+}
+
+.desktop .body {
+  overflow: visible;
+}

@@ -142,3 +142,13 @@ export function numberWord(n: number): string {
 export function legLabel(leg: { mode: string; minutes: number }): string {
   return t('route.leg', { minutes: leg.minutes, mode: tDynamic(`route.legMode.${leg.mode}`) })
 }
+
+/** "2026-12-05" → "sábado 5 de diciembre" (desktop chat notice). */
+export function formatDateLong(iso: string): string {
+  const date = parseIsoDate(iso)
+  return t('date.long', {
+    weekday: tDynamic(`date.weekdayLong.${date.getDay()}`),
+    day: date.getDate(),
+    month: tDynamic(`date.monthLong.${date.getMonth()}`),
+  })
+}

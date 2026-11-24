@@ -46,3 +46,23 @@ export function layoutThumb(n: number): Point[] {
   const to = 76
   return Array.from({ length: n }, (_, i) => [Math.round(from + ((to - from) * i) / (n - 1)), i % 2 === 0 ? 30 : 66] as Point)
 }
+
+/* ---------- wide (desktop panel, DeskAsistenteRuta.html, 900×330) ---------- */
+
+const WIDE_4: Point[] = [
+  [190, 110],
+  [400, 110],
+  [520, 230],
+  [720, 170],
+]
+export const WIDE_START: Point = [120, 270]
+const WIDE_ROWS = [110, 110, 230, 170, 270, 110, 230, 170]
+
+export function layoutWide(n: number): Point[] {
+  if (n <= 0) return []
+  if (n === 4) return WIDE_4
+  if (n === 1) return [[400, 110]]
+  const from = 190
+  const to = 800
+  return Array.from({ length: n }, (_, i) => [Math.round(from + ((to - from) * i) / (n - 1)), WIDE_ROWS[i % WIDE_ROWS.length]] as Point)
+}
