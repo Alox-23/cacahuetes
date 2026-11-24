@@ -1,0 +1,57 @@
+.options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.stepLabel {
+  font-size: var(--font-size-label);
+  font-weight: 600;
+  color: var(--color-text-muted);
+}
+
+.prompt {
+  font-size: var(--font-size-button);
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.hint {
+  font-size: var(--font-size-label);
+  color: var(--color-text-muted);
+}
+
+.note {
+  font-size: var(--font-size-label);
+  line-height: 1.45;
+  color: var(--color-text-muted);
+}
+
+.bullets {
+  margin: 0;
+  padding-left: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.centered {
+  align-self: center;
+}
+
+.routeChip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 16px;
+  border-radius: var(--radius-input);
+  background: var(--color-selected);
+  color: var(--color-text);
+  font-size: 14px;
+}
+
+.routeChipName {
+  font-weight: 600;
+}
+.missing { padding: 16px var(--space-screen-padding); gap: 16px; }

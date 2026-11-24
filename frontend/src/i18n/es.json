@@ -1,0 +1,309 @@
+{
+  "app": {
+    "name": "[NOMBRE APP]",
+    "documentTitle": "[NOMBRE APP] · Rutas a tu medida"
+  },
+  "common": {
+    "back": "Volver",
+    "send": "Enviar",
+    "messageLabel": "Mensaje para el asistente",
+    "change": "Cambiar",
+    "skip": "Omitir",
+    "done": "Listo",
+    "cancel": "Cancelar",
+    "undo": "Deshacer",
+    "loading": "Cargando…",
+    "listAnd": "y"
+  },
+  "assistant": {
+    "name": "Cacahuete",
+    "role": "Asistente de IA",
+    "label": "Cacahuete · IA",
+    "badge": "IA",
+    "typing": "Cacahuete está escribiendo",
+    "transcriptLabel": "Conversación con Cacahuete",
+    "error": "Vaya, algo ha fallado por mi parte. ¿Lo intentas otra vez?"
+  },
+  "main": {
+    "enter": "Entrar",
+    "title": "Tu ruta por la ciudad, hecha a tu medida",
+    "subtitle": "Cuéntale al asistente de IA qué quieres ver y recibe un recorrido ordenado, con horarios y tiempos de trayecto.",
+    "exampleTitle": "Ejemplo · Barcelona, 5 horas",
+    "exampleStops": {
+      "s1": {
+        "name": "Sagrada Família",
+        "time": "10:00"
+      },
+      "s2": {
+        "name": "Casa Batlló",
+        "time": "11:40"
+      },
+      "s3": {
+        "name": "Mercat de la Boqueria",
+        "time": "13:00"
+      },
+      "s4": {
+        "name": "Barri Gòtic",
+        "time": "14:15"
+      }
+    },
+    "cta": "Planificar mi ruta",
+    "note": "Sin registro. El asistente te hace cuatro preguntas rápidas, solo la primera vez."
+  },
+  "onboarding": {
+    "placeholder": "O escríbelo con tus palabras",
+    "intro1": "¡Hola! Soy Cacahuete, tu asistente de IA para planificar rutas.",
+    "intro2": "Antes de empezar, 4 preguntas rápidas. Solo te las hago esta vez: las guardo y podrás cambiarlas cuando quieras.",
+    "stepLabel": "Pregunta {index} de {total}",
+    "q1": "¿Qué te gusta ver? Elige todo lo que quieras.",
+    "q2": "¿A qué ritmo viajas y cómo te mueves?",
+    "q2Pace": "Ritmo",
+    "q2Transport": "Transporte",
+    "q3": "¿Con quién sueles viajar?",
+    "q4": "¿Qué presupuesto prefieres?",
+    "q4Hint": "Afecta a las entradas y a los sitios para comer. Es la última pregunta.",
+    "ack": "Apuntado.",
+    "notUnderstood": "No lo he entendido. Elige una opción o escríbelo de otra forma.",
+    "finished": "¡Perfecto! Ya tengo tus preferencias. Vamos a por tu primera ruta."
+  },
+  "options": {
+    "interests": {
+      "arquitectura": "Arquitectura",
+      "gastronomia": "Gastronomía",
+      "museos": "Museos",
+      "naturaleza": "Naturaleza",
+      "historia": "Historia",
+      "compras": "Compras",
+      "vida_nocturna": "Vida nocturna",
+      "arte_urbano": "Arte urbano"
+    },
+    "pace": {
+      "relajado": "Relajado",
+      "equilibrado": "Equilibrado",
+      "intenso": "Intenso"
+    },
+    "transport": {
+      "a_pie": "A pie",
+      "transporte_publico": "Transporte público",
+      "coche": "Coche",
+      "bici": "Bici"
+    },
+    "transportPhrase": {
+      "a_pie": "a pie",
+      "transporte_publico": "en transporte público",
+      "coche": "en coche",
+      "bici": "en bici"
+    },
+    "transportShort": {
+      "a_pie": "a pie",
+      "transporte_publico": "metro",
+      "coche": "coche",
+      "bici": "bici"
+    },
+    "company": {
+      "solo": "Solo",
+      "pareja": "En pareja",
+      "con_ninos": "Con niños",
+      "grupo": "En grupo"
+    },
+    "budget": {
+      "bajo": "Bajo",
+      "medio": "Medio",
+      "alto": "Alto"
+    },
+    "budgetChip": {
+      "bajo": "Presupuesto bajo",
+      "medio": "Presupuesto medio",
+      "alto": "Presupuesto alto"
+    }
+  },
+  "chat": {
+    "title": "Asistente",
+    "savedPreferences": "Tus preferencias guardadas",
+    "heading": "Soy Cacahuete. ¿Qué ruta te preparo hoy?",
+    "helper": "Escríbelo con tus palabras: ciudad, día, tiempo y lo que no te quieres perder.",
+    "suggestionsLabel": "Sugerencias",
+    "suggestion1": "5 horas en Barcelona, arquitectura y tapas",
+    "suggestion2": "Un día en Valencia con niños",
+    "suggestion3": "Tarde tranquila en Sevilla, a pie",
+    "placeholder": "Escribe tu petición"
+  },
+  "conversation": {
+    "placeholder": "Responde o añade algo",
+    "placeholderSummary": "Corrige o añade algo",
+    "note": "El asistente solo pregunta lo que falta. Tus preferencias guardadas se aplican solas."
+  },
+  "request": {
+    "generic": "Cuéntame ciudad, día, cuánto tiempo tienes y desde dónde sales.",
+    "genericAsk": "Empecemos por la ciudad: ¿adónde vas?",
+    "known": "Hecho, ya tengo {list}.",
+    "missingOne": "Solo me falta un dato: {question}",
+    "missingMany": "Me faltan {count} datos. Primero: {question}",
+    "notUnderstood": "No te he entendido del todo.",
+    "askOther": "Vale. Escríbeme la dirección o el sitio desde el que sales.",
+    "known_city": "ciudad",
+    "known_date": "día",
+    "known_time": "duración",
+    "known_start": "punto de salida",
+    "mustOne": "un imprescindible",
+    "mustMany": "{count} imprescindibles",
+    "q_city": "¿a qué ciudad vas?",
+    "q_date": "¿qué día haces la ruta?",
+    "q_time": "¿cuánto tiempo tienes?",
+    "q_start": "¿desde dónde sales?",
+    "opt_city_barcelona": "Barcelona",
+    "opt_city_valencia": "Valencia",
+    "opt_city_sevilla": "Sevilla",
+    "opt_date_today": "Hoy",
+    "opt_date_tomorrow": "Mañana",
+    "opt_date_saturday": "Este sábado",
+    "opt_time_3h": "3 horas",
+    "opt_time_5h": "5 horas",
+    "opt_time_allday": "Todo el día",
+    "opt_start_current": "Mi ubicación actual",
+    "opt_start_hotel": "Mi hotel",
+    "opt_start_other": "Otra dirección",
+    "tapas": "Tapas"
+  },
+  "summary": {
+    "title": "Esto es lo que entendí",
+    "fromMessage": "De tu mensaje",
+    "fromPreferences": "De tus preferencias",
+    "create": "Crear ruta",
+    "hint": "¿Algo no encaja? Escríbelo abajo y lo corrijo.",
+    "noPreferences": "Sin preferencias aplicadas",
+    "startPrefix": "Desde {label}",
+    "updated": "Actualizado con lo que me has dicho."
+  },
+  "format": {
+    "hoursOne": "1 hora",
+    "hoursMany": "{count} horas",
+    "hoursMinutes": "{hours} h {minutes} min",
+    "minutes": "{count} min",
+    "allDay": "Todo el día",
+    "timeRange": "{from}–{to}",
+    "durationFrom": "{duration} desde las {from}"
+  },
+  "creating": {
+    "title": "Cacahuete está creando tu ruta",
+    "mapLabel": "Mapa de la ruta",
+    "step1": "Lugares seleccionados",
+    "step2": "Trayectos calculados",
+    "step3": "Ordenando las paradas",
+    "step4": "Comprobando horarios",
+    "stateDone": "hecho",
+    "stateActive": "en curso",
+    "statePending": "pendiente",
+    "error": "No he podido crear la ruta. Vuelve a la conversación e inténtalo de nuevo."
+  },
+  "route": {
+    "backToChat": "Volver al chat",
+    "stopsLabel": "Paradas",
+    "arrive": "Llegada {time}",
+    "visit": "{minutes} min de visita",
+    "leg": "{minutes} min {mode}",
+    "legMode": {
+      "a_pie": "a pie",
+      "transporte_publico": "en metro",
+      "coche": "en coche",
+      "bici": "en bici"
+    },
+    "ends": "Termina a las {time}",
+    "quickTitle": "Ajustes rápidos",
+    "quick": {
+      "menos_caminar": "Menos caminar",
+      "mas_comida": "Más comida",
+      "mas_barato": "Más barato",
+      "anadir_pausa": "Añadir pausa"
+    },
+    "askChange": "Pide un cambio al asistente",
+    "version": "Versión {version}",
+    "notFound": "No encontramos esta ruta.",
+    "locked": "Fijada"
+  },
+  "change": {
+    "placeholder": "Pide otro cambio",
+    "stops": "{count} paradas",
+    "stopsOne": "1 parada",
+    "greeting": "¿Qué quieres cambiar de la ruta? Toca una opción o escríbelo con tus palabras.",
+    "changedOne": "Hecho. He cambiado una cosa:",
+    "changedMany": "Hecho. He cambiado {count} cosas:",
+    "endsAt": "La ruta termina ahora a las {time}.",
+    "viewUpdated": "Ver ruta actualizada",
+    "notUnderstood": "No he entendido el cambio. Prueba con una de estas opciones o dímelo de otra forma.",
+    "undone": "Deshecho. La ruta vuelve a como estaba y termina a las {time}.",
+    "nothingToUndo": "No hay ningún cambio que deshacer.",
+    "legToTransit": "De {from} a {to} vas en metro en lugar de a pie.",
+    "legsToTransit": "Vas en metro en lugar de a pie en {count} trayectos.",
+    "noLongWalks": "No quedaban trayectos largos a pie, así que no he cambiado ninguno.",
+    "pauseAdded": "Pausa de {minutes} min para café después de {after}.",
+    "foodAdded": "He añadido {name} para comer después de {after}.",
+    "foodAddedStart": "He añadido {name} para comer.",
+    "cheaper": "He cambiado {old} por {new}, que es gratis.",
+    "noCheaper": "No he encontrado una alternativa más barata para ninguna parada.",
+    "noChange": "Esta vez no ha cambiado nada."
+  },
+  "tabs": {
+    "label": "Principal",
+    "assistant": "Asistente",
+    "myRoutes": "Mis rutas",
+    "profile": "Perfil"
+  },
+  "stub": {
+    "pending": "Pantalla pendiente (spec 2)",
+    "preferences": "Preferencias de viaje",
+    "login": "Entrar",
+    "myRoutes": "Mis rutas",
+    "profile": "Perfil"
+  },
+  "date": {
+    "weekdayShort": {
+      "0": "dom",
+      "1": "lun",
+      "2": "mar",
+      "3": "mié",
+      "4": "jue",
+      "5": "vie",
+      "6": "sáb"
+    },
+    "monthShort": {
+      "0": "ene",
+      "1": "feb",
+      "2": "mar",
+      "3": "abr",
+      "4": "may",
+      "5": "jun",
+      "6": "jul",
+      "7": "ago",
+      "8": "sep",
+      "9": "oct",
+      "10": "nov",
+      "11": "dic"
+    },
+    "short": "{weekday} {day} {month}"
+  },
+  "data": {
+    "routeNameHours": "{city} en {duration}",
+    "routeNameDay": "Un día en {city}",
+    "pauseName": "Pausa para café",
+    "genericFood": "Restaurante local",
+    "genericOld": "Centro histórico",
+    "genericMarket": "Mercado central",
+    "genericViewpoint": "Mirador",
+    "genericPark": "Parque principal",
+    "genericWhy": "Un básico para conocer la ciudad.",
+    "routeNotFound": "Ruta no encontrada",
+    "placeNotFound": "Lugar no encontrado"
+  },
+  "numbers": {
+    "2": "dos",
+    "3": "tres",
+    "4": "cuatro",
+    "5": "cinco",
+    "6": "seis",
+    "7": "siete",
+    "8": "ocho",
+    "9": "nueve",
+    "10": "diez"
+  }
+}

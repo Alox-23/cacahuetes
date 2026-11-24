@@ -1,0 +1,39 @@
+.header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: var(--size-touch-target);
+}
+
+.back {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: var(--size-touch-target);
+  height: var(--size-touch-target);
+  margin-left: -12px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--color-primary);
+  cursor: pointer;
+}
+
+.back:hover {
+  color: var(--color-primary-hover);
+}
+
+.title {
+  min-width: 0;
+  font-family: var(--font-heading);
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.right {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+}

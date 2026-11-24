@@ -1,0 +1,43 @@
+.example {
+  display: block;
+  width: 100%;
+  height: 150px;
+  background: var(--color-map-land);
+}
+
+.loading {
+  display: block;
+  width: 100%;
+  height: 170px;
+  flex-shrink: 0;
+  background: var(--color-map-land);
+  border-radius: var(--radius-card);
+}
+
+.water {
+  fill: var(--color-map-water);
+}
+
+.streets {
+  fill: none;
+  stroke: var(--color-surface);
+}
+
+.route,
+.routeDotted {
+  fill: none;
+  stroke: var(--color-accent);
+}
+
+.start {
+  fill: var(--color-primary);
+}
+
+.startRing {
+  fill: var(--color-primary);
+  stroke: var(--color-surface);
+}
+
+.stop {
+  fill: var(--color-accent);
+}

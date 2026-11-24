@@ -1,0 +1,24 @@
+.reply {
+  display: inline-flex;
+  align-items: center;
+  height: var(--size-touch-target);
+  padding: 0 16px;
+  border-radius: var(--radius-pill);
+  border: 1.5px solid var(--color-primary);
+  background: var(--color-surface);
+  color: var(--color-primary);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.reply:hover {
+  border-color: var(--color-primary-hover);
+  color: var(--color-primary-hover);
+}
+
+.reply:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}

@@ -1,0 +1,123 @@
+.scroll {
+  flex-grow: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 16px var(--space-screen-padding) 16px;
+}
+
+.titleRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: var(--size-touch-target);
+}
+
+.title {
+  font-family: var(--font-heading);
+  font-weight: 700;
+  font-size: var(--font-size-h1);
+}
+
+.badge {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--color-selected);
+  color: var(--color-text);
+  font-size: var(--font-size-label);
+  font-weight: 600;
+}
+
+.prefs {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.prefsHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.prefsTitle {
+  font-size: var(--font-size-label);
+  font-weight: 600;
+  color: var(--color-text-muted);
+}
+
+.change {
+  display: flex;
+  align-items: center;
+  min-height: var(--size-touch-target);
+  padding-left: 12px;
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.bottom {
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.intro {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.heading {
+  font-family: var(--font-heading);
+  font-weight: 700;
+  font-size: var(--font-size-h1);
+  line-height: 1.15;
+}
+
+.helper {
+  font-size: var(--font-size-body);
+  line-height: 1.45;
+  color: var(--color-text-muted);
+}
+
+.suggestions {
+  list-style: none;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.suggestion {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-height: 52px;
+  padding: 6px 16px;
+  border-radius: var(--radius-button);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-family: inherit;
+  font-size: var(--font-size-body);
+  text-align: left;
+  cursor: pointer;
+}
+
+.suggestion:hover {
+  border-color: var(--color-border-input);
+}

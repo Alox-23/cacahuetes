@@ -1,0 +1,23 @@
+.mascot {
+  flex-shrink: 0;
+  display: block;
+}
+
+.shell {
+  fill: var(--color-mascot-shell);
+  stroke: var(--color-mascot-outline);
+}
+
+.eye {
+  fill: var(--color-mascot-face);
+}
+
+.mouth {
+  fill: none;
+  stroke: var(--color-mascot-face);
+}
+
+.lines {
+  fill: none;
+  stroke: var(--color-mascot-outline);
+}
