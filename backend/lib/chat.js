@@ -65,7 +65,7 @@ function explicitPreferences(text) {
   return values;
 }
 
-function applyMessage(message, profile, pending) {
+export function applyMessage(message, profile, pending) {
   const text = normalize(message);
   const updated = { ...profile };
   let usedModel = false;

@@ -38,4 +38,22 @@ CREATE TABLE IF NOT EXISTS billing_intents (
   started_at timestamptz NOT NULL DEFAULT now()
 );
 
+CREATE TABLE IF NOT EXISTS travel_preferences (
+  owner_key text PRIMARY KEY,
+  preferences jsonb NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS travel_routes (
+  id uuid PRIMARY KEY,
+  owner_key text NOT NULL,
+  itinerary jsonb NOT NULL,
+  preferences jsonb NOT NULL,
+  history jsonb NOT NULL DEFAULT '[]',
+  revision bigint NOT NULL DEFAULT 1,
+  saved boolean NOT NULL DEFAULT false,
+  rating jsonb,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS travel_routes_owner_idx ON travel_routes(owner_key, created_at DESC);
+
 COMMIT;

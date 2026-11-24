@@ -332,6 +332,16 @@ export function createAssistant(deps: AssistantDeps): MockAssistant {
       return askNext([])
     }
     const parsed = parseRequest(text, now())
+    if (deps.interpretRequest) {
+      const hints = await deps.interpretRequest(text)
+      parsed.overrides = { ...hints.overrides, ...parsed.overrides }
+      if (hints.durationMinutes) {
+        const from = parsed.startHour ?? parsed.timeWindow?.from ?? draft.timeWindow?.from ?? DEFAULT_START_HOUR
+        parsed.timeWindow = windowFromDuration(hints.durationMinutes, from)
+      }
+      if ((parsed.city ?? draft.city) === 'Marbella' && hints.start) parsed.start ??= hints.start
+      parsed.recognized ||= Boolean(parsed.timeWindow || parsed.start || Object.keys(parsed.overrides).length)
+    }
     if (!parsed.recognized) {
       // While asking for the start point, any free text is taken as the address.
       if (asked === 'start') {
@@ -368,12 +378,13 @@ export function createAssistant(deps: AssistantDeps): MockAssistant {
 
     const bullets: string[] = []
     let route = await deps.getRoute(routeId)
-    for (const value of actions) {
-      const after = await deps.refineRoute(routeId, { type: 'quick', value })
+    const steps = await deps.refineConversation?.(route, actions)
+    for (const [index, value] of actions.entries()) {
+      const after = steps ? steps[index] : await deps.refineRoute(routeId, { type: 'quick', value })
       bullets.push(describeChange(value, route, after))
       route = after
     }
-    lastApplied = actions.length
+    lastApplied = steps ? 1 : actions.length
     const n = bullets.length
     return {
       kind: 'change',

@@ -2,8 +2,7 @@
 
 Mobile-first web app in Spanish where a guest answers four questions inside the chat, asks the AI assistant
 **Cacahuete** for a route, confirms "Esto es lo que entendí", watches the route being created and asks for
-changes by chat. **There is no backend:** the assistant is a client-side script and all data lives in
-`localStorage`.
+changes by chat. The app can use the Cacahuete HTTP API and PostgreSQL or run the standalone demo in localStorage.
 
 - Tech spec: [`docs/tech-specs/feature-1-base-y-asistente.md`](docs/tech-specs/feature-1-base-y-asistente.md)
 - Design package (read only): [`docs/`](docs/README-paquete.md) — screens in `docs/design/screens/*.html`
@@ -21,8 +20,9 @@ npm run build    # type-check + production build in dist/
 npm run preview  # serve dist/
 ```
 
-The only external request is Google Fonts (Space Grotesk, Inter). To start from scratch, clear the site's
-`localStorage` (keys `rt.*`).
+For the API, prepare the database and start the backend as described in [the backend README](../backend/README.md).
+Copy `.env.example` to `.env.local` in this directory and restart Vite. For deployment, set
+`VITE_CACAHUETE_API_URL` to the full public function URL before building. Leaving it unset starts the standalone demo.
 
 ## URLs
 
@@ -58,16 +58,15 @@ Rules kept in the code: components use only CSS variables (no raw hex), every in
 44 px, option chips use `aria-pressed`, the pace selector is a `radiogroup`, transcripts are `role="log"` with
 `aria-live="polite"`, and `<html lang="es">`.
 
-## Swapping the mocks for the real API
+## API integration
 
 The two integration seams are factories that implement the shared contract (`src/contract/types.ts`):
 
-- **Data** — `createDataModule(storage)` in `src/data/mockData.ts` implements `DataModule`. Write an HTTP
-  implementation with the same interface and pass it to `<AppStateProvider data={httpDataModule}>` in
-  `src/App.tsx`. Nothing in `pages/` imports the mock directly.
+- **Data** — `src/App.tsx` selects `createHttpDataModule` when the endpoint is configured. The adapter implements
+  `DataModule` for accounts, guest drafts, preferences, route versions, stops and ratings.
 - **Assistant** — `createAssistant(deps)` in `src/assistant/mockAssistant.ts` implements
-  `Assistant.sendMessage`. Pass another factory through `<AppStateProvider assistantFactory={…}>`; it receives
-  the same `deps` (data functions and an injectable delay) and must provide `sendMessage` plus `reset(mode, ctx)`.
+  `Assistant.sendMessage`. In API mode it uses Cacahuete to interpret free-text requests. The browser handles the
+  conversation and confirmation. PostgreSQL stores the route created from the confirmed summary and its edits.
 
 The mock adds optional presentation hints to replies (`display`, see `src/assistant/types.ts`: intro bubble,
 "Pregunta N de 4", hint, footer…). They are not part of the contract; the UI falls back to the plain

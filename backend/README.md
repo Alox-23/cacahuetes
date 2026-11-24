@@ -32,6 +32,28 @@ Documentación de [Vercel Functions](https://vercel.com/docs/functions/runtimes/
 
 ## Contrato para el frontend
 
+### Integración con `alex-frontend`
+
+Aplica `npm run migrate` también en instalaciones existentes para crear las tablas de rutas y preferencias. En `frontend/`, copia `.env.example` a `.env.local` y arranca Vite. Para Cloudflare Pages, define `VITE_CACAHUETE_API_URL` con la URL completa de la función en Vercel antes de compilar. Añade el origen público de Pages a `FRONTEND_ORIGINS`.
+
+El adaptador HTTP implementa `frontend/src/contract/types.ts`. El chat conserva el cuestionario, las opciones y el resumen que el visitante confirma. Las peticiones de texto pasan por el intérprete de Cacahuete y las rutas se crean al confirmar. Marbella utiliza el planificador entrenado. Barcelona, Valencia y Sevilla utilizan el catálogo de muestra del frontend. Las demás ciudades usan sus paradas genéricas. Los tiempos entre paradas son estimaciones. Si el punto de partida es una etiqueta como «Mi hotel», el horario empieza en la primera parada.
+
+| Acción | Método | Entrada y resultado |
+| --- | --- | --- |
+| `getPreferences`, `savePreferences` | GET, PUT | Lectura de `Preferences` o `null`. La escritura recibe `Preferences` y devuelve 204. |
+| `interpretRequest` | POST | Recibe `{text}` y devuelve preferencias para la visita y las pistas de duración y salida que reconoce. |
+| `createRoute` | POST | Recibe un `RouteRequest` y devuelve un `Route` con estado 201. Los `overrides` afectan solo a esta visita. |
+| `getRoute`, `listRoutes` | GET | Ruta por `id` o lista del propietario, con borradores y rutas guardadas. |
+| `refineRoute`, `undo` | POST | Reciben `id` en la URL. La primera recibe un `RefineAction`. Ambas devuelven la versión resultante. |
+| `refineConversation` | POST | Recibe `id` en la URL y `{version, changes}` con las opciones rápidas de un mensaje. Devuelve cada paso para describirlo en el chat y guarda el conjunto como un único cambio que se puede deshacer. |
+| `saveRoute`, `deleteRoute` | POST, DELETE | Guardar exige sesión y devuelve la ruta. Eliminar devuelve 204. |
+| `rateRoute` | PUT | Recibe `id` en la URL y `{stars, stops, comment?}` como cuerpo. Devuelve 204. |
+| `getPlace`, `getAlternatives` | GET | La primera recibe el `id` del lugar. La segunda recibe el `id` de la ruta y el `order` de la parada. |
+
+El adaptador usa `status`, `login`, `register` y `logout` para la sesión. Cada navegador genera una credencial aleatoria de invitado y la envía en `X-Guest-Token`. Al entrar o registrarse se transfieren sus borradores a la cuenta. Las preferencias de una cuenta existente prevalecen sobre las del invitado. La cuota de invitado continúa asociada a la red. Una edición concurrente que pierda la carrera devuelve HTTP 409 y permite volver a cargar la ruta.
+
+### API original de Marbella
+
 URL base `/api/cacahuete?action=<acción>`. Envía `Content-Type: application/json` en los métodos con cuerpo y `Authorization: Bearer <token>` si hay una cuenta iniciada.
 
 | Método | Acción | Entrada y salida |

@@ -7,11 +7,12 @@ import { ApiError, configuredOrigins, json, readJson } from './http.js';
 import { takeTurn, validateProfile, validateTurn } from './onboarding.js';
 import { authorizeAgent, rateLimit, trialInfo, visitorNetwork } from './quota.js';
 import { buildRoutes, routeInput } from './routes.js';
+import { claimGuest, guestForLogin, tripAction, tripMethods } from './trip-api.js';
 
 const methods = new Map([
   ['health', 'GET'], ['catalog', 'GET'], ['status', 'GET'], ['register', 'POST'], ['login', 'POST'],
   ['logout', 'POST'], ['profile', 'PUT'], ['chat', 'POST'], ['onboarding', 'POST'], ['route', 'POST'],
-  ['checkout', 'POST'], ['stripe-webhook', 'POST']
+  ['checkout', 'POST'], ['stripe-webhook', 'POST'], ...tripMethods
 ]);
 
 function corsHeaders(request) {
@@ -19,8 +20,8 @@ function corsHeaders(request) {
   const origin = request.headers.get('origin');
   if (origin && configuredOrigins().includes(origin)) {
     headers.set('Access-Control-Allow-Origin', origin);
-    headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, OPTIONS');
-    headers.set('Access-Control-Allow-Headers', 'Authorization, Content-Type');
+    headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    headers.set('Access-Control-Allow-Headers', 'Authorization, Content-Type, X-Guest-Token');
     headers.set('Access-Control-Max-Age', '600');
   }
   return headers;
@@ -55,11 +56,18 @@ export function createHandler(database = getPool) {
         const body = await readJson(request);
         const network = visitorNetwork(request, localIp);
         await rateLimit(db, `${action}:${network}`, 12, 300);
+        const guest = guestForLogin(request);
         const auth = action === 'register' ? await register(db, body) : await login(db, body);
+        if (guest) await claimGuest(db, guest, auth.account.id);
         return json({ account: publicAccount(auth.account), token: auth.token, quota: trialInfo(auth.account) },
           action === 'register' ? 201 : 200, headers);
       }
       const account = await authenticate(db, request, ['logout', 'profile', 'checkout'].includes(action));
+      if (tripMethods.has(action)) {
+        const result = await tripAction(db, action, request, account, localIp);
+        if (result === undefined) return new Response(null, { status: 204, headers });
+        return json(result, action === 'createRoute' ? 201 : 200, headers);
+      }
       if (action === 'logout') {
         await db.query('DELETE FROM sessions WHERE token_hash = $1', [account.sessionHash]);
         return new Response(null, { status: 204, headers });

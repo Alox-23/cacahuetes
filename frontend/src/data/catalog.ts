@@ -126,7 +126,7 @@ const sevilla = city(
 )
 
 /** Cities the assistant recognizes. Only some have a detailed catalog. */
-export const KNOWN_CITIES = ['Barcelona', 'Valencia', 'Sevilla', 'Madrid', 'Granada', 'Málaga', 'Bilbao'] as const
+export const KNOWN_CITIES = ['Barcelona', 'Valencia', 'Sevilla', 'Madrid', 'Granada', 'Málaga', 'Bilbao', 'Marbella'] as const
 
 /** Extra spellings (already normalized) that map to a known city. */
 export const CITY_ALIASES: Record<string, string> = {
