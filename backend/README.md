@@ -25,7 +25,7 @@ npm run dev
 1. Importa el repositorio en Vercel, selecciona `backend` como **Root Directory**, **Other** como **Framework Preset** y deja vacíos los comandos de build y la carpeta de salida. Para la rama `fran-backend`, usa un despliegue Preview que admita peticiones del navegador si se va a probar desde Cloudflare.
 2. Conecta PostgreSQL, por ejemplo Neon desde el Marketplace. Configura `DATABASE_URL` con la URL del pool y ejecuta `npm run migrate` una vez con esa misma base antes de conectar el frontend.
 3. Configura `QUOTA_SECRET` y `FRONTEND_ORIGINS` en el entorno del despliegue. En la última, indica orígenes completos separados por comas, como `https://ejemplo.pages.dev,https://turismo.ejemplo.org`, sin barras finales. El navegador llama directamente a Vercel por HTTPS. Cloudflare Pages puede servir la web desde su dominio propio o el de Pages.
-4. Para usar el modelo, añade `OPENAI_API_KEY` y opcionalmente `OPENAI_MODEL`. Para el escenario de afluencia de la demo, establece `DEMO_SCENARIOS=true`. `PARTNER_PLACE_IDS` acepta los ID de socios confirmados, separados por comas.
+4. La función de Vercel carga `model/interests.json` desde el proyecto. Para el escenario de afluencia de la demo, establece `DEMO_SCENARIOS=true`. `PARTNER_PLACE_IDS` acepta los ID de socios confirmados, separados por comas.
 5. Despliega y consulta `https://TU_API.vercel.app/api/cacahuete?action=health`. En el frontend, usa la URL de Vercel como base pública. Las claves de PostgreSQL, OpenAI y Stripe se configuran solo en el servidor.
 
 Documentación de [Vercel Functions](https://vercel.com/docs/functions/runtimes/node-js) y [PostgreSQL en Vercel](https://vercel.com/docs/postgres).
@@ -80,7 +80,20 @@ Al agotarse el acceso, la API responde con HTTP 403 y `error.code: "AGENT_TIME_E
 ## Comportamiento del MVP
 
 - Invitados y cuentas gratuitas reciben tres horas corridas desde su primera petición válida al agente. Las cuentas tienen su propio reloj. Para invitados se conserva una marca temporal asociada a un HMAC de la IP de conexión que ve Vercel. Usuarios de una misma red pública pueden compartir esa cuota. El perfil del invitado se mantiene en el cliente. La API guarda preferencias de cuentas registradas al terminar el cuestionario o al guardar explícitamente el perfil.
-- El agente usa un modelo preentrenado, por defecto GPT‑4.1 mini, y un conjunto de instrucciones que lo acota a extraer preferencias. OpenAI recibe el último mensaje, los campos turísticos del perfil y la pregunta pendiente. La API solicita `store: false` y valida cada campo devuelto. El backend decide qué preguntar y calcula la ruta con su catálogo, el perfil y la cuota. Las opciones y frases sencillas funcionan con reglas si OpenAI no está configurado o no responde.
+- El agente combina un clasificador supervisado de intereses en español con reglas para reconocer duración, puntos de partida y restricciones explícitas. La función calcula todo el turno y la ruta a partir del catálogo, el perfil y la cuota. `interpretation: "model"` indica que los intereses de ese turno los identificó el clasificador.
 - Premium usa una búsqueda más amplia, admite hasta cinco paradas y devuelve hasta dos itinerarios alternativos. Aplica una penalización a lugares patrocinados y permite como máximo uno por itinerario. La versión gratuita admite hasta tres paradas.
 - Para un pago único Premium, configura `STRIPE_SECRET_KEY`, `STRIPE_PRICE_ID` con un precio de pago único y `STRIPE_WEBHOOK_SECRET`. Configura en Stripe el endpoint `/api/cacahuete?action=stripe-webhook` para `checkout.session.completed` y `checkout.session.async_payment_succeeded`. El frontend redirige a `checkoutUrl` y, al regresar, consulta `status` hasta que Stripe confirme el plan. El MVP no automatiza reembolsos ni revocaciones. [Documentación de Stripe Checkout](https://docs.stripe.com/checkout/fulfillment)
 - Las paradas y sus coordenadas son puntos de referencia. Las duraciones de marcha estiman la distancia a pie. Los horarios, accesibilidad del trayecto, aforo real y reserva de actividades quedan fuera del catálogo inicial. [Turismo de España](https://www.spain.info/es/destino/marbella/) · [Casco Antiguo de Marbella](https://cascoantiguodemarbella.com/para-visitar/)
+
+## Entrenar el modelo de intereses
+
+En `scripts/interest-examples.js` están los ejemplos en español, agrupados por interés, y un conjunto separado para evaluar. Son peticiones sintéticas del proyecto. El entrenamiento aprende una regresión logística por interés y permite devolver varias categorías de un mismo mensaje. Para tiempos, tolerancia a las escaleras y otras restricciones explícitas se reutiliza el analizador de la API.
+
+```bash
+npm run train:chat
+npm run train:chat -- --bpemb
+```
+
+El primer comando reproduce el artefacto actual con características de palabras y fragmentos de texto. El segundo descarga el BPEmb público en español de 3.000 subpalabras y 25 dimensiones, añade sus vectores preentrenados y vuelve a entrenar las capas de clasificación. Esa descarga solo ocurre durante el entrenamiento. El script imprime el resultado sobre los ejemplos reservados y deja el modelo que usará la función en `model/interests.json`. Si se interrumpe la descarga, el artefacto anterior sigue disponible.
+
+Entrena desde `backend/` y versiona el JSON resultante junto con el código para desplegarlo. `base: null` identifica el modelo entrenado desde cero. Un objeto en `base` identifica los vectores públicos que se usaron. [BPEmb de Heinzerling y Strube](https://bpemb.h-its.org/es/)

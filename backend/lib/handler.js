@@ -89,14 +89,14 @@ export function createHandler(database = getPool) {
       if (action === 'chat') {
         const turn = chatInput(body, account?.profile);
         const quota = await authorizeAgent(db, account, network);
-        const result = await chatTurn(turn, quota.plan === 'premium');
+        const result = chatTurn(turn, quota.plan === 'premium');
         if (account && result.state === 'route' && result.accepted) await saveProfile(db, account, result.profile);
         return json({ ...result, quota }, 200, headers);
       }
       if (action === 'onboarding') {
         const turn = validateTurn(body, account?.profile);
         const quota = await authorizeAgent(db, account, network);
-        const result = await takeTurn(turn);
+        const result = takeTurn(turn);
         if (account && result.complete && result.accepted) await saveProfile(db, account, result.profile);
         return json({ ...result, quota }, 200, headers);
       }

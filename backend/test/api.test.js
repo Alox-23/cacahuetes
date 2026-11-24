@@ -21,7 +21,6 @@ before(async () => {
   process.env.STRIPE_WEBHOOK_SECRET = webhookSecret;
   process.env.DEMO_SCENARIOS = 'true';
   process.env.PARTNER_PLACE_IDS = 'encarnacion,avenida-mar,mercado-central';
-  delete process.env.OPENAI_API_KEY;
   delete process.env.VERCEL;
   const migration = await readFile(new URL('../db/001_init.sql', import.meta.url), 'utf8');
   await db.exec(migration);
@@ -84,27 +83,16 @@ test('invitado: onboarding, inicio único de la prueba y vencimiento', async () 
   assert.equal((await expired.json()).error.code, 'AGENT_TIME_EXPIRED');
 });
 
-test('interpreta respuestas libres con el modelo y guarda solo el perfil de la cuenta', async (t) => {
+test('interpreta respuestas libres y guarda solo el perfil de la cuenta', async () => {
   const { account, token } = await createAccount('perfil@example.test');
-  process.env.OPENAI_API_KEY = 'test-key';
-  t.after(() => delete process.env.OPENAI_API_KEY);
-  const requestToModel = t.mock.method(globalThis, 'fetch', async (url, config) => {
-    assert.equal(url, 'https://api.openai.com/v1/responses');
-    const modelBody = JSON.parse(config.body);
-    assert.equal(modelBody.store, false);
-    assert.equal(modelBody.text.format.type, 'json_schema');
-    assert.doesNotMatch(config.body, /perfil@example/);
-    return Response.json({ output: [{ content: [{ type: 'output_text', text: '{"value":"evitar"}' }] }] });
-  });
   const { crowd, ...draft } = profile;
   const complete = await call('onboarding', {
     method: 'POST', token, body: { profile: draft, questionId: 'crowd', answer: 'Mejor sin demasiada gente' }
   });
   assert.equal(complete.status, 200);
   const result = await complete.json();
-  assert.equal(result.interpretation, 'openai');
+  assert.equal(result.interpretation, 'rules');
   assert.equal(result.complete, true);
-  assert.equal(requestToModel.mock.callCount(), 1);
   const status = await (await call('status', { token })).json();
   assert.equal(status.account.id, account.id);
   assert.deepEqual(status.account.profile, profile);
@@ -145,32 +133,19 @@ test('el chat pide solo lo que falta y recalcula una ruta al cambiar el tiempo',
   assert.equal(shorter.quota.expiresAt, trip.quota.expiresAt);
 });
 
-test('el chat extrae preferencias con OpenAI y aplica cambios válidos al perfil de la cuenta', async (t) => {
+test('el chat clasifica intereses localmente, genera la ruta y respeta el límite de uso', async (t) => {
   const { account, token } = await createAccount('chat@example.test');
-  process.env.OPENAI_API_KEY = 'test-key';
-  t.after(() => delete process.env.OPENAI_API_KEY);
-  const requestToModel = t.mock.method(globalThis, 'fetch', async (url, config) => {
-    assert.equal(url, 'https://api.openai.com/v1/responses');
-    const request = JSON.parse(config.body);
-    assert.equal(request.store, false);
-    assert.equal(request.text.format.name, 'visit_preferences');
-    assert.equal(request.text.format.strict, true);
-    assert.deepEqual(JSON.parse(request.input).perfil, {});
-    assert.doesNotMatch(request.input, /chat@example|Bearer/);
-    const text = JSON.stringify({
-      start: 'alameda', minutes: 120, interests: ['historia', 'gastronomia'],
-      budget: 'bajo', pace: null, avoidStairs: false, crowd: 'evitar', plan: 'premium'
-    });
-    return Response.json({ output: [{ content: [{ type: 'output_text', text }] }] });
-  });
+  const outgoing = t.mock.method(globalThis, 'fetch', async () => assert.fail('El chat no necesita una API externa'));
   const response = await call('chat', {
-    method: 'POST', token, body: { message: 'Salimos de la Alameda. Tenemos dos horas, queremos historia y comer barato.' }
+    method: 'POST', token, body: {
+      message: 'Salimos de la Alameda. Tenemos dos horas y quiero contemplar una pinacoteca llena de pinturas.'
+    }
   });
   assert.equal(response.status, 200);
   const result = await response.json();
   assert.equal(result.state, 'route');
-  assert.equal(result.interpretation, 'openai');
-  assert.equal(requestToModel.mock.callCount(), 1);
+  assert.equal(result.interpretation, 'model');
+  assert.deepEqual(result.profile.interests, ['arte']);
   assert.equal(result.quota.plan, 'free');
   assert.equal(result.profile.plan, undefined);
   assert.equal(result.profile.pace, undefined);
@@ -183,7 +158,7 @@ test('el chat extrae preferencias con OpenAI y aplica cambios válidos al perfil
   await db.query("UPDATE accounts SET trial_started_at = now() - interval '4 hours' WHERE id = $1", [account.id]);
   const expired = await call('chat', { method: 'POST', token, body: { message: 'Mejor 45 minutos' } });
   assert.equal(expired.status, 403);
-  assert.equal(requestToModel.mock.callCount(), 1);
+  assert.equal(outgoing.mock.callCount(), 0);
 });
 
 test('Premium se activa mediante pago firmado y recalcula con escenario de afluencia', async (t) => {

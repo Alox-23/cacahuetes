@@ -9,7 +9,8 @@
   "scripts": {
     "dev": "node --env-file-if-exists=.env scripts/dev.js",
     "migrate": "node --env-file-if-exists=.env scripts/migrate.js",
-    "test": "node --test"
+    "test": "node --test",
+    "train:chat": "node scripts/train-interests.js"
   },
   "dependencies": {
     "pg": "^8.16.3"
