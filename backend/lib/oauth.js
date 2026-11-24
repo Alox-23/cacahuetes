@@ -37,7 +37,8 @@ const config = {
   }
 };
 
-export const isProvider = (name) => Object.hasOwn(config, name);
+// Only the strings 'google' and 'apple' (hasOwn would coerce ['google'] or an object to a key).
+export const isProvider = (name) => typeof name === 'string' && Object.hasOwn(config, name);
 
 /** Configured sign-in providers, in a stable order. */
 export const providers = () => ['google', 'apple'].filter((name) => config[name].configured());

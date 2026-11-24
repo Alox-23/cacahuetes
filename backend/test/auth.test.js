@@ -273,6 +273,10 @@ test('oauthStart: URL de Google con PKCE; proveedor desconocido o sin configurar
 
   const unknown = await call('oauthStart', { method: 'POST', body: { provider: 'github' } });
   assert.equal(unknown.status, 400);
+  // Only the provider names as strings: ['google'] would otherwise be coerced into a config key.
+  const coerced = await call('oauthStart', { method: 'POST', body: { provider: ['google'] } });
+  assert.equal(coerced.status, 400);
+  assert.equal(await errorCode(coerced), 'INVALID_INPUT');
   assert.deepEqual((await (await call('status')).json()).auth, { providers: ['google', 'apple'], mail: true });
 
   const saved = process.env.APPLE_CLIENT_ID;
