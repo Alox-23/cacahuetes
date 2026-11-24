@@ -33,12 +33,12 @@ function renderApp(path: string, ctx: ReturnType<typeof setup>) {
 
 const location = () => screen.getByTestId('location').textContent
 
-const bcn: RouteRequest = {
-  city: 'Barcelona',
+const marbella: RouteRequest = {
+  city: 'Marbella',
   date: '2027-01-09',
   timeWindow: { from: '10:00', to: '15:00' },
-  start: { label: 'Mi hotel' },
-  mustInclude: ['Sagrada Família', 'Tapas'],
+  start: { label: 'Plaza de los Naranjos' },
+  mustInclude: ['Plaza de los Naranjos', 'Tapas'],
   overrides: { interests: ['arquitectura', 'gastronomia'] },
 }
 
@@ -46,12 +46,12 @@ describe('feature 2 smoke tests', () => {
   it('a guest saves a route: Guardar como invitado → Crear cuenta (validated) → route in Mis rutas', async () => {
     const user = userEvent.setup()
     const ctx = setup()
-    const route = await ctx.data.createRoute(bcn)
+    const route = await ctx.data.createRoute(marbella)
     renderApp(`/route/${route.id}`, ctx)
 
     // Route screen: schematic map, stops with times and legs.
     expect(await screen.findByRole('img', { name: 'Mapa de la ruta con cuatro paradas' })).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Sagrada Família' })).toHaveAttribute('href', `/route/${route.id}/stop/1`)
+    expect(screen.getByRole('link', { name: 'Plaza de los Naranjos' })).toHaveAttribute('href', `/route/${route.id}/stop/1`)
     expect(screen.getByText('10:00')).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'Guardar ruta' }))
@@ -77,7 +77,7 @@ describe('feature 2 smoke tests', () => {
     await user.click(submit)
 
     await waitFor(() => expect(location()).toBe(`/my-routes/${route.id}`))
-    expect(await screen.findByRole('heading', { name: 'Barcelona en 5 horas' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'Marbella en 5 horas' })).toBeInTheDocument()
     expect(await ctx.data.getSession()).toMatchObject({ kind: 'account', email: 'ana@ejemplo.com', name: 'Ana' })
     expect(await ctx.data.getPreferences()).toEqual(DEFAULT_PREFERENCES)
 
@@ -86,7 +86,7 @@ describe('feature 2 smoke tests', () => {
     await waitFor(() => expect(location()).toBe('/my-routes'))
     const list = await screen.findByRole('list', { name: 'Rutas guardadas' })
     expect(within(list).getAllByRole('link')).toHaveLength(1)
-    expect(within(list).getByText('Barcelona en 5 horas')).toBeInTheDocument()
+    expect(within(list).getByText('Marbella en 5 horas')).toBeInTheDocument()
   })
 
   it('login seeds the examples; tabs and search; favourite toggles; delete asks for confirmation', async () => {
@@ -110,16 +110,16 @@ describe('feature 2 smoke tests', () => {
     expect(await cards()).toHaveLength(2)
     const tabs = screen.getByRole('radiogroup', { name: 'Filtrar rutas' })
     await user.click(within(tabs).getByRole('radio', { name: 'Pasadas' }))
-    expect((await cards()).map((c) => c.textContent)).toEqual([expect.stringContaining('Sevilla, tarde tranquila')])
+    expect((await cards()).map((c) => c.textContent)).toEqual([expect.stringContaining('Paseo marítimo, tarde tranquila')])
     await user.click(within(tabs).getByRole('radio', { name: 'Favoritas' }))
     expect(await cards()).toHaveLength(1)
     await user.click(within(tabs).getByRole('radio', { name: 'Próximas' }))
-    await user.type(screen.getByRole('searchbox', { name: 'Buscar rutas' }), 'Val')
-    expect((await cards()).map((c) => c.textContent)).toEqual([expect.stringContaining('Valencia, día completo')])
+    await user.type(screen.getByRole('searchbox', { name: 'Buscar rutas' }), 'Banús')
+    expect((await cards()).map((c) => c.textContent)).toEqual([expect.stringContaining('Puerto Banús con niños, día completo')])
     await user.clear(screen.getByRole('searchbox', { name: 'Buscar rutas' }))
 
-    // Open Barcelona and toggle the favourite.
-    await user.click(screen.getByRole('link', { name: /Barcelona en 5 horas/ }))
+    // Open the Naranjos route and toggle the favourite.
+    await user.click(screen.getByRole('link', { name: /Marbella en 5 horas/ }))
     await waitFor(() => expect(location()).toMatch(/^\/my-routes\/[^/]+$/))
     const id = location()?.split('/')[2] ?? ''
     const fav = await screen.findByRole('button', { name: 'Favorita' })

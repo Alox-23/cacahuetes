@@ -1,4 +1,5 @@
 import type { AssistantReply, Preferences, Route } from '../contract/types'
+import type { QuickRefine } from '../lib/refineKeywords'
 
 /**
  * Optional presentation hints the mock assistant adds on top of the contract's
@@ -31,6 +32,10 @@ export type RichReply = AssistantReply & { display?: ReplyDisplay }
 export type AssistantMode = 'onboarding' | 'request' | 'change'
 
 export type AssistantDeps = {
+  refineConversation?: (route: Route, changes: QuickRefine[]) => Promise<Route[]>
+  interpretRequest?: (text: string) => Promise<{
+    overrides: Partial<Preferences>; durationMinutes?: number; start?: { label: string }
+  }>
   getPreferences: () => Promise<Preferences | null>
   savePreferences?: (p: Preferences) => Promise<void>
   getRoute?: (id: string) => Promise<Route>

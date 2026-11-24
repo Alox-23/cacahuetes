@@ -61,10 +61,10 @@ describe('route text', () => {
     expect(formatVisit(60)).toBe('1 h')
     expect(formatVisit(50)).toBe('50 min')
     const r = route({ city: 'Barcelona', date: '2026-12-05' })
-    expect(stopDetail(r.stops[0])).toBe('Visita 1 h 15 · luego 20 min en metro')
+    expect(stopDetail(r.stops[0])).toBe('Visita 1 h 15 · luego 20 min en transporte público')
     expect(stopDetail(r.stops[1], 'walk')).toBe('Paseo 45 min · fin de la ruta')
     expect(stopDetail({ ...r.stops[1], visitMinutes: 60 }, 'food')).toBe('Comida 1 h · fin de la ruta')
-    expect(routeSubtitle(r, DEFAULT_PREFERENCES)).toBe('2 paradas · 10:00 a 12:20 · a pie y metro')
+    expect(routeSubtitle(r, DEFAULT_PREFERENCES)).toBe('2 paradas · 10:00 a 12:20 · a pie y bus')
   })
 
   it('card tags come from request interests, then company or transport overrides', () => {
@@ -79,7 +79,7 @@ describe('share', () => {
 
   it('builds a plain-text summary with date, window and numbered stops', () => {
     expect(buildShareText(r)).toBe(
-      ['Barcelona en 5 horas', 'Sáb 5 dic · 10:00 a 12:20', '', '1. 10:00 · Sagrada Família', '2. 11:35 · Barri Gòtic', '', 'Ruta creada con [NOMBRE APP]'].join('\n'),
+      ['Barcelona en 5 horas', 'Sáb 5 dic · 10:00 a 12:20', '', '1. 10:00 · Sagrada Família', '2. 11:35 · Barri Gòtic', '', 'Ruta creada con Cacahuete Marbella'].join('\n'),
     )
   })
 

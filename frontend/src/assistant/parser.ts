@@ -10,7 +10,7 @@
  * A duration without a start hour starts at 10:00 (or at the day part start).
  */
 import type { Preferences, RouteRequest } from '../contract/types'
-import { CITY_ALIASES, KNOWN_CITIES, placesMentioned } from '../data/catalog'
+import { placesMentioned } from '../data/catalog'
 import { t } from '../i18n'
 import { containsPhrase, normalize, phraseIndex } from '../lib/text'
 import { addDays, fromMinutes, isoDate, nextWeekday, toMinutes } from '../lib/time'
@@ -82,7 +82,7 @@ export const PACE_KEYWORDS: Record<Preferences['pace'], string[]> = {
 
 export const TRANSPORT_KEYWORDS: Record<Preferences['transport'][number], string[]> = {
   a_pie: ['a pie', 'andando', 'caminando', 'paseando'],
-  transporte_publico: ['transporte publico', 'en metro', 'metro', 'en bus', 'autobus'],
+  transporte_publico: ['transporte publico', 'en bus', 'autobus'],
   coche: ['coche', 'en coche'],
   bici: ['bici', 'bicicleta', 'en bici'],
 }
@@ -115,14 +115,7 @@ export function windowFromDuration(minutes: number, from: string = DEFAULT_START
 }
 
 function parseCity(norm: string): string | undefined {
-  const padded = ` ${norm} `
-  for (const city of KNOWN_CITIES) {
-    if (padded.includes(` ${normalize(city)} `)) return city
-  }
-  for (const [alias, city] of Object.entries(CITY_ALIASES)) {
-    if (padded.includes(` ${alias} `)) return city
-  }
-  return undefined
+  return containsPhrase(norm, 'marbella') ? 'Marbella' : undefined
 }
 
 function parseDate(tokens: string[], now: Date): { date?: string; morning: boolean } {
@@ -172,7 +165,7 @@ function parseStart(original: string, norm: string): RouteRequest['start'] | und
   const m = original.match(/\b(?:desde|salgo de|salgo del|salimos de|salimos del)\s+(?!las?\s+\d)([^,.;!?]+)/i)
   if (m) {
     const label = m[1].trim()
-    if (label && !parseCity(normalize(label))) return { label }
+    if (label) return { label }
   }
   return undefined
 }
@@ -183,19 +176,20 @@ function prepared(norm: string): ParsedRequest | undefined {
   if (norm === normalize(t('chat.suggestion1'))) {
     return {
       ...base,
-      city: 'Barcelona',
+      city: 'Marbella',
       timeWindow: windowFromDuration(5 * 60),
-      mustInclude: ['Sagrada Família', t('request.tapas')],
+      mustInclude: ['Plaza de los Naranjos', t('request.tapas')],
       overrides: { interests: ['arquitectura', 'gastronomia'] },
     }
   }
   if (norm === normalize(t('chat.suggestion2'))) {
-    return { ...base, city: 'Valencia', timeWindow: { ...DAY_PARTS.fullDay }, overrides: { company: 'con_ninos' } }
+    return { ...base, city: 'Marbella', mustInclude: ['Parque de la Alameda', 'Playa de la Fontanilla'], timeWindow: { ...DAY_PARTS.fullDay }, overrides: { company: 'con_ninos' } }
   }
   if (norm === normalize(t('chat.suggestion3'))) {
     return {
       ...base,
-      city: 'Sevilla',
+      city: 'Marbella',
+      start: { label: 'Puerto Banús' }, mustInclude: ['Playa del Duque'],
       timeWindow: { ...DAY_PARTS.afternoon },
       overrides: { pace: 'relajado', transport: ['a_pie'] },
     }

@@ -4,8 +4,9 @@ Mobile-first web app in Spanish where a guest answers four questions inside the 
 **Cacahuete** for a route, confirms "Esto es lo que entendí", watches the route being created and asks for
 changes by chat. Feature 2 completes the app: the Route screen with a schematic map and per-stop actions, saving
 routes (guest → account), register and login, Mis rutas with saved-route detail and rating, and the profile with
-editable preferences and account settings. **There is no backend:** the assistant is a client-side script and all
-data lives in `localStorage`.
+editable preferences and account settings. The app can use the Cacahuete HTTP API and PostgreSQL (see
+[the backend README](../backend/README.md)) or run the standalone demo, where the assistant is a client-side
+script and all data lives in `localStorage`.
 
 - Tech specs: [`docs/tech-specs/feature-1-base-y-asistente.md`](docs/tech-specs/feature-1-base-y-asistente.md),
   [`docs/tech-specs/feature-2-ruta-mis-rutas-perfil.md`](docs/tech-specs/feature-2-ruta-mis-rutas-perfil.md)
@@ -24,8 +25,9 @@ npm run build    # type-check + production build in dist/
 npm run preview  # serve dist/
 ```
 
-The only external request is Google Fonts (Space Grotesk, Inter). To start from scratch, clear the site's
-`localStorage` (keys `rt.*`).
+For the API, prepare the database and start the backend as described in [the backend README](../backend/README.md).
+Copy `.env.example` to `.env.local` in this directory and restart Vite. For deployment, set
+`VITE_CACAHUETE_API_URL` to the full public function URL before building. Leaving it unset starts the standalone demo.
 
 ## URLs
 
@@ -97,21 +99,25 @@ Marked `// Añadido en feature 2` in `docs/contract/types.ts` (copied verbatim t
 `updateAccount`, `deleteAccount`. `rateRoute` now takes a `Rating`. `listRoutes()` returns the signed-in account's
 saved routes only, newest first by date (guests get `[]`).
 
+The HTTP adapter (`src/data/httpData.ts`) implements these four methods and the favourite flag from the browser's
+`localStorage` until the API provides actions for them (marked `TODO(backend)`); `deleteAccount` only signs out.
+
 The mock also attaches optional presentation hints to `Place` objects (`activity`, `visitMinutes`, `travel`, see
 `src/lib/placeHints.ts`), used for "Visita / Paseo / Comida / Pausa" and the alternatives subtitle. They are not
 part of the contract; screens fall back gracefully when a real API omits them.
 
-## Swapping the mocks for the real API
+## API integration
 
 The two integration seams are factories that implement the shared contract (`src/contract/types.ts`):
 
-- **Data** — `createDataModule(storage)` in `src/data/mockData.ts` implements `DataModule`. Write an HTTP
-  implementation with the same interface and pass it to `<AppStateProvider data={httpDataModule}>` in
-  `src/App.tsx`. Nothing in `pages/` imports the mock directly.
+- **Data** — `src/App.tsx` selects `createHttpDataModule` when the endpoint is configured. The adapter implements
+  `DataModule` for accounts, guest drafts, preferences, route versions, stops and ratings.
 - **Assistant** — `createAssistant(deps)` in `src/assistant/mockAssistant.ts` implements
   `Assistant.sendMessage`. Pass another factory through `<AppStateProvider assistantFactory={…}>`; it receives
   the same `deps` (data functions and an injectable delay) and must provide `sendMessage` plus `reset(mode, ctx)`.
   Since feature 2, `ctx.request` pre-fills request mode ("Reutilizar"): the next reply must be the summary.
+  In API mode it uses Cacahuete to interpret free-text requests. The browser handles the conversation and
+  confirmation. PostgreSQL stores the route created from the confirmed summary and its edits.
 
 The mock adds optional presentation hints to replies (`display`, see `src/assistant/types.ts`: intro bubble,
 "Pregunta N de 4", hint, footer…). They are not part of the contract; the UI falls back to the plain
@@ -123,8 +129,8 @@ answer is sent as a comma-separated `option` string.
 
 - **Onboarding:** 4 fixed questions; free text matches option labels and synonyms (accent-insensitive).
   "Omitir" saves the defaults from `data/defaults.ts`.
-- **Request:** slots city → date → time → start, asked one at a time with quick replies. The three suggestions
-  have prepared parses; free text goes through `parser.ts` (cities, "N horas", "un día", "tarde", "noche",
+- **Request:** Marbella is fixed; slots date → time → local starting point, asked one at a time with quick replies. The three suggestions
+  have prepared parses; free text goes through `parser.ts` (Marbella landmarks, "N horas", "un día", "tarde", "noche",
   weekdays, "hoy", "mañana" — see the rule at the top of the file — and must-include places).
 - **Change:** quick actions and phrases ("menos caminar", "pausa", "café", "barato", "comida"…) map to
   `refineRoute` calls; one sentence can trigger several. "Deshacer" undoes every change of that reply.
@@ -135,4 +141,4 @@ answer is sent as a comma-separated `option` string.
 - The map is schematic (no tiles, no geocoding): marker positions depend only on the number of stops.
 - Auth is simulated: no password check, no recovery, Google/Apple are mock sign-ins. Data is per device.
 - Transcripts live in memory: reloading mid-conversation starts it again (preferences and routes persist).
-- Catalog data (places, times, `[HORARIO]`, `[PRECIO]`) is sample content.
+- The live API and standalone demo use the same Marbella landmarks and coordinates. Travel and visit times are estimates.

@@ -23,7 +23,7 @@ export function transportLabel(value: Preferences['transport'][number]): string 
   return tDynamic(`options.transport.${value}`)
 }
 
-/** ["a_pie","transporte_publico"] → "A pie y metro" */
+/** ["a_pie","transporte_publico"] → "A pie y bus" */
 export function transportChip(values: Preferences['transport']): string {
   return capitalize(joinList(values.map((v) => tDynamic(`options.transportShort.${v}`))))
 }
@@ -110,7 +110,7 @@ export function preferenceSummaryChips(p: Preferences | null, request: RouteRequ
   ]
 }
 
-/** "Barcelona · sáb 5 dic · 5 horas" */
+/** "Marbella · sáb 5 dic · 5 horas" */
 export function requestSubtitle(request: RouteRequest): string {
   return [request.city, formatDateShort(request.date, false), formatWindowShort(request.timeWindow)].join(' · ')
 }
@@ -138,7 +138,7 @@ export function numberWord(n: number): string {
   return n >= 2 && n <= 10 ? tDynamic(`numbers.${n}`) : String(n)
 }
 
-/** Route leg line: "12 min en metro", "20 min a pie". */
+/** Route leg line: "12 min en transporte público", "20 min a pie". */
 export function legLabel(leg: { mode: string; minutes: number }): string {
   return t('route.leg', { minutes: leg.minutes, mode: tDynamic(`route.legMode.${leg.mode}`) })
 }

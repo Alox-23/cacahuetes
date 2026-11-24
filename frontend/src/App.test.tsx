@@ -64,7 +64,7 @@ describe('onboarding smoke test', () => {
 
     await waitFor(() => expect(location()).toBe('/chat'))
     expect(await screen.findByText('Tus preferencias guardadas')).toBeInTheDocument()
-    for (const chip of ['Arquitectura', 'Gastronomía', 'Relajado', 'En pareja', 'A pie y metro', 'Presupuesto medio']) {
+    for (const chip of ['Arquitectura', 'Gastronomía', 'Relajado', 'En pareja', 'A pie y bus', 'Presupuesto medio']) {
       expect(screen.getByText(chip)).toBeInTheDocument()
     }
     expect(await data.getPreferences()).toEqual({
@@ -102,17 +102,17 @@ describe('onboarding smoke test', () => {
     const storage = createStorage(memoryBackend())
     storage.write('rt.preferences', DEFAULT_PREFERENCES)
     renderApp('/chat', storage)
-    await user.click(await screen.findByRole('button', { name: '5 horas en Barcelona, arquitectura y tapas' }))
+    await user.click(await screen.findByRole('button', { name: 'Casco antiguo y tapas en Marbella, 5 horas' }))
     await waitFor(() => expect(location()).toBe('/chat/conversation'))
     await user.click(await screen.findByRole('button', { name: 'Este sábado' }))
-    await user.click(await screen.findByRole('button', { name: 'Mi hotel' }))
+    await user.click(await screen.findByRole('button', { name: 'Parque de la Alameda' }))
     expect(await screen.findByText('Esto es lo que entendí')).toBeInTheDocument()
-    expect(screen.getByRole('region', { name: 'De tu mensaje' })).toHaveTextContent('Desde mi hotel')
+    expect(screen.getByRole('region', { name: 'De tu mensaje' })).toHaveTextContent('Desde Parque de la Alameda')
     expect(screen.getByRole('region', { name: 'De tus preferencias' })).toHaveTextContent('Presupuesto medio')
     await user.click(screen.getByRole('button', { name: 'Crear ruta' }))
     expect(location()).toBe('/creating')
     expect(await screen.findByText('Cacahuete está creando tu ruta')).toBeInTheDocument()
     await waitFor(() => expect(location()).toMatch(/^\/route\/.+/), { timeout: 4000 })
-    expect(await screen.findByText('Sagrada Família')).toBeInTheDocument()
+    expect(await screen.findByText('Plaza de los Naranjos')).toBeInTheDocument()
   })
 })

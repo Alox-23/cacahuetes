@@ -2,7 +2,9 @@
  * Mock implementation of the shared DataModule (docs/contract/types.ts).
  * Everything lives in localStorage through `JsonStorage`; no network calls.
  * Spec 2 owns this module long term; spec 1 needs it to run the flows.
+ * The destination is always Marbella (shared scope with the backend).
  */
+import { isMarbella, localStart } from '../../../backend/lib/marbella-scope.js'
 import type {
   DataModule,
   Place,
@@ -169,9 +171,13 @@ export function createDataModule(
     return { ...DEFAULT_PREFERENCES, ...(readPrefs() ?? {}), ...(request.overrides ?? {}) }
   }
 
+  function isLocalRoute(route: Route) {
+    return isMarbella(route.request.city) && route.stops.every(stop => findPlace(stop.placeId))
+  }
+
   function versionsOf(id: string): Route[] {
     const versions = readRoutes()[id]
-    if (!versions || versions.length === 0) throw new Error(t('data.routeNotFound'))
+    if (!versions?.length || !isLocalRoute(versions[versions.length - 1])) throw new Error(t('data.routeNotFound'))
     return versions
   }
 
@@ -292,12 +298,20 @@ export function createDataModule(
   function buildRoute(request: RouteRequest): Route {
     const prefs = effectivePrefs(request)
     const catalog = getCityCatalog(request.city)
+    // The start must be a catalog place (name or alias); the route is scheduled from there.
+    const start = localStart(request.start.label)
+    if (!start) throw new Error(t('request.askOther'))
+    request = { ...request, city: catalog.city, start: { label: start } }
+    if (request.mustInclude.some((label) => !catalog.places.some((p) => matchesMustInclude(p, label)))) {
+      throw new Error(t('data.placeNotFound'))
+    }
     const window = toMinutes(request.timeWindow.to) - toMinutes(request.timeWindow.from)
     const count = window >= 7 * 60 ? 5 : 4
 
+    const origin = catalog.places.find((p) => p.name === start)!
     const picked = catalog.places
       .filter((p) => p.kind !== 'pause')
-      .map((p) => ({ p, score: scorePlace(p, request, prefs) }))
+      .map((p) => ({ p, score: scorePlace(p, request, prefs) - legBetween(catalog, origin.id, p.id).walk / 3 }))
       .sort((a, b) => b.score - a.score || a.p.order - b.p.order)
       .slice(0, count)
       .map((x) => x.p)
@@ -413,10 +427,12 @@ export function createDataModule(
 
     async listRoutes() {
       await tick()
-      // Saved routes belong to the account: guests see none.
+      // Saved routes belong to the account: guests see none. Routes from other
+      // destinations (older demos) stay in storage but are not listed.
       const session = readSession()
       if (session.kind !== 'account') return []
       return savedRoutesOf(session.email)
+        .filter(isLocalRoute)
         .map(clone)
         .sort((a, b) => b.request.date.localeCompare(a.request.date))
     },
