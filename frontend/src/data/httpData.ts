@@ -1,4 +1,5 @@
-import type { AccountSettings, AuthProvider, DataModule, Rating, Route, Session } from '../contract/types'
+import catalog from '../../../backend/lib/marbella.json' with { type: 'json' }
+import type { AccountSettings, AuthProvider, DataModule, Place, Rating, Route, Session } from '../contract/types'
 import type { AssistantDeps } from '../assistant/types'
 import { DEFAULT_ACCOUNT_SETTINGS } from './defaults.ts'
 import { ApiClientError } from './errors.ts'
@@ -181,7 +182,12 @@ export function createHttpDataModule(
       // TODO(backend): no getRating action yet; keep a copy to show the saved rating.
       writeJson(ratingsKey, { ...readJson<Record<string, Rating>>(ratingsKey, {}), [id]: rating })
     },
-    getPlace: id => call('getPlace', 'GET', undefined, id),
+    getPlace: async id => {
+      const place = await call<Place>('getPlace', 'GET', undefined, id)
+      const entry = catalog.find(item => item.id === id)
+      if (!entry) return place
+      return { ...entry, ...place, photo: `/places/${encodeURIComponent(id)}.jpg` }
+    },
     getAlternatives: (id, order) => call('getAlternatives', 'GET', undefined, id, order),
 
     // Feature 2 additions (contract `// Añadido en feature 2`). The backend has no

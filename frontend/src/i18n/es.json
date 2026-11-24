@@ -315,8 +315,8 @@
   },
   "stop": {
     "photo": "[FOTO DEL LUGAR]",
-    "hoursPlaceholder": "[HORARIO]",
-    "pricePlaceholder": "[PRECIO]",
+    "hoursPlaceholder": "Horario no disponible",
+    "pricePlaceholder": "Precio no disponible",
     "meta": "Parada {order} · {time} · {visit}",
     "chipsLabel": "Categorías",
     "mustInclude": "Imprescindible",

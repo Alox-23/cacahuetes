@@ -61,12 +61,17 @@ export function RouteMap({ stops, variant = 'full', height, label, className, ro
           zoomControl: true,
           maxZoom: 19,
           minZoom: 9,
-          attributionControl: false,
+          attributionControl: true,
         })
         const tiles = import.meta.env.VITE_LOCAL_TILE_URL
         if (tiles?.startsWith('/') && !tiles.startsWith('//')) L.tileLayer(tiles, {
           maxZoom: 19,
         }).addTo(map)
+        if (!tiles) {
+          L.imageOverlay('/maps/marbella.jpg', [[36.477, -4.97], [36.520, -4.87]], {
+            attribution: 'Cartografía: © Instituto Geográfico Nacional (IGN)',
+          }).addTo(map)
+        }
         mapInstanceRef.current = map
         setInteractive(true)
       } catch {

@@ -34,7 +34,7 @@ El chat llama a `OLLAMA_BASE_URL` (por defecto `http://localhost:11434/v1`) con 
 
 Para mostrar fotos sin conexión, coloca fotos autorizadas en `frontend/public/places/<id-del-catálogo>.jpg` antes de compilar. También puedes incorporarlas a `frontend/dist/places/` después. La ficha muestra la mascota local si la foto falta o está dañada.
 
-El mapa completo usa Leaflet para situar las paradas y unirlas sobre sus coordenadas. Para añadir un callejero sin conexión, coloca teselas XYZ de Marbella en `frontend/public/tiles/{z}/{x}/{y}.png` y define `VITE_LOCAL_TILE_URL=/tiles/{z}/{x}/{y}.png` antes de compilar. Sin esas teselas se muestran los puntos del catálogo y el trazado sobre un fondo liso.
+El mapa completo usa Leaflet para situar las paradas y unirlas sobre sus coordenadas. Para añadir un callejero sin conexión, coloca teselas XYZ de Marbella en `frontend/public/tiles/{z}/{x}/{y}.png` y define `VITE_LOCAL_TILE_URL=/tiles/{z}/{x}/{y}.png` antes de compilar. Por defecto Leaflet muestra el callejero local de Marbella obtenido del servicio WMS IGNBaseTodo del Instituto Geográfico Nacional (IGN), con las paradas y el recorrido encima.
 
 ## Contrato para el frontend
 
