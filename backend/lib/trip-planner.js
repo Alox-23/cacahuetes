@@ -19,8 +19,24 @@ const catalog = {
   }]
 };
 function asPlace(p) {
-  return { id: p.id, name: p.name, categories: p.categories, why: p.why,
-    ...(p.lat !== undefined ? { lat: p.lat, lon: p.lon } : {}) };
+  return {
+    id: p.id,
+    name: p.name,
+    categories: p.categories,
+    why: p.why,
+    photo: p.photo,
+    hours: p.hours,
+    price: p.price,
+    rating: p.rating,
+    reviewsCount: p.reviewsCount,
+    address: p.address,
+    googleMapsUrl: p.googleMapsUrl || `https://maps.google.com/?q=${encodeURIComponent(p.name + ' Marbella')}`,
+    ...(p.lat !== undefined ? { lat: p.lat, lon: p.lon } : {}),
+    ...(p.area ? { area: p.area } : {}),
+    ...(p.partner ? { partner: true, partnerPerk: p.partnerPerk } : {}),
+    ...(p.popularity ? { popularity: p.popularity } : {}),
+    ...(p.pickupInfo ? { pickupInfo: p.pickupInfo } : {})
+  };
 }
 export function lookupPlace(id) {
   const place = catalog.places.find(p => p.id === id);
@@ -28,7 +44,27 @@ export function lookupPlace(id) {
   return asPlace(place);
 }
 function stopFor(p) {
-  return { order: 0, placeId: p.id, name: p.name, arrive: '', visitMinutes: p.visitMinutes, locked: false };
+  return {
+    order: 0,
+    placeId: p.id,
+    name: p.name,
+    arrive: '',
+    visitMinutes: p.visitMinutes,
+    locked: false,
+    lat: p.lat,
+    lon: p.lon,
+    area: p.area,
+    photo: p.photo,
+    hours: p.hours,
+    price: p.price,
+    rating: p.rating,
+    reviewsCount: p.reviewsCount,
+    address: p.address,
+    googleMapsUrl: p.googleMapsUrl || `https://maps.google.com/?q=${encodeURIComponent(p.name + ' Marbella')}`,
+    ...(p.partner ? { partner: true, partnerPerk: p.partnerPerk } : {}),
+    ...(p.popularity ? { popularity: p.popularity } : {}),
+    ...(p.pickupInfo ? { pickupInfo: p.pickupInfo } : {})
+  };
 }
 function matchesLabel(p, label) {
   const key = normalize(label);
@@ -44,10 +80,12 @@ function routeName(request) {
 }
 function leg(a, b, prefs) {
   const walk = a.kind === 'pause' || b.kind === 'pause' ? 3 : walkingMinutes(a, b, paceMap[prefs.pace]);
-  const modes = prefs.transport;
+  const modes = prefs.transport || [];
   if (!modes.length || (modes.includes('a_pie') && (walk <= 20 || modes.length === 1))) return { mode: 'a_pie', minutes: walk };
   const mode = modes.find(m => m !== 'a_pie') ?? 'a_pie';
-  return { mode, minutes: mode === 'bici' ? Math.ceil(walk / 3) : Math.ceil(walk / 2) };
+  const mins = mode === 'bici' ? Math.ceil(walk / 3) : Math.ceil(walk / 2);
+  const note = mode === 'bici' ? 'En bicicleta / carril bici' : mode === 'coche' ? 'En coche (tráfico local)' : undefined;
+  return { mode, minutes: mins, ...(note ? { note } : {}) };
 }
 
 // Only estimate an approach leg if the label identifies an actual point in the catalog.
@@ -82,12 +120,17 @@ function marbellaRanking(request, prefs, premium) {
 }
 
 export function createTrip(request, prefs, premium) {
-  const cap = premium ? 5 : 3;
+  const duration = minutes(request.timeWindow.to) - minutes(request.timeWindow.from);
+  const baseCap = duration >= 360 ? 6 : duration >= 240 ? 5 : duration >= 120 ? 4 : 3;
+  const cap = premium ? baseCap + 2 : baseCap;
   const ranked = marbellaRanking(request, prefs, premium);
   const score = p => (ranked.includes(p.id) ? 100 - ranked.indexOf(p.id) : 0)
     + p.categories.filter(c => prefs.interests.includes(c)).length * 4
-    + (prefs.company === 'con_ninos' && p.tags.includes('familia') ? 2 : 0) - (prefs.budget === 'bajo' && p.paid ? 2 : 0)
-    - (p.kind === 'food' ? 6 : 0);
+    + (prefs.company === 'con_ninos' && p.tags?.includes('familia') ? 3 : 0)
+    - (prefs.budget === 'bajo' && p.paid ? 2 : 0)
+    + (p.popularity ? (p.popularity - 80) * 0.4 : 0)
+    + (p.partner ? 4 : 0)
+    - (p.kind === 'food' ? 2 : 0);
   const candidates = catalog.places.filter(p => p.kind !== 'pause' && !(p.stairs && accessibility(prefs)))
     .sort((a, b) => score(b) - score(a) || a.order - b.order);
   const required = new Set(request.mustInclude.map(label => {
@@ -98,8 +141,8 @@ export function createTrip(request, prefs, premium) {
     return match;
   }));
   const route = { id: randomUUID(), name: routeName(request), request, stops: [], version: 1, saved: false, favorite: false };
-  const suggested = ranked.length ? ranked.map(id => candidates.find(p => p.id === id)) : candidates;
-  for (const p of new Set([...required, ...suggested])) {
+  const suggested = ranked.length ? ranked.map(id => candidates.find(p => p.id === id)).filter(Boolean) : candidates;
+  for (const p of new Set([...required, ...suggested, ...candidates])) {
     if (route.stops.length >= cap) {
       if (required.has(p)) throw badRequest('Hay demasiadas paradas imprescindibles para este plan.');
       break;
@@ -111,6 +154,27 @@ export function createTrip(request, prefs, premium) {
       if (required.has(p)) throw badRequest('Los imprescindibles no caben en esa franja horaria.');
     }
   }
+
+  // Fill remaining time with a partner café or tapas break if ample time remains (> 35 min)
+  if (route.stops.length < cap && route.stops.length >= 1) {
+    const lastStop = route.stops[route.stops.length - 1];
+    const lastPlace = catalog.places.find(p => p.id === lastStop.placeId);
+    const existingIds = new Set(route.stops.map(s => s.placeId));
+    const partnerBreaks = catalog.places.filter(p => (p.partner || p.kind === 'food') && !existingIds.has(p.id));
+    if (partnerBreaks.length && lastPlace) {
+      partnerBreaks.sort((a, b) => walkingMinutes(lastPlace, a, 'normal') - walkingMinutes(lastPlace, b, 'normal'));
+      for (const pb of partnerBreaks) {
+        const prev = route.stops;
+        route.stops = [...prev, stopFor(pb)];
+        if (schedule(route, catalog, prefs)) {
+          break;
+        } else {
+          route.stops = prev;
+        }
+      }
+    }
+  }
+
   if (!route.stops.length) throw badRequest('Amplía la franja horaria para que quepa al menos una visita.');
   schedule(route, catalog, prefs);
   return route;

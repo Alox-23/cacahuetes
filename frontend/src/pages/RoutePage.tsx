@@ -71,10 +71,26 @@ export function RoutePage() {
     if (key) toast.show(t(key))
   }
 
+  const enrichedStops = route.stops.map((stop) => {
+    const p = places[stop.placeId]
+    return {
+      ...stop,
+      lat: stop.lat ?? p?.lat,
+      lon: stop.lon ?? p?.lon,
+      photo: stop.photo ?? p?.photo,
+      hours: stop.hours ?? p?.hours,
+      price: stop.price ?? p?.price,
+      rating: stop.rating ?? p?.rating,
+      reviewsCount: stop.reviewsCount ?? p?.reviewsCount,
+      address: stop.address ?? p?.address,
+      googleMapsUrl: stop.googleMapsUrl ?? p?.googleMapsUrl,
+    }
+  })
+
   return (
     <Screen fixed className={layout.page}>
       <div className={styles.mapArea}>
-        <RouteMap stops={route.stops} variant="full" label={mapLabel(route.stops.length)} />
+        <RouteMap stops={enrichedStops} variant="full" routeId={route.id} label={mapLabel(route.stops.length)} />
         <FloatingBackButton onClick={back} />
       </div>
       <Sheet className={styles.sheet}>

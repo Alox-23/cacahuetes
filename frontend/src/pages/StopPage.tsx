@@ -71,8 +71,19 @@ export function StopPage() {
   return (
     <Screen fixed className={layout.page}>
       <div className={styles.photo}>
-        <span>{t('stop.photo')}</span>
+        {place?.photo ? (
+          <img src={place.photo} alt={stop.name} className={styles.photoImg} />
+        ) : (
+          <span>{t('stop.photo')}</span>
+        )}
         <FloatingBackButton onClick={back} />
+        {place?.rating && (
+          <div className={styles.photoRating}>
+            <span className={styles.star}>★</span>
+            <span className={styles.ratingScore}>{place.rating.toFixed(1)}</span>
+            <span className={styles.ratingCount}>({place.reviewsCount ? place.reviewsCount.toLocaleString('es-ES') : ''})</span>
+          </div>
+        )}
       </div>
       <Sheet className={styles.sheet}>
         <div className={styles.body}>
@@ -89,6 +100,25 @@ export function StopPage() {
             {must && <Chip>{t('stop.mustInclude')}</Chip>}
             {stop.locked && <Chip>{t('stop.locked')}</Chip>}
           </div>
+
+          {place?.partner && (
+            <div className={styles.partnerBanner}>
+              <span className={styles.partnerBadge}>⭐ Negocio local afiliado</span>
+              {place.partnerPerk && <span className={styles.partnerPerk}>{place.partnerPerk}</span>}
+            </div>
+          )}
+
+          {place?.address && (
+            <div className={styles.addressRow}>
+              <span className={styles.addressText}>📍 {place.address}</span>
+              {place.googleMapsUrl && (
+                <a href={place.googleMapsUrl} target="_blank" rel="noopener noreferrer" className={styles.mapsLink}>
+                  Abrir en Google Maps ↗
+                </a>
+              )}
+            </div>
+          )}
+
           {place?.why && (
             <div className={styles.why}>
               <span className={styles.whyTitle}>{t('stop.why')}</span>
@@ -97,15 +127,15 @@ export function StopPage() {
           )}
           <dl className={styles.facts}>
             <div className={styles.fact}>
-              <dt>{t('stop.hours')}</dt>
+              <dt>🕒 {t('stop.hours')}</dt>
               <dd>{place?.hours ?? t('stop.hoursPlaceholder')}</dd>
             </div>
             <div className={styles.fact}>
-              <dt>{t('stop.price')}</dt>
+              <dt>💶 {t('stop.price')}</dt>
               <dd>{place?.price ?? t('stop.pricePlaceholder')}</dd>
             </div>
             <div className={styles.fact}>
-              <dt>{t('stop.next')}</dt>
+              <dt>🚶 {t('stop.next')}</dt>
               <dd>{stop.travelToNext ? legLabel(stop.travelToNext) : t('stop.end')}</dd>
             </div>
           </dl>
