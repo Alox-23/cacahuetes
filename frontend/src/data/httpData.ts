@@ -20,7 +20,7 @@ export type HttpDataOptions = {
 type LocalAccount = { name?: string; settings?: AccountSettings }
 type LocalAccounts = Record<string, LocalAccount>
 
-type ConnectedData = DataModule & Required<Pick<AssistantDeps, 'interpretRequest' | 'refineConversation'>>
+type ConnectedData = DataModule & Required<Pick<AssistantDeps, 'interpretRequest' | 'refineConversation' | 'routeQuestion'>>
 
 /** Pass the full /api/cacahuete URL (local or deployed) to use the PostgreSQL backend. */
 export function createHttpDataModule(
@@ -137,6 +137,7 @@ export function createHttpDataModule(
   }
 
   return {
+    routeQuestion: (id, text) => call('routeQuestion', 'POST', { text }, id),
     interpretRequest: text => call('interpretRequest', 'POST', { text }),
     refineConversation: async (route, changes) => {
       const steps = await call<Route[]>('refineConversation', 'POST', { changes, version: route.version }, route.id)

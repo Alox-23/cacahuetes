@@ -25,6 +25,7 @@ export function StopPage() {
   const { state, route, setRoute } = useRoute(id)
   const stop = route?.stops.find((s) => s.order === order)
   const [place, setPlace] = useState<Place | null>(null)
+  const [failedPhoto, setFailedPhoto] = useState<string>()
   const [busy, setBusy] = useState(false)
 
   const placeId = stop?.placeId
@@ -71,7 +72,10 @@ export function StopPage() {
   return (
     <Screen fixed className={layout.page}>
       <div className={styles.photo}>
-        <span>{t('stop.photo')}</span>
+        {failedPhoto === stop.placeId
+          ? <img src="/mascot/cacahuete.svg" width={80} height={80} alt="Cacahuete" />
+          : <img className={styles.placeImage} src={`/places/${encodeURIComponent(stop.placeId)}.jpg`}
+              alt={stop.name} onError={() => setFailedPhoto(stop.placeId)} />}
         <FloatingBackButton onClick={back} />
       </div>
       <Sheet className={styles.sheet}>

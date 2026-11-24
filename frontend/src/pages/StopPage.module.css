@@ -114,3 +114,9 @@
   font-size: var(--font-size-label);
   color: var(--color-text-muted);
 }
+
+.placeImage {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}

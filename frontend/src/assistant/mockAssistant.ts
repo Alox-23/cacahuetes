@@ -356,8 +356,10 @@ export function createAssistant(deps: AssistantDeps): MockAssistant {
       return askNext([])
     }
     const parsed = parseRequest(text, now())
+    let lead: string[] = []
     if (deps.interpretRequest) {
       const hints = await deps.interpretRequest(text)
+      if (hints.message) lead = [hints.message]
       parsed.overrides = { ...hints.overrides, ...parsed.overrides }
       if (hints.durationMinutes) {
         const from = parsed.startHour ?? parsed.timeWindow?.from ?? draft.timeWindow?.from ?? DEFAULT_START_HOUR
@@ -372,6 +374,7 @@ export function createAssistant(deps: AssistantDeps): MockAssistant {
       if (!point) delete draft.start
     }
     if (!parsed.recognized) {
+      if (lead.length) return askNext(lead)
       // While asking for the start point, any free text is taken as the address.
       if (asked === 'start') {
         return { kind: 'question', text: t('request.askOther'), options: slotOptions('start') }
@@ -380,7 +383,7 @@ export function createAssistant(deps: AssistantDeps): MockAssistant {
       return askNext(knowsSomething || summaryShown ? [t('request.notUnderstood')] : [])
     }
     mergeParsed(draft, parsed)
-    return askNext([])
+    return askNext(lead)
   }
 
   async function change(input: { text?: string; option?: string }): Promise<RichReply> {
@@ -403,7 +406,10 @@ export function createAssistant(deps: AssistantDeps): MockAssistant {
     const actions: QuickRefine[] = input.option?.startsWith('quick:')
       ? [input.option.slice('quick:'.length) as QuickRefine]
       : parseRefineText(input.text ?? '')
-    if (actions.length === 0) return greeting(t('change.notUnderstood'))
+    if (actions.length === 0) {
+      const reply = input.text && deps.routeQuestion ? await deps.routeQuestion(routeId, input.text) : null
+      return greeting(reply?.message ?? t('change.notUnderstood'))
+    }
 
     const bullets: string[] = []
     let route = await deps.getRoute(routeId)

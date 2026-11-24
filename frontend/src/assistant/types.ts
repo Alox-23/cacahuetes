@@ -32,9 +32,10 @@ export type RichReply = AssistantReply & { display?: ReplyDisplay }
 export type AssistantMode = 'onboarding' | 'request' | 'change'
 
 export type AssistantDeps = {
+  routeQuestion?: (id: string, text: string) => Promise<{ message: string | null }>
   refineConversation?: (route: Route, changes: QuickRefine[]) => Promise<Route[]>
   interpretRequest?: (text: string) => Promise<{
-    overrides: Partial<Preferences>; durationMinutes?: number; start?: { label: string }
+    message?: string; overrides: Partial<Preferences>; durationMinutes?: number; start?: { label: string }
   }>
   getPreferences: () => Promise<Preferences | null>
   savePreferences?: (p: Preferences) => Promise<void>

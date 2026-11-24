@@ -34,6 +34,7 @@ export function ChatInput({ placeholder, onSend, disabled = false, label, classN
       <input
         id={id}
         type="text"
+        maxLength={500}
         className={styles.input}
         placeholder={placeholder}
         value={value}
