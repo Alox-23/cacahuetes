@@ -30,7 +30,7 @@
     "hours": "Abierto 24 horas (espacio público)",
     "price": "Acceso gratuito",
     "address": "Plaza de los Naranjos, s/n, 29601 Marbella, Málaga",
-    "photo": "https://images.unsplash.com/photo-1583200424564-927375bf22fa?auto=format&fit=crop&w=800&q=80",
+    "photo": "/places/naranjos.jpg",
     "googleMapsUrl": "https://maps.google.com/?q=Plaza+de+los+Naranjos+Marbella"
   },
   {
@@ -62,7 +62,7 @@
     "hours": "Lun - Sáb: 08:30 - 20:30 · Dom: 09:00 - 21:00",
     "price": "Entrada libre y gratuita",
     "address": "Plaza de la Iglesia, 1, 29601 Marbella, Málaga",
-    "photo": "https://images.unsplash.com/photo-1548625361-16eb16198888?auto=format&fit=crop&w=800&q=80",
+    "photo": "/places/encarnacion.jpg",
     "googleMapsUrl": "https://maps.google.com/?q=Iglesia+de+la+Encarnacion+Marbella"
   },
   {
@@ -94,7 +94,7 @@
     "hours": "Mar - Sáb: 10:00 - 19:00 · Dom: 10:00 - 14:00 (Lunes cerrado)",
     "price": "3,00 € (general) · 1,50 € (estudiantes y jubilados)",
     "address": "Calle Hospital Bazán, s/n, 29601 Marbella, Málaga",
-    "photo": "https://images.unsplash.com/photo-1579783902614-a3fb3927b675?auto=format&fit=crop&w=800&q=80",
+    "photo": "/places/grabado.jpg",
     "googleMapsUrl": "https://maps.google.com/?q=Museo+del+Grabado+Espanol+Contemporaneo+Marbella"
   },
   {
