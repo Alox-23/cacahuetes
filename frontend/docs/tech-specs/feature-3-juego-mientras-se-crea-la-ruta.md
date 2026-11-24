@@ -187,3 +187,34 @@ If any drawn element becomes invisible against its new background (check: squirr
 | Paused overlay background | `rgba(254, 243, 226, 0.55)` |
 
 Check every text colour against its background for 4.5:1 (brown `#4A2F1B` on cream and white passes; white on `#4A2F1B` passes). Do not touch selectors, sizes or animations.
+
+## 11. Fit: the game fills the free space on mobile
+
+User request (2026-11-24): on a phone the game is a 342 × 128 px strip with empty space under it. The game must fill the free vertical space of the Creating screen without distorting the art.
+
+### 11.1 Approach
+
+The logical world stays 800 × 300 (physics, spawning and hitboxes unchanged). The canvas is allowed to be taller than the 800:300 ratio; the engine keeps a uniform scale (from the width), centres the world band vertically with a bias towards the sky, and paints the extra area above with the sky and below with the earth, so the result looks like a taller scene rather than a letterbox.
+
+### 11.2 Engine change (`game.js` only, documented in `SOURCE.md`)
+
+- `resize()`: use the root's real CSS height when it differs from `cssW * H / W` (the host sets it through CSS, see 11.3); otherwise keep the current behaviour. Set `this.scale = bw / W` as now, `this.viewH = bh / this.scale` (visible logical height, ≥ H) and `this.offsetY = Math.round((this.viewH - H) * 0.65)` (65 % of the extra space goes above the world band, 35 % below). Both are 0 in the unchanged case.
+- `render()`: before translating, fill the whole visible area (`0..viewH`) with `PALETTE.skyTop` above the band and `PALETTE.earthDark` below it, then `ctx.translate(0, this.offsetY)` and draw the world exactly as today. The sky gradient starts at `skyTop` at y = 0 and the earth gradient ends at `earthDark` at y = H, so the fills are seamless. Draw the vignette over the full visible area instead of the band (pass `viewH` and `-offsetY` to `drawVignette`, or draw it in `game.js`), so there is no visible band edge.
+- HUD (score bar) and the catch star burst: draw them relative to the visible canvas top, not the band (`ctx.setTransform(scale…)` without the band offset, same positions as today), so the score stays in the top corner.
+- Screen shake and the pulse scale keep working (they are applied inside the translated world).
+- Floating leaves may spawn in the extra sky: extend `makeLeaf` bounds by `offsetY` only if trivial; otherwise leave as is.
+- No change to `WORLD`, `config.js`, `entities.js` or `input.js`. `peanut-run.css` is not changed (the host overrides the aspect ratio, 11.3).
+
+### 11.3 Host sizing
+
+- `PeanutRunGame.module.css`: `.slot { flex: 1 1 0; min-height: 128px; max-height: 420px; display: flex }` and `.slot :global(.peanut-run) { aspect-ratio: auto; height: 100%; max-width: none }`. The engine's ResizeObserver on the root picks up the height.
+- `CreatingPage.module.css`: the game section (label, slot, hint) becomes the flex-growing block of the column (`flex: 1 1 0; min-height: 0; display: flex; flex-direction: column`), the slot grows inside it, and `.center` stops centring (`justify-content: flex-start`) so the game takes the leftover space between the hint and the footer. At 390 × 844 the game should be roughly 342 × 240–280 px; at 360 × 640 at least 128 px tall; on desktop it caps at 420 px tall.
+- The wrapper's existing narrow-slot dialog overrides stay; with more height the engine's own stacked dialog may fit again, so the `@container (max-width: 560px)` rule should become `@container (max-width: 560px) and (max-height: 200px)` so the two-column layout applies only to short slots.
+
+### 11.4 Acceptance
+
+- [ ] At 390 × 844 the game is at least 240 px tall and the screen does not scroll; at 360 × 640 the game is at least 128 px tall and nothing overflows; at 1280 × 900 the game is no taller than 420 px.
+- [ ] The art is not stretched: the peanut and squirrel keep their proportions (compare against a 800 × 300 screenshot); the sky and ground extend seamlessly above and below.
+- [ ] The score bar stays in the top-left of the canvas; the catch dialog is centred and its buttons are ≥ 44 px tall at every size.
+- [ ] `diff` against the branch shows changes in `game.js` only for `resize()`, `render()`, the HUD/star positioning and the vignette call, plus the earlier `strings` change; `SOURCE.md` lists "Fit" as a local change.
+- [ ] Gameplay unchanged: start, jump, catch, Sí / No, high score persistence; tests still pass (add one `resize()` test with a taller container that asserts `offsetY > 0` and the backing height).
