@@ -1,8 +1,0 @@
-.page {
-  padding: 16px var(--space-screen-padding) var(--space-bottom-padding);
-  gap: 16px;
-}
-
-.text {
-  color: var(--color-text-muted);
-}

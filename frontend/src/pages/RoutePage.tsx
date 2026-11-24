@@ -1,116 +1,144 @@
-// TODO(feature-2): placeholder Route screen so the create flow ends somewhere real.
-// Replaced by the real Ruta screen (map, Lugar, save…) in feature 2 / spec 2.
-import { Fragment, useCallback, useEffect, useState } from 'react'
-import { useParams } from 'react-router-dom'
-import { Button, Header, QuickReply, Screen } from '../components'
-import { formatDateShort, legLabel } from '../assistant/format'
+/* Ruta (Ruta.html): schematic map, stops with times and legs, quick changes, save and share. */
+import { useEffect, useState } from 'react'
+import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Button, FloatingBackButton, Header, IconButton, Mascot, RouteMap, Screen, ShareIcon, Sheet, StopRow } from '../components'
 import type { Route } from '../contract/types'
 import { t, tDynamic } from '../i18n'
 import { QUICK_REFINES } from '../lib/refineKeywords'
-import { routeEnd } from '../lib/route'
-import { useCurrentRoute, useData, usePendingRequest } from '../state/AppState'
+import { mapLabel, routeSubtitle, stopDetail } from '../lib/routeText'
+import { shareToastKey, shareRoute } from '../lib/share'
+import { useBack } from '../lib/useBack'
+import { useCurrentRoute, useData, usePendingRequest, usePreferences, useSession, useToast } from '../state/AppState'
+import layout from './layout.module.css'
+import { activityFor, useRoute, useStopPlaces } from './routeHooks'
 import styles from './RoutePage.module.css'
 
 export function RoutePage() {
   const { id = '' } = useParams()
+  const navigate = useNavigate()
   const data = useData()
+  const { preferences } = usePreferences()
+  const { isAccount } = useSession()
   const { setCurrentRouteId } = useCurrentRoute()
   const { setPendingRequest } = usePendingRequest()
-  const [route, setRoute] = useState<Route | null>(null)
-  const [missing, setMissing] = useState(false)
+  const toast = useToast()
+  const back = useBack('/chat')
+  const { state, route, setRoute } = useRoute(id)
+  const places = useStopPlaces(route)
   const [busy, setBusy] = useState(false)
 
   // The create flow is over once the route is on screen.
   useEffect(() => setPendingRequest(null), [setPendingRequest])
-
   useEffect(() => {
-    let alive = true
-    data.getRoute(id).then(
-      (r) => {
-        if (!alive) return
-        setRoute(r)
-        setCurrentRouteId(r.id)
-      },
-      () => alive && setMissing(true),
-    )
-    return () => {
-      alive = false
+    if (route) setCurrentRouteId(route.id)
+  }, [route, setCurrentRouteId])
+
+  async function run(fn: () => Promise<Route>) {
+    if (busy) return
+    setBusy(true)
+    try {
+      setRoute(await fn())
+    } finally {
+      setBusy(false)
     }
-  }, [data, id, setCurrentRouteId])
+  }
 
-  const run = useCallback(
-    async (fn: () => Promise<Route>) => {
-      if (busy) return
-      setBusy(true)
-      try {
-        setRoute(await fn())
-      } finally {
-        setBusy(false)
-      }
-    },
-    [busy],
-  )
-
-  if (missing) {
+  if (state.status === 'missing') {
     return (
-      <Screen className={styles.page}>
-        <Header backTo="/chat" backLabel={t('route.backToChat')} />
-        <p className={styles.muted}>{t('route.notFound')}</p>
+      <Screen className={layout.body}>
+        <Header onBack={back} backLabel={t('route.backToChat')} />
+        <p className={layout.muted}>{t('route.notFound')}</p>
       </Screen>
     )
   }
   if (!route) return null
 
-  const { request } = route
-  return (
-    <Screen className={styles.page}>
-      <Header backTo="/chat" backLabel={t('route.backToChat')} title={route.name} />
-      <p className={styles.meta}>
-        {formatDateShort(request.date)} · {t('format.timeRange', { from: request.timeWindow.from, to: routeEnd(route) })}
-        <span className={styles.version}> · {t('route.version', { version: route.version })}</span>
-      </p>
+  async function save(r: Route) {
+    if (r.saved) return navigate(`/my-routes/${r.id}`)
+    if (!isAccount) return navigate(`/route/${r.id}/save`)
+    setBusy(true)
+    try {
+      await data.saveRoute(r.id)
+      toast.show(t('toast.routeSaved'))
+      navigate(`/my-routes/${r.id}`)
+    } finally {
+      setBusy(false)
+    }
+  }
 
-      <section aria-label={t('route.stopsLabel')}>
-        <ol className={styles.stops}>
-          {route.stops.map((stop) => (
-            <Fragment key={`${stop.order}-${stop.placeId}`}>
-              <li className={styles.stop}>
-                <span className={styles.badge} aria-hidden="true">
-                  {stop.order}
-                </span>
-                <div className={styles.stopText}>
-                  <span className={styles.stopName}>{stop.name}</span>
-                  <span className={styles.muted}>
-                    {t('route.arrive', { time: stop.arrive })} · {t('route.visit', { minutes: stop.visitMinutes })}
-                    {stop.locked ? ` · ${t('route.locked')}` : ''}
-                  </span>
-                  {stop.travelToNext && <span className={styles.leg}>{legLabel(stop.travelToNext)}</span>}
-                </div>
-              </li>
-            </Fragment>
+  async function share(r: Route) {
+    const key = shareToastKey(await shareRoute(r))
+    if (key) toast.show(t(key))
+  }
+
+  return (
+    <Screen fixed className={layout.page}>
+      <div className={styles.mapArea}>
+        <RouteMap stops={route.stops} variant="full" label={mapLabel(route.stops.length)} />
+        <FloatingBackButton onClick={back} />
+      </div>
+      <Sheet className={styles.sheet}>
+        <div className={styles.top}>
+          <div className={styles.titleBlock}>
+            <h1 className={styles.title}>{route.name}</h1>
+            <p className={styles.subtitle}>{routeSubtitle(route, preferences)}</p>
+          </div>
+          <div className={styles.quick} role="group" aria-label={t('route.quickTitle')}>
+            {QUICK_REFINES.map((value) => (
+              <button
+                key={value}
+                type="button"
+                className={styles.quickButton}
+                disabled={busy}
+                onClick={() => run(() => data.refineRoute(route.id, { type: 'quick', value }))}
+              >
+                {tDynamic(`route.quick.${value}`)}
+              </button>
+            ))}
+            {route.version > 1 && (
+              <button
+                type="button"
+                className={styles.undo}
+                disabled={busy}
+                onClick={() => run(() => data.undo(route.id))}
+              >
+                {t('common.undo')}
+              </button>
+            )}
+          </div>
+        </div>
+
+        <ol className={styles.stops} aria-label={t('route.stopsLabel')}>
+          {route.stops.map((stop, i) => (
+            <li key={`${stop.order}-${stop.placeId}`}>
+              <StopRow
+                order={stop.order}
+                name={stop.name}
+                detail={stopDetail(stop, activityFor(places, stop.placeId))}
+                time={stop.arrive}
+                to={`/route/${route.id}/stop/${stop.order}`}
+                linkState={{ depth: 1 }}
+                last={i === route.stops.length - 1}
+              />
+            </li>
           ))}
         </ol>
-        <p className={styles.muted}>{t('route.ends', { time: routeEnd(route) })}</p>
-      </section>
 
-      <div className={styles.bottom}>
-        <section className={styles.quick} aria-label={t('route.quickTitle')}>
-          {QUICK_REFINES.map((value) => (
-            <QuickReply
-              key={value}
-              label={tDynamic(`route.quick.${value}`)}
-              disabled={busy}
-              onClick={() => run(() => data.refineRoute(route.id, { type: 'quick', value }))}
-            />
-          ))}
-        </section>
-        <Button variant="secondary" fullWidth to={`/route/${route.id}/change`}>
-          {t('route.askChange')}
-        </Button>
-        <Button variant="text" className={styles.undo} disabled={route.version === 1 || busy} onClick={() => run(() => data.undo(route.id))}>
-          {t('common.undo')}
-        </Button>
-      </div>
+        <div className={styles.bottom}>
+          <Link to={`/route/${route.id}/change`} className={styles.ask}>
+            <Mascot size={24} />
+            {t('route.askChange')}
+          </Link>
+          <div className={styles.actions}>
+            <Button className={styles.save} disabled={busy} onClick={() => void save(route)}>
+              {route.saved ? t('routeScreen.saved') : t('routeScreen.save')}
+            </Button>
+            <IconButton label={t('routeScreen.share')} onClick={() => void share(route)}>
+              <ShareIcon />
+            </IconButton>
+          </div>
+        </div>
+      </Sheet>
     </Screen>
   )
 }

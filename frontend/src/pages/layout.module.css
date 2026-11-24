@@ -1,0 +1,172 @@
+/* Shared layout of the spec 2 screens: scrollable body + footer pinned above the tab bar. */
+.page {
+  min-height: 0;
+}
+
+.form {
+  flex-grow: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.body {
+  flex-grow: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-gap);
+  padding: 16px var(--space-screen-padding) 0;
+}
+
+.gap12 {
+  gap: 12px;
+}
+
+.gap14 {
+  gap: 14px;
+}
+
+.gap16 {
+  gap: 16px;
+}
+
+.gap18 {
+  gap: 18px;
+}
+
+.footer {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px var(--space-screen-padding) var(--space-bottom-padding);
+}
+
+.footerTight {
+  padding-bottom: 16px;
+}
+
+.spacer {
+  flex-grow: 1;
+}
+
+.header {
+  flex-shrink: 0;
+}
+
+.titleBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.h1 {
+  font-family: var(--font-heading);
+  font-weight: 700;
+  font-size: var(--font-size-h1);
+  line-height: 1.15;
+}
+
+.h1Small {
+  font-size: 26px;
+}
+
+.h1Route {
+  font-size: 24px;
+}
+
+.subtitle {
+  font-size: var(--font-size-body);
+  line-height: 1.45;
+  color: var(--color-text-muted);
+}
+
+.muted {
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--color-text-muted);
+}
+
+.sectionTitle {
+  font-size: var(--font-size-body);
+  font-weight: 600;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.listCard {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 0 20px;
+}
+
+.stopsCard {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 0 16px;
+}
+
+/* Inline text actions (centered, 44 px). */
+.textAction {
+  align-self: center;
+  display: flex;
+  align-items: center;
+  min-height: var(--size-touch-target);
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--color-primary);
+  font-family: inherit;
+  font-size: var(--font-size-body);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.textAction:hover {
+  color: var(--color-primary-hover);
+}
+
+.start {
+  align-self: flex-start;
+}
+
+.danger {
+  color: var(--color-danger);
+}
+
+.danger:hover {
+  color: var(--color-danger);
+  text-decoration: underline;
+}
+
+.secondaryButton {
+  font-size: 16px;
+}
+
+.center {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 16px var(--space-screen-padding);
+  text-align: center;
+}
+
+.fieldset {
+  flex-shrink: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  display: flex;
+  flex-direction: column;
+}

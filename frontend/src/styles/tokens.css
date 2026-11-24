@@ -61,4 +61,10 @@
   --color-frame: #E7DCCB;          /* page background outside the app column */
   --color-mascot-face: #3B2412;    /* mascot eyes and mouth */
   --color-segmented-text: #5A4636; /* unselected segment label */
+  --color-photo-placeholder: #E6D3B5; /* "[FOTO DEL LUGAR]" block (Lugar.html) */
+  --color-star-off: #9A8672;       /* empty star outline (Valorar.html) */
+  --color-backdrop: rgba(42, 26, 14, 0.45); /* confirm sheet overlay (primary-hover at 45%) */
+  --shadow-floating: 0 1px 4px rgba(21, 34, 38, 0.18); /* floating back button over the map */
+  --shadow-sheet: 0 -2px 10px rgba(21, 34, 38, 0.08);  /* white sheet over the map */
+  --shadow-toast: 0 4px 16px rgba(21, 34, 38, 0.16);
 }

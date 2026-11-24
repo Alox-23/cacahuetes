@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { RouteRequest } from '../contract/types'
 import { routeEnd } from '../lib/route'
+import { findPlace } from './catalog'
 import { DEFAULT_PREFERENCES } from './defaults'
 import { createDataModule } from './mockData'
 import { STORAGE_KEYS, createStorage, memoryBackend } from './storage'
@@ -120,11 +121,13 @@ describe('mock data module', () => {
     expect(next.stops.map((s) => s.name)).toContain('Cal Pep')
   })
 
-  it('mas_barato replaces the first paid place with a free one', async () => {
+  it('mas_barato replaces the first paid place that is not a must-include with a free one', async () => {
     const { data, route } = await withRoute()
     const next = await data.refineRoute(route.id, { type: 'quick', value: 'mas_barato' })
-    expect(next.stops[0].name).not.toBe('Sagrada Família')
-    expect(next.stops.map((s) => s.name)).not.toContain('Sagrada Família')
+    // Sagrada Família is in mustInclude, so it stays; Casa Batlló (paid) is the one replaced.
+    expect(next.stops[0].name).toBe('Sagrada Família')
+    expect(next.stops.map((s) => s.name)).not.toContain('Casa Batlló')
+    expect(next.stops.some((s) => !findPlace(s.placeId)?.paid && s.order === 2)).toBe(true)
   })
 
   it('a text action can apply several changes in one version', async () => {
@@ -161,7 +164,13 @@ describe('mock data module', () => {
     await data.saveRoute(route.id)
     const reopened = createDataModule(storage, { latency: 0 })
     expect(await reopened.getPreferences()).toEqual(DEFAULT_PREFERENCES)
-    expect(await reopened.getSession()).toEqual({ kind: 'account', email: 'ana@example.com', name: 'ana' })
+    // Feature 2: the name is capitalised and accounts carry reminder settings.
+    expect(await reopened.getSession()).toEqual({
+      kind: 'account',
+      email: 'ana@example.com',
+      name: 'Ana',
+      settings: { remindDayBefore: true, remindToRate: true },
+    })
     const list = await reopened.listRoutes()
     expect(list).toHaveLength(1)
     expect(list[0].saved).toBe(true)
@@ -181,5 +190,172 @@ describe('mock data module', () => {
     await data.deleteRoute(route.id)
     await expect(data.getRoute(route.id)).rejects.toThrow()
     await expect(data.getPlace('nope')).rejects.toThrow()
+  })
+})
+
+/* ---------- feature 2 ---------- */
+
+const TODAY = new Date(2026, 10, 24, 12) // Tue 24 Nov 2026
+
+function setupAt(now = TODAY) {
+  const storage = createStorage(memoryBackend())
+  let n = 0
+  const data = createDataModule(storage, { latency: 0, newId: () => `r${++n}`, now: () => now })
+  return { storage, data }
+}
+
+describe('mock data module · feature 2', () => {
+  it('login seeds three example routes relative to today (two upcoming, one past favourite with a rating)', async () => {
+    const { data } = setupAt()
+    await data.savePreferences(DEFAULT_PREFERENCES)
+    const session = await data.login('marta@ejemplo.com', '12345678')
+    expect(session).toMatchObject({ kind: 'account', name: 'Marta', settings: { remindDayBefore: true, remindToRate: true } })
+    const routes = await data.listRoutes()
+    expect(routes).toHaveLength(3)
+    expect(routes.every((r) => r.saved)).toBe(true)
+    // Newest first by request date.
+    expect(routes.map((r) => r.request.date)).toEqual(['2026-12-20', '2026-12-06', '2026-11-14'])
+    expect(routes.map((r) => r.request.city)).toEqual(['Valencia', 'Barcelona', 'Sevilla'])
+    const bcn = routes[1]
+    expect(bcn.name).toBe('Barcelona en 5 horas')
+    expect(bcn.stops.map((s) => s.name)).toEqual(['Sagrada Família', 'Casa Batlló', 'Mercat de la Boqueria', 'Barri Gòtic'])
+    expect(bcn.stops[0].arrive).toBe('10:00')
+    expect(routes[0].name).toBe('Valencia, día completo')
+    const past = routes[2]
+    expect(past.name).toBe('Sevilla, tarde tranquila')
+    expect(routes.filter((r) => r.favorite).map((r) => r.id)).toEqual([past.id])
+    expect(await data.getRating(past.id)).toMatchObject({ stars: 4 })
+    expect(await data.getRating(bcn.id)).toBeNull()
+  })
+
+  it('logging in again does not seed twice', async () => {
+    const { data } = setupAt()
+    await data.login('marta@ejemplo.com', '12345678')
+    await data.logout()
+    await data.login('marta@ejemplo.com', '12345678')
+    expect(await data.listRoutes()).toHaveLength(3)
+  })
+
+  it('register does not seed; guests list nothing; unsaved routes are excluded', async () => {
+    const { data } = setupAt()
+    const route = await data.createRoute(bcnRequest)
+    expect(await data.listRoutes()).toEqual([]) // guest
+    await expect(data.saveRoute(route.id)).rejects.toThrow('GUEST_CANNOT_SAVE')
+    await data.register('nuevo@ejemplo.com', '12345678')
+    expect(await data.listRoutes()).toEqual([]) // account, but the route is not saved
+    await data.saveRoute(route.id)
+    expect((await data.listRoutes()).map((r) => r.id)).toEqual([route.id])
+    await data.logout()
+    expect(await data.listRoutes()).toEqual([])
+    // Guests keep access to their route by id.
+    expect((await data.getRoute(route.id)).id).toBe(route.id)
+  })
+
+  it('favourite toggle persists across versions', async () => {
+    const { data } = setupAt()
+    await data.register('a@ejemplo.com', '12345678')
+    const route = await data.createRoute(bcnRequest)
+    await data.refineRoute(route.id, { type: 'quick', value: 'anadir_pausa' })
+    expect((await data.setFavorite(route.id, true)).favorite).toBe(true)
+    expect((await data.undo(route.id)).favorite).toBe(true)
+    expect((await data.setFavorite(route.id, false)).favorite).toBe(false)
+  })
+
+  it('rating round-trip and deletion removes it', async () => {
+    const { data } = setupAt()
+    const route = await data.createRoute(bcnRequest)
+    expect(await data.getRating(route.id)).toBeNull()
+    const rating = { stars: 3, stops: { 1: true, 3: false }, comment: 'Más tiempo en la Sagrada Família' }
+    await data.rateRoute(route.id, rating)
+    expect(await data.getRating(route.id)).toEqual(rating)
+    await data.deleteRoute(route.id)
+    expect(await data.getRating(route.id)).toBeNull()
+  })
+
+  it('updateAccount merges name, email and settings; guests cannot', async () => {
+    const { data } = setupAt()
+    await expect(data.updateAccount({ name: 'X' })).rejects.toThrow()
+    await data.register('ana@ejemplo.com', '12345678')
+    const next = await data.updateAccount({ name: 'Ana María', settings: { remindDayBefore: false, remindToRate: true } })
+    expect(next).toEqual({ kind: 'account', email: 'ana@ejemplo.com', name: 'Ana María', settings: { remindDayBefore: false, remindToRate: true } })
+    expect(await data.getSession()).toEqual(next)
+  })
+
+  it('deleteAccount clears session, routes, ratings and current route but keeps preferences', async () => {
+    const { data, storage } = setupAt()
+    await data.savePreferences(DEFAULT_PREFERENCES)
+    await data.login('ana@ejemplo.com', '12345678')
+    const [first] = await data.listRoutes()
+    storage.write(STORAGE_KEYS.currentRoute, first.id)
+    await data.deleteAccount()
+    expect(await data.getSession()).toEqual({ kind: 'guest' })
+    await expect(data.getRoute(first.id)).rejects.toThrow()
+    expect(await data.getRating(first.id)).toBeNull()
+    expect(storage.read(STORAGE_KEYS.currentRoute, 'none')).toBe('none')
+    expect(await data.getPreferences()).toEqual(DEFAULT_PREFERENCES)
+  })
+
+  it('alternatives: Casa Batlló gets the hand-written three, none already in the route; pauses get none', async () => {
+    const { data } = setupAt()
+    await data.savePreferences(DEFAULT_PREFERENCES)
+    const route = await data.createRoute(bcnRequest)
+    const alts = await data.getAlternatives(route.id, 2)
+    expect(alts.map((p) => p.name)).toEqual(['Casa Milà, La Pedrera', 'Palau de la Música Catalana', 'Casa Vicens'])
+    expect(alts[0]).toMatchObject({ visitMinutes: 50, travel: { mode: 'a_pie', minutes: 6 } })
+    expect(alts[2]).toMatchObject({ visitMinutes: 45, travel: { mode: 'transporte_publico', minutes: 12 } })
+    const inRoute = new Set(route.stops.map((s) => s.placeId))
+    for (const order of [1, 3, 4]) {
+      const list = await data.getAlternatives(route.id, order)
+      expect(list).toHaveLength(3)
+      expect(list.some((p) => inRoute.has(p.id))).toBe(false)
+    }
+    const paused = await data.refineRoute(route.id, { type: 'quick', value: 'anadir_pausa' })
+    const pause = paused.stops.find((s) => s.name === 'Pausa para café')
+    expect(await data.getAlternatives(route.id, pause?.order ?? 0)).toEqual([])
+  })
+
+  it('alternative-only places never join a new route unless asked for', async () => {
+    const { data } = setupAt()
+    const route = await data.createRoute({ ...bcnRequest, mustInclude: [], timeWindow: { from: '10:00', to: '19:00' } })
+    expect(route.stops.map((s) => s.placeId)).not.toContain('bcn-casa-mila')
+    const asked = await data.createRoute({ ...bcnRequest, mustInclude: ['La Pedrera'] })
+    expect(asked.stops.map((s) => s.placeId)).toContain('bcn-casa-mila')
+  })
+
+  it('swapping a stop recalculates the following times', async () => {
+    const { data } = setupAt()
+    await data.savePreferences(DEFAULT_PREFERENCES)
+    const route = await data.createRoute(bcnRequest)
+    expect(route.stops.map((s) => s.arrive)).toEqual(['10:00', '11:40', '13:00', '14:15'])
+    const swapped = await data.refineRoute(route.id, { type: 'swap_stop', order: 2, placeId: 'bcn-casa-mila' })
+    expect(swapped.stops[1].name).toBe('Casa Milà, La Pedrera')
+    expect(swapped.stops[1].visitMinutes).toBe(50)
+    // Every arrival = previous arrival + visit + leg (legs around the swapped stop are re-linked).
+    const toMin = (hhmm: string) => Number(hhmm.slice(0, 2)) * 60 + Number(hhmm.slice(3))
+    for (let i = 1; i < swapped.stops.length; i++) {
+      const prev = swapped.stops[i - 1]
+      expect(toMin(swapped.stops[i].arrive)).toBe(toMin(prev.arrive) + prev.visitMinutes + (prev.travelToNext?.minutes ?? 0))
+    }
+    expect(swapped.stops.map((s) => s.arrive)).not.toEqual(route.stops.map((s) => s.arrive))
+  })
+})
+
+describe('mock data module · saved routes belong to the account', () => {
+  it('another account does not see them and still gets the examples; deleting a route frees it', async () => {
+    const { data } = setupAt()
+    const route = await data.createRoute(bcnRequest)
+    await data.register('ana@ejemplo.com', '12345678')
+    await data.saveRoute(route.id)
+    await data.logout()
+    await data.login('marta@ejemplo.com', '12345678')
+    const marta = await data.listRoutes()
+    expect(marta).toHaveLength(3)
+    expect(marta.map((r) => r.id)).not.toContain(route.id)
+    await data.logout()
+    await data.login('ana@ejemplo.com', '12345678')
+    expect((await data.listRoutes()).map((r) => r.id)).toEqual([route.id])
+    const renamed = await data.updateAccount({ email: 'ana.m@ejemplo.com' })
+    expect(renamed.email).toBe('ana.m@ejemplo.com')
+    expect((await data.listRoutes()).map((r) => r.id)).toEqual([route.id])
   })
 })

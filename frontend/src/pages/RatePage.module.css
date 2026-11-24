@@ -1,0 +1,40 @@
+.stops {
+  flex-shrink: 0;
+  list-style: none;
+  padding: 0;
+  margin-top: -12px;
+  display: flex;
+  flex-direction: column;
+}
+
+.stop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 56px;
+  border-bottom: 1px solid var(--color-divider);
+}
+
+.stopName {
+  min-width: 0;
+  font-size: var(--font-size-body);
+  font-weight: 500;
+}
+
+.pair {
+  flex-shrink: 0;
+  display: flex;
+  gap: 6px;
+}
+
+.yesNo {
+  min-width: 52px;
+  justify-content: center;
+}
+
+.hint {
+  font-size: var(--font-size-label);
+  color: var(--color-text-muted);
+  text-align: center;
+}

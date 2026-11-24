@@ -39,7 +39,11 @@ import type { AssistantDeps, AssistantMode, RichReply } from './types'
 
 export interface MockAssistant extends Assistant {
   sendMessage(input: { text?: string; option?: string }): Promise<RichReply>
-  reset(mode: AssistantMode, ctx?: { route?: Route }): void
+  /**
+   * Start a mode. `route` feeds change mode; `request` (feature 2, "Reutilizar")
+   * pre-fills request mode so the first reply is the "Esto es lo que entendí" summary.
+   */
+  reset(mode: AssistantMode, ctx?: { route?: Route; request?: RouteRequest }): void
   getState(): { mode: AssistantMode; onboardingStep: number; onboardingComplete: boolean; routeId?: string }
 }
 
@@ -182,6 +186,19 @@ function toRequest(draft: Draft): RouteRequest {
   return request
 }
 
+/** Draft filled from a stored request (reuse a saved route). */
+function draftFrom(request: RouteRequest): Draft {
+  return {
+    city: request.city,
+    date: request.date,
+    timeWindow: { ...request.timeWindow },
+    startHour: request.timeWindow.from,
+    start: { ...request.start },
+    mustInclude: [...request.mustInclude],
+    overrides: { ...(request.overrides ?? {}) },
+  }
+}
+
 /* ---------- change helpers ---------- */
 
 function describeChange(action: QuickRefine, before: Route, after: Route): string {
@@ -235,6 +252,7 @@ export function createAssistant(deps: AssistantDeps): MockAssistant {
   let asked: Slot | undefined
   let awaitingOtherStart = false
   let summaryShown = false
+  let reused = false
   // change
   let routeId: string | undefined
   let lastApplied = 0
@@ -267,11 +285,12 @@ export function createAssistant(deps: AssistantDeps): MockAssistant {
       asked = undefined
       const wasShown = summaryShown
       summaryShown = true
+      const auto = wasShown ? [t('summary.updated')] : reused ? [t('summary.reused')] : []
       return {
         kind: 'summary',
         text: t('summary.title'),
         request: toRequest(draft),
-        display: { lead: lead.length > 0 ? lead : wasShown ? [t('summary.updated')] : [] },
+        display: { lead: lead.length > 0 ? lead : auto },
       }
     }
     const slot = missing[0]
@@ -405,6 +424,8 @@ export function createAssistant(deps: AssistantDeps): MockAssistant {
       asked = undefined
       awaitingOtherStart = false
       summaryShown = false
+      reused = Boolean(ctx?.request)
+      if (ctx?.request) draft = draftFrom(ctx.request)
       routeId = ctx?.route?.id
       lastApplied = 0
     },

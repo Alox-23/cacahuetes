@@ -121,7 +121,7 @@ export interface DataModule {
 }
 ```
 
-`rateRoute` keeps its signature but its argument type is now `Rating`. `listRoutes()` returns saved routes only, newest first by `request.date`. Mark the additions with a comment `// Añadido en feature 2` so the backend developer sees them.
+`rateRoute` keeps its signature but its argument type is now `Rating`. `listRoutes()` returns saved routes only; the Mis rutas screen sorts upcoming routes soonest first and past or favourite routes most recent first (`lib/routeFilters.ts`). Mark the additions with a comment `// Añadido en feature 2` so the backend developer sees them.
 
 ## 6. Mock data module changes
 

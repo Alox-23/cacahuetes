@@ -13,7 +13,13 @@
     "cancel": "Cancelar",
     "undo": "Deshacer",
     "loading": "Cargando…",
-    "listAnd": "y"
+    "listAnd": "y",
+    "close": "Cerrar",
+    "yes": "Sí",
+    "no": "No",
+    "optional": "(opcional)",
+    "saveChanges": "Guardar cambios",
+    "pending": "Función pendiente"
   },
   "assistant": {
     "name": "Cacahuete",
@@ -173,7 +179,8 @@
     "hint": "¿Algo no encaja? Escríbelo abajo y lo corrijo.",
     "noPreferences": "Sin preferencias aplicadas",
     "startPrefix": "Desde {label}",
-    "updated": "Actualizado con lo que me has dicho."
+    "updated": "Actualizado con lo que me has dicho.",
+    "reused": "Esta es tu ruta guardada. Si quieres, cambia algo antes de crearla otra vez."
   },
   "format": {
     "hoursOne": "1 hora",
@@ -182,7 +189,9 @@
     "minutes": "{count} min",
     "allDay": "Todo el día",
     "timeRange": "{from}–{to}",
-    "durationFrom": "{duration} desde las {from}"
+    "durationFrom": "{duration} desde las {from}",
+    "compactHours": "{hours} h",
+    "compactHoursMinutes": "{hours} h {minutes}"
   },
   "creating": {
     "title": "Cacahuete está creando tu ruta",
@@ -249,12 +258,217 @@
     "myRoutes": "Mis rutas",
     "profile": "Perfil"
   },
-  "stub": {
-    "pending": "Pantalla pendiente (spec 2)",
-    "preferences": "Preferencias de viaje",
+  "seeds": {
+    "valencia": "Valencia, día completo",
+    "sevilla": "Sevilla, tarde tranquila"
+  },
+  "routeScreen": {
+    "mapLabel": "Mapa de la ruta con {count} paradas",
+    "mapLabelOne": "Mapa de la ruta con 1 parada",
+    "mapLabelPlain": "Mapa de la ruta",
+    "stops": "{count} paradas",
+    "stopsOne": "1 parada",
+    "timeRange": "{from} a {to}",
+    "subtitle": "{stops} · {time} · {transport}",
+    "save": "Guardar ruta",
+    "saved": "Guardada · Ver en Mis rutas",
+    "share": "Compartir",
+    "activity": {
+      "visit": "Visita {duration}",
+      "walk": "Paseo {duration}",
+      "food": "Comida {duration}",
+      "pause": "Pausa {duration}"
+    },
+    "then": "luego {leg}",
+    "end": "fin de la ruta",
+    "detail": "{activity} · {next}"
+  },
+  "stop": {
+    "photo": "[FOTO DEL LUGAR]",
+    "hoursPlaceholder": "[HORARIO]",
+    "pricePlaceholder": "[PRECIO]",
+    "meta": "Parada {order} · {time} · {visit}",
+    "chipsLabel": "Categorías",
+    "mustInclude": "Imprescindible",
+    "locked": "Fijada",
+    "why": "Por qué este lugar",
+    "hours": "Horario",
+    "price": "Entrada",
+    "next": "Siguiente parada",
+    "end": "Fin de la ruta",
+    "change": "Cambiar",
+    "remove": "Quitar",
+    "lock": "Fijar en la ruta",
+    "unlock": "Quitar fijación",
+    "lockedHint": "Las paradas fijadas no se pueden quitar. Quita antes la fijación.",
+    "lastHint": "La ruta necesita al menos una parada.",
+    "notFound": "No encontramos esta parada."
+  },
+  "alternatives": {
+    "note": "Al cambiar, los horarios de las paradas siguientes se recalculan.",
+    "header": "Cambiar parada",
+    "title": "Alternativas a {name}",
+    "subtitle": "Misma zona, mismo interés y duración parecida.",
+    "listLabel": "Alternativas",
+    "visit": "visita {duration}",
+    "use": "Usar esta parada",
+    "none": "No hay alternativas para esta parada."
+  },
+  "saveGuest": {
+    "header": "Guardar ruta",
+    "title": "Crea una cuenta para guardarla",
+    "text": "Tendrás la ruta en Mis rutas y podrás compartirla y reutilizarla.",
+    "meta": "{stops} · {date}",
+    "create": "Crear cuenta",
+    "login": "Ya tengo cuenta",
+    "continue": "Seguir sin guardar"
+  },
+  "auth": {
+    "registerHeader": "Crear cuenta",
+    "registerTitle": "Crea tu cuenta",
+    "registerSubtitle": "Guarda tus rutas y tus preferencias.",
+    "loginHeader": "Entrar",
+    "loginTitle": "Hola de nuevo",
+    "loginSubtitle": "Entra para ver tus rutas guardadas.",
+    "google": "Continuar con Google",
+    "apple": "Continuar con Apple",
+    "divider": "o con tu correo",
+    "email": "Correo electrónico",
+    "emailPlaceholder": "nombre@correo.com",
+    "password": "Contraseña",
+    "passwordPlaceholder": "Mínimo 8 caracteres",
+    "terms": "Acepto los términos y la política de privacidad",
+    "registerSubmit": "Crear cuenta",
+    "loginSubmit": "Entrar",
+    "toLogin": "¿Ya tienes cuenta? Entrar",
+    "toRegister": "¿No tienes cuenta? Crear una",
+    "forgot": "¿Olvidaste tu contraseña?",
+    "errorEmail": "Escribe un correo válido, por ejemplo nombre@correo.com.",
+    "errorPassword": "La contraseña debe tener al menos 8 caracteres.",
+    "errorTerms": "Acepta los términos para crear la cuenta.",
+    "googleEmail": "google@ejemplo.com",
+    "appleEmail": "apple@ejemplo.com"
+  },
+  "myRoutes": {
+    "title": "Mis rutas",
+    "searchLabel": "Buscar rutas",
+    "searchPlaceholder": "Buscar por ciudad",
+    "tabsLabel": "Filtrar rutas",
+    "upcoming": "Próximas",
+    "past": "Pasadas",
+    "favorites": "Favoritas",
+    "listLabel": "Rutas guardadas",
+    "cardDate": "{date} · {time}",
+    "cardMeta": "{stops} · {tags}",
+    "none": "No hay rutas aquí.",
+    "emptyTitle": "Aún no tienes rutas",
+    "emptyText": "Pídele la primera al asistente.",
+    "emptyCta": "Pedir una ruta"
+  },
+  "savedRoute": {
+    "header": "Ruta guardada",
+    "favorite": "Favorita",
+    "subtitle": "{date} · {time} · {stops}",
+    "stopsLabel": "Paradas",
+    "actionsLabel": "Acciones",
+    "reuse": "Reutilizar",
+    "share": "Compartir",
+    "rate": "Valorar",
+    "start": "Empezar ruta",
+    "delete": "Eliminar ruta",
+    "reuseEcho": "Quiero repetir «{name}»",
+    "notFound": "No encontramos esta ruta en Mis rutas."
+  },
+  "rate": {
+    "header": "Valorar ruta",
+    "title": "¿Qué tal la ruta?",
+    "subtitle": "{name} · {date}",
+    "starsLabel": "Valoración de la ruta",
+    "star": "{n} de 5",
+    "stopsTitle": "¿Te gustó cada parada?",
+    "stopLabel": "¿Te gustó {name}?",
+    "comment": "Comentario",
+    "commentPlaceholder": "¿Qué cambiarías?",
+    "submit": "Enviar valoración",
+    "hint": "Elige de 1 a 5 estrellas para enviar la valoración."
+  },
+  "profile": {
+    "title": "Perfil",
+    "guestAvatar": "?",
+    "guestName": "Invitado",
+    "guestText": "Crea una cuenta para guardar tus rutas",
+    "register": "Crear cuenta",
     "login": "Entrar",
-    "myRoutes": "Mis rutas",
-    "profile": "Perfil"
+    "menuLabel": "Ajustes",
+    "preferences": "Preferencias de viaje",
+    "account": "Cuenta",
+    "language": "Idioma",
+    "languageValue": "Español",
+    "help": "Ayuda",
+    "chipsLabel": "Tus preferencias",
+    "logout": "Cerrar sesión"
+  },
+  "preferences": {
+    "header": "Preferencias de viaje",
+    "interests": "Intereses",
+    "pace": "Ritmo",
+    "transport": "Transporte",
+    "company": "Compañía habitual",
+    "budget": "Presupuesto",
+    "save": "Guardar cambios",
+    "transportLabel": {
+      "a_pie": "A pie",
+      "transporte_publico": "Público",
+      "coche": "Coche",
+      "bici": "Bici"
+    }
+  },
+  "account": {
+    "header": "Cuenta",
+    "name": "Nombre",
+    "email": "Correo electrónico",
+    "namePlaceholder": "[NOMBRE]",
+    "emailPlaceholder": "[CORREO]",
+    "menuLabel": "Seguridad e idioma",
+    "changePassword": "Cambiar contraseña",
+    "language": "Idioma",
+    "languageValue": "Español",
+    "notificationsLabel": "Avisos",
+    "remindDayBefore": "Avisarme el día antes de una ruta",
+    "remindToRate": "Recordarme valorar las rutas pasadas",
+    "delete": "Eliminar cuenta",
+    "save": "Guardar cambios",
+    "errorName": "Escribe tu nombre."
+  },
+  "confirm": {
+    "cancel": "Cancelar",
+    "deleteRouteTitle": "¿Eliminar esta ruta?",
+    "deleteRouteText": "Se borrará de Mis rutas junto con su valoración. No se puede deshacer.",
+    "deleteRouteConfirm": "Eliminar ruta",
+    "deleteAccountTitle": "¿Eliminar tu cuenta?",
+    "deleteAccountText": "Se borrarán tu sesión, tus rutas guardadas y tus valoraciones. Tus preferencias de viaje se quedan en este dispositivo.",
+    "deleteAccountConfirm": "Eliminar cuenta",
+    "logoutTitle": "¿Cerrar sesión?",
+    "logoutText": "Tus rutas guardadas seguirán en tu cuenta cuando vuelvas a entrar.",
+    "logoutConfirm": "Cerrar sesión"
+  },
+  "toast": {
+    "shared": "Ruta compartida",
+    "copied": "Resumen de la ruta copiado",
+    "shareFailed": "No se ha podido compartir la ruta",
+    "pending": "Función pendiente",
+    "rated": "Gracias por valorar",
+    "accountSaved": "Cambios guardados",
+    "preferencesSaved": "Preferencias guardadas",
+    "routeSaved": "Ruta guardada en Mis rutas",
+    "routeDeleted": "Ruta eliminada",
+    "accountDeleted": "Cuenta eliminada",
+    "loggedOut": "Sesión cerrada"
+  },
+  "share": {
+    "when": "{date} · {time}",
+    "stop": "{order}. {time} · {name}",
+    "footer": "Ruta creada con {app}"
   },
   "date": {
     "weekdayShort": {

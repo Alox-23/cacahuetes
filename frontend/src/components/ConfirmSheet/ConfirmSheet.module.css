@@ -1,0 +1,81 @@
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  justify-content: center;
+}
+
+.backdrop {
+  position: absolute;
+  inset: 0;
+  background: var(--color-backdrop);
+}
+
+.sheet {
+  position: absolute;
+  bottom: 0;
+  width: min(100%, 430px);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 24px var(--space-screen-padding) var(--space-bottom-padding);
+  background: var(--color-surface);
+  border-radius: var(--radius-sheet) var(--radius-sheet) 0 0;
+  box-shadow: var(--shadow-sheet);
+  animation: sheet-in 180ms ease-out;
+}
+
+.title {
+  font-family: var(--font-heading);
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.text {
+  font-size: var(--font-size-body);
+  line-height: 1.45;
+  color: var(--color-text-muted);
+}
+
+.actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.danger {
+  min-height: var(--size-button-height);
+  border: 0;
+  border-radius: var(--radius-button);
+  background: var(--color-danger);
+  color: var(--color-on-primary);
+  font-size: var(--font-size-button);
+  font-weight: 600;
+}
+
+.cancel {
+  align-self: center;
+  min-height: var(--size-touch-target);
+  min-width: var(--size-touch-target);
+  padding: 0 12px;
+  border: 0;
+  background: transparent;
+  color: var(--color-primary);
+  font-size: var(--font-size-body);
+  font-weight: 600;
+}
+
+.danger:disabled,
+.cancel:disabled {
+  opacity: 0.45;
+}
+
+@keyframes sheet-in {
+  from {
+    transform: translateY(24px);
+    opacity: 0;
+  }
+}

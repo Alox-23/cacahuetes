@@ -9,6 +9,9 @@ import { normalize } from '../lib/text'
 
 export type PlaceKind = 'sight' | 'food' | 'pause'
 
+/** How a stop is described on the route ("Visita 1 h", "Paseo 45 min", "Comida 1 h", "Pausa 20 min"). */
+export type PlaceActivity = 'visit' | 'walk' | 'food' | 'pause'
+
 export type CatalogPlace = Place & {
   city: string
   kind: PlaceKind
@@ -20,6 +23,12 @@ export type CatalogPlace = Place & {
   order: number
   /** Good for families (company "con_ninos"). */
   kids?: boolean
+  /** Stop description; defaults from `kind` (food → food, pause → pause, otherwise visit). */
+  activity?: PlaceActivity
+  /** Only offered as an alternative in "Cambiar parada", never picked by createRoute. */
+  altOnly?: boolean
+  /** Hand-written alternatives (place ids), offered first in "Cambiar parada". */
+  alternatives?: string[]
 }
 
 export type Leg = { walk: number; transit: number }
@@ -53,13 +62,16 @@ const barcelona = city(
   'Barcelona',
   [
     { id: 'bcn-sagrada-familia', name: 'Sagrada Família', categories: ['arquitectura', 'historia'], why: 'La obra maestra de Gaudí, imprescindible por dentro y por fuera.', kind: 'sight', visitMinutes: 90, paid: true, aliases: ['sagrada familia', 'sagrada'], order: 1 },
-    { id: 'bcn-casa-batllo', name: 'Casa Batlló', categories: ['arquitectura', 'museos'], why: 'Fachada modernista única en el paseo de Gràcia.', kind: 'sight', visitMinutes: 60, paid: true, aliases: ['casa batllo', 'batllo'], order: 2 },
-    { id: 'bcn-boqueria', name: 'Mercat de la Boqueria', categories: ['gastronomia', 'compras'], why: 'El mercado más famoso de la ciudad, junto a la Rambla.', kind: 'sight', visitMinutes: 60, paid: false, aliases: ['boqueria', 'mercat de la boqueria'], order: 3 },
+    { id: 'bcn-casa-batllo', name: 'Casa Batlló', categories: ['arquitectura', 'museos'], why: 'Fachada modernista única en el paseo de Gràcia.', kind: 'sight', visitMinutes: 60, paid: true, aliases: ['casa batllo', 'batllo'], order: 2, alternatives: ['bcn-casa-mila', 'bcn-palau-musica', 'bcn-casa-vicens'] },
+    { id: 'bcn-casa-mila', name: 'Casa Milà, La Pedrera', categories: ['arquitectura'], why: 'La última casa civil de Gaudí, con su azotea de chimeneas.', kind: 'sight', visitMinutes: 50, paid: true, aliases: ['casa mila', 'la pedrera', 'pedrera'], order: 2.2, altOnly: true },
+    { id: 'bcn-palau-musica', name: 'Palau de la Música Catalana', categories: ['arquitectura'], why: 'Una sala de conciertos modernista llena de vidrio y mosaico.', kind: 'sight', visitMinutes: 50, paid: true, aliases: ['palau de la musica'], order: 5.5, altOnly: true },
+    { id: 'bcn-casa-vicens', name: 'Casa Vicens', categories: ['arquitectura'], why: 'La primera casa de Gaudí, en el barrio de Gràcia.', kind: 'sight', visitMinutes: 45, paid: true, aliases: ['casa vicens'], order: 1.5, altOnly: true },
+    { id: 'bcn-boqueria', name: 'Mercat de la Boqueria', categories: ['gastronomia', 'compras'], why: 'El mercado más famoso de la ciudad, junto a la Rambla.', kind: 'sight', visitMinutes: 60, paid: false, aliases: ['boqueria', 'mercat de la boqueria'], order: 3, activity: 'food' },
     { id: 'bcn-bar-del-pla', name: 'Bar del Pla', categories: ['gastronomia'], why: 'Tapas de temporada en el Born.', kind: 'food', visitMinutes: 45, paid: true, aliases: ['bar del pla', 'tapas'], order: 4 },
-    { id: 'bcn-barri-gotic', name: 'Barri Gòtic', categories: ['historia', 'arquitectura'], why: 'Callejuelas medievales, la catedral y plazas escondidas.', kind: 'sight', visitMinutes: 45, paid: false, aliases: ['barri gotic', 'barrio gotico', 'gotico'], order: 5, kids: true },
+    { id: 'bcn-barri-gotic', name: 'Barri Gòtic', categories: ['historia', 'arquitectura'], why: 'Callejuelas medievales, la catedral y plazas escondidas.', kind: 'sight', visitMinutes: 45, paid: false, aliases: ['barri gotic', 'barrio gotico', 'gotico'], order: 5, kids: true, activity: 'walk' },
     { id: 'bcn-museu-picasso', name: 'Museu Picasso', categories: ['museos', 'arte_urbano'], why: 'La colección más completa de los años de formación de Picasso.', kind: 'sight', visitMinutes: 60, paid: true, aliases: ['museu picasso', 'museo picasso', 'picasso'], order: 6 },
     { id: 'bcn-cal-pep', name: 'Cal Pep', categories: ['gastronomia'], why: 'Barra clásica de pescado y marisco.', kind: 'food', visitMinutes: 45, paid: true, aliases: ['cal pep'], order: 6.5 },
-    { id: 'bcn-ciutadella', name: 'Parc de la Ciutadella', categories: ['naturaleza'], why: 'Un respiro verde con lago y cascada monumental.', kind: 'sight', visitMinutes: 45, paid: false, aliases: ['ciutadella', 'ciudadela', 'parc de la ciutadella'], order: 7, kids: true },
+    { id: 'bcn-ciutadella', name: 'Parc de la Ciutadella', categories: ['naturaleza'], why: 'Un respiro verde con lago y cascada monumental.', kind: 'sight', visitMinutes: 45, paid: false, aliases: ['ciutadella', 'ciudadela', 'parc de la ciutadella'], order: 7, kids: true, activity: 'walk' },
     { id: 'bcn-cafe', name: t('data.pauseName'), categories: ['gastronomia'], why: 'Un café tranquilo para recargar.', kind: 'pause', visitMinutes: PAUSE_MINUTES, paid: true, aliases: [], order: 99 },
   ],
   {
@@ -74,17 +86,20 @@ const barcelona = city(
     'bcn-sagrada-familia|bcn-barri-gotic': { walk: 35, transit: 15 },
     'bcn-casa-batllo|bcn-barri-gotic': { walk: 22, transit: 10 },
     'bcn-barri-gotic|bcn-ciutadella': { walk: 15, transit: 8 },
+    'bcn-casa-batllo|bcn-casa-mila': { walk: 6, transit: 6 },
+    'bcn-casa-batllo|bcn-palau-musica': { walk: 15, transit: 8 },
+    'bcn-casa-batllo|bcn-casa-vicens': { walk: 30, transit: 12 },
   },
 )
 
 const valencia = city(
   'Valencia',
   [
-    { id: 'vlc-barrio-carmen', name: 'Barrio del Carmen', categories: ['historia', 'arte_urbano'], why: 'Casco antiguo con murales y torres medievales.', kind: 'sight', visitMinutes: 45, paid: false, aliases: ['barrio del carmen', 'el carmen'], order: 1 },
+    { id: 'vlc-barrio-carmen', name: 'Barrio del Carmen', categories: ['historia', 'arte_urbano'], why: 'Casco antiguo con murales y torres medievales.', kind: 'sight', visitMinutes: 45, paid: false, aliases: ['barrio del carmen', 'el carmen'], order: 1, activity: 'walk' },
     { id: 'vlc-catedral', name: 'Catedral y Miguelete', categories: ['historia', 'arquitectura'], why: 'Sube al Miguelete para ver toda la ciudad.', kind: 'sight', visitMinutes: 45, paid: true, aliases: ['catedral', 'miguelete'], order: 2 },
     { id: 'vlc-mercado-central', name: 'Mercado Central', categories: ['gastronomia', 'compras', 'arquitectura'], why: 'Modernismo valenciano lleno de producto local.', kind: 'sight', visitMinutes: 45, paid: false, aliases: ['mercado central'], order: 3, kids: true },
     { id: 'vlc-horchateria', name: 'Horchatería Santa Catalina', categories: ['gastronomia'], why: 'Horchata y fartons de toda la vida.', kind: 'food', visitMinutes: 30, paid: true, aliases: ['horchateria', 'horchata'], order: 3.5, kids: true },
-    { id: 'vlc-turia', name: 'Jardín del Turia', categories: ['naturaleza'], why: 'Un parque de nueve kilómetros en el antiguo cauce del río.', kind: 'sight', visitMinutes: 60, paid: false, aliases: ['turia', 'jardin del turia'], order: 4, kids: true },
+    { id: 'vlc-turia', name: 'Jardín del Turia', categories: ['naturaleza'], why: 'Un parque de nueve kilómetros en el antiguo cauce del río.', kind: 'sight', visitMinutes: 60, paid: false, aliases: ['turia', 'jardin del turia'], order: 4, kids: true, activity: 'walk' },
     { id: 'vlc-ciudad-artes', name: 'Ciudad de las Artes y las Ciencias', categories: ['arquitectura', 'museos'], why: 'La Valencia futurista de Calatrava.', kind: 'sight', visitMinutes: 120, paid: true, aliases: ['ciudad de las artes', 'ciutat de les arts'], order: 5, kids: true },
     { id: 'vlc-oceanografic', name: 'Oceanogràfic', categories: ['naturaleza', 'museos'], why: 'El acuario más grande de Europa.', kind: 'sight', visitMinutes: 150, paid: true, aliases: ['oceanografic', 'acuario'], order: 6, kids: true },
     { id: 'vlc-la-pepica', name: 'La Pepica', categories: ['gastronomia'], why: 'Paella frente a la playa de la Malvarrosa.', kind: 'food', visitMinutes: 60, paid: true, aliases: ['la pepica', 'paella'], order: 7, kids: true },
@@ -107,11 +122,11 @@ const sevilla = city(
     { id: 'svq-setas', name: 'Metropol Parasol', categories: ['arquitectura', 'arte_urbano'], why: 'Las Setas: madera y vistas sobre los tejados.', kind: 'sight', visitMinutes: 30, paid: true, aliases: ['setas', 'metropol parasol'], order: 1 },
     { id: 'svq-catedral', name: 'Catedral y Giralda', categories: ['historia', 'arquitectura'], why: 'La catedral gótica más grande del mundo.', kind: 'sight', visitMinutes: 75, paid: true, aliases: ['catedral', 'giralda'], order: 2 },
     { id: 'svq-alcazar', name: 'Real Alcázar', categories: ['historia', 'arquitectura', 'naturaleza'], why: 'Palacios mudéjares y jardines de cuento.', kind: 'sight', visitMinutes: 90, paid: true, aliases: ['alcazar', 'real alcazar'], order: 3 },
-    { id: 'svq-santa-cruz', name: 'Barrio de Santa Cruz', categories: ['historia'], why: 'La antigua judería, blanca y laberíntica.', kind: 'sight', visitMinutes: 40, paid: false, aliases: ['santa cruz', 'barrio de santa cruz'], order: 4, kids: true },
+    { id: 'svq-santa-cruz', name: 'Barrio de Santa Cruz', categories: ['historia'], why: 'La antigua judería, blanca y laberíntica.', kind: 'sight', visitMinutes: 40, paid: false, aliases: ['santa cruz', 'barrio de santa cruz'], order: 4, kids: true, activity: 'walk' },
     { id: 'svq-bodega', name: 'Bodega Santa Cruz', categories: ['gastronomia'], why: 'Tapas de pie, como manda la tradición.', kind: 'food', visitMinutes: 40, paid: true, aliases: ['bodega santa cruz', 'tapas'], order: 4.5 },
-    { id: 'svq-maria-luisa', name: 'Parque de María Luisa', categories: ['naturaleza'], why: 'Sombra, fuentes y glorietas.', kind: 'sight', visitMinutes: 40, paid: false, aliases: ['maria luisa', 'parque de maria luisa'], order: 5, kids: true },
+    { id: 'svq-maria-luisa', name: 'Parque de María Luisa', categories: ['naturaleza'], why: 'Sombra, fuentes y glorietas.', kind: 'sight', visitMinutes: 40, paid: false, aliases: ['maria luisa', 'parque de maria luisa'], order: 5, kids: true, activity: 'walk' },
     { id: 'svq-plaza-espana', name: 'Plaza de España', categories: ['arquitectura', 'historia'], why: 'Cerámica, canales y puentes de 1929.', kind: 'sight', visitMinutes: 45, paid: false, aliases: ['plaza de espana'], order: 6, kids: true },
-    { id: 'svq-triana', name: 'Triana', categories: ['gastronomia', 'historia', 'vida_nocturna'], why: 'Al otro lado del río: cerámica, mercado y flamenco.', kind: 'sight', visitMinutes: 45, paid: false, aliases: ['triana'], order: 7 },
+    { id: 'svq-triana', name: 'Triana', categories: ['gastronomia', 'historia', 'vida_nocturna'], why: 'Al otro lado del río: cerámica, mercado y flamenco.', kind: 'sight', visitMinutes: 45, paid: false, aliases: ['triana'], order: 7, activity: 'walk' },
     { id: 'svq-cafe', name: t('data.pauseName'), categories: ['gastronomia'], why: 'Un café tranquilo para recargar.', kind: 'pause', visitMinutes: PAUSE_MINUTES, paid: true, aliases: [], order: 99 },
   ],
   {
@@ -139,10 +154,10 @@ const CATALOGS: CityCatalog[] = [barcelona, valencia, sevilla]
 
 function genericCatalog(cityName: string): CityCatalog {
   const seeds: PlaceSeed[] = [
-    { id: 'gen-centro', name: t('data.genericOld'), categories: ['historia', 'arquitectura'], why: t('data.genericWhy'), kind: 'sight', visitMinutes: 60, paid: false, aliases: [], order: 1, kids: true },
+    { id: 'gen-centro', name: t('data.genericOld'), categories: ['historia', 'arquitectura'], why: t('data.genericWhy'), kind: 'sight', visitMinutes: 60, paid: false, aliases: [], order: 1, kids: true, activity: 'walk' },
     { id: 'gen-mercado', name: t('data.genericMarket'), categories: ['gastronomia', 'compras'], why: t('data.genericWhy'), kind: 'sight', visitMinutes: 45, paid: false, aliases: [], order: 2, kids: true },
     { id: 'gen-mirador', name: t('data.genericViewpoint'), categories: ['naturaleza', 'arquitectura'], why: t('data.genericWhy'), kind: 'sight', visitMinutes: 45, paid: true, aliases: [], order: 3 },
-    { id: 'gen-parque', name: t('data.genericPark'), categories: ['naturaleza'], why: t('data.genericWhy'), kind: 'sight', visitMinutes: 45, paid: false, aliases: [], order: 4, kids: true },
+    { id: 'gen-parque', name: t('data.genericPark'), categories: ['naturaleza'], why: t('data.genericWhy'), kind: 'sight', visitMinutes: 45, paid: false, aliases: [], order: 4, kids: true, activity: 'walk' },
     { id: 'gen-restaurante', name: t('data.genericFood'), categories: ['gastronomia'], why: t('data.genericWhy'), kind: 'food', visitMinutes: 60, paid: true, aliases: [], order: 2.5 },
     { id: 'gen-cafe', name: t('data.pauseName'), categories: ['gastronomia'], why: t('data.genericWhy'), kind: 'pause', visitMinutes: PAUSE_MINUTES, paid: true, aliases: [], order: 99 },
   ]
@@ -166,6 +181,11 @@ export function findPlace(id: string): CatalogPlace | undefined {
     if (p) return p
   }
   return genericCatalog('').places.find((p) => p.id === id)
+}
+
+export function activityOf(place: CatalogPlace): PlaceActivity {
+  if (place.activity) return place.activity
+  return place.kind === 'food' ? 'food' : place.kind === 'pause' ? 'pause' : 'visit'
 }
 
 export function legBetween(catalog: CityCatalog, a: string, b: string): Leg {

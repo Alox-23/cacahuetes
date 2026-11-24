@@ -16,6 +16,8 @@ export const STORAGE_KEYS = {
   session: 'rt.session',
   routes: 'rt.routes',
   ratings: 'rt.ratings',
+  /** Saved route id → account email (routes belong to the account). */
+  owners: 'rt.routeOwners',
   currentRoute: 'rt.currentRoute',
 } as const
 

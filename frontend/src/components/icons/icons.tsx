@@ -80,3 +80,37 @@ export function PendingIcon({ size = 22, ...rest }: IconProps) {
     </svg>
   )
 }
+
+export function ShareIcon({ size = 24, ...rest }: IconProps) {
+  return (
+    <svg {...base(size)} strokeWidth={2} {...rest}>
+      <path d="M12 15V4M8 8l4-4 4 4M5 13v5a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-5" />
+    </svg>
+  )
+}
+
+export function ChevronRightIcon({ size = 20, ...rest }: IconProps) {
+  return (
+    <svg {...base(size)} strokeWidth={2} {...rest}>
+      <path d="M9 5l7 7-7 7" />
+    </svg>
+  )
+}
+
+export function SearchIcon({ size = 20, ...rest }: IconProps) {
+  return (
+    <svg {...base(size)} strokeWidth={2} {...rest}>
+      <circle cx="11" cy="11" r="7" />
+      <path d="M16.5 16.5L21 21" />
+    </svg>
+  )
+}
+
+/** Star from Valorar.html; `filled` fills it with currentColor. */
+export function StarIcon({ size = 40, filled = false, ...rest }: IconProps & { filled?: boolean }) {
+  return (
+    <svg {...base(size)} strokeWidth={1.6} fill={filled ? 'currentColor' : 'none'} {...rest}>
+      <path d="M12 3.2l2.7 5.6 6.1.8-4.5 4.3 1.1 6.1L12 17.1 6.6 20l1.1-6.1L3.2 9.6l6.1-.8z" />
+    </svg>
+  )
+}

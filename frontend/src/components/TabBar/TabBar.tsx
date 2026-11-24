@@ -1,4 +1,4 @@
-import { NavLink } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import { t } from '../../i18n'
 import { cx } from '../../lib/cx'
 import { AssistantTabIcon, ProfileTabIcon, RoutesTabIcon } from '../icons/icons'
@@ -19,18 +19,17 @@ type TabBarProps = {
 }
 
 export function TabBar({ active, className }: TabBarProps) {
+  const { pathname } = useLocation()
+  // Link (not NavLink): NavLink drops aria-current when the URL is not under `to`,
+  // and mapped sections (/route/*, /preferences, /login…) must still announce their tab.
+  const isOn = (key: TabKey, to: string) => (active ? active === key : pathname === to || pathname.startsWith(`${to}/`))
   return (
     <nav aria-label={t('tabs.label')} className={cx(styles.bar, className)}>
       {TABS.map(({ key, to, label, Icon }) => (
-        <NavLink
-          key={key}
-          to={to}
-          aria-current={active ? (active === key ? 'page' : undefined) : undefined}
-          className={({ isActive }) => cx(styles.tab, (active ? active === key : isActive) && styles.active)}
-        >
+        <Link key={key} to={to} aria-current={isOn(key, to) ? 'page' : undefined} className={cx(styles.tab, isOn(key, to) && styles.active)}>
           <Icon />
           <span>{label()}</span>
-        </NavLink>
+        </Link>
       ))}
     </nav>
   )

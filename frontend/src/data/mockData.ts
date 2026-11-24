@@ -7,6 +7,7 @@ import type {
   DataModule,
   Place,
   Preferences,
+  Rating,
   RefineAction,
   Route,
   RouteRequest,
@@ -15,10 +16,13 @@ import type {
 } from '../contract/types'
 import { t } from '../i18n'
 import { formatDuration } from '../assistant/format'
+import type { PlaceWithHints } from '../lib/placeHints'
 import { parseRefineText, type QuickRefine } from '../lib/refineKeywords'
+import { capitalize } from '../lib/text'
 import { fromMinutes, toMinutes, wait } from '../lib/time'
 import {
   PAUSE_LEG,
+  activityOf,
   findPlace,
   getCityCatalog,
   legBetween,
@@ -26,16 +30,25 @@ import {
   type CatalogPlace,
   type CityCatalog,
 } from './catalog'
-import { DEFAULT_PREFERENCES } from './defaults'
+import { DEFAULT_ACCOUNT_SETTINGS, DEFAULT_PREFERENCES } from './defaults'
+import { exampleRoutes } from './seeds'
 import { STORAGE_KEYS, createStorage, type JsonStorage } from './storage'
 
 type RouteStore = Record<string, Route[]>
-type Rating = { stars: number; stops: Record<number, boolean>; comment?: string }
+
+/** Error codes (not UI copy) thrown by the mock; screens never trigger them. */
+export const DATA_ERRORS = {
+  guestCannotSave: 'GUEST_CANNOT_SAVE',
+  notAnAccount: 'NOT_AN_ACCOUNT',
+} as const
+
 
 export type DataModuleOptions = {
   /** Simulated latency per call in ms (default 30; tests pass 0). */
   latency?: number
   newId?: () => string
+  /** Clock for the example routes seeded on login (tests pin it). */
+  now?: () => Date
 }
 
 const FULL_DAY_MINUTES = 9 * 60
@@ -100,6 +113,8 @@ function scorePlace(place: CatalogPlace, request: RouteRequest, prefs: Preferenc
   score += place.categories.filter((c) => prefs.interests.includes(c)).length > 0 ? 10 : 0
   // Restaurants only join at creation when asked for; "Más comida" adds them later.
   if (place.kind === 'food' && !must) score -= 20
+  // Alternative-only places join only when the request names them.
+  if (place.altOnly && !must) score -= 1000
   if (prefs.company === 'con_ninos' && place.kids) score += 5
   if (prefs.budget === 'bajo' && place.paid) score -= 3
   return score
@@ -111,11 +126,44 @@ export function createDataModule(
 ): DataModule {
   const latency = options.latency ?? 30
   const newId = options.newId ?? defaultId
+  const now = options.now ?? (() => new Date())
   const tick = () => (latency > 0 ? wait(latency) : Promise.resolve())
 
   const readRoutes = () => storage.read<RouteStore>(STORAGE_KEYS.routes, {})
   const writeRoutes = (routes: RouteStore) => storage.write(STORAGE_KEYS.routes, routes)
   const readPrefs = () => storage.read<Preferences | null>(STORAGE_KEYS.preferences, null)
+  const readSession = () => storage.read<Session>(STORAGE_KEYS.session, { kind: 'guest' })
+  const readRatings = () => storage.read<Record<string, Rating>>(STORAGE_KEYS.ratings, {})
+  const writeRatings = (ratings: Record<string, Rating>) => storage.write(STORAGE_KEYS.ratings, ratings)
+  const readOwners = () => storage.read<Record<string, string>>(STORAGE_KEYS.owners, {})
+  const setOwner = (id: string, email: string | undefined) => {
+    const owners = readOwners()
+    if (email) owners[id] = email
+    else delete owners[id]
+    storage.write(STORAGE_KEYS.owners, owners)
+  }
+
+  /** Saved routes of an account (routes saved before owners existed are visible to any account). */
+  function savedRoutesOf(email: string | undefined): Route[] {
+    const owners = readOwners()
+    return Object.values(readRoutes())
+      .filter((v) => v.length > 0 && v[v.length - 1].saved)
+      .map((v) => v[v.length - 1])
+      .filter((r) => owners[r.id] === undefined || owners[r.id] === email)
+  }
+
+  /** New account session: name from the part before "@", capitalised; reminders on. */
+  function accountSession(email: string): Session {
+    const local = email.split('@')[0] ?? ''
+    return { kind: 'account', email, name: capitalize(local), settings: { ...DEFAULT_ACCOUNT_SETTINGS } }
+  }
+
+  /** Apply a change to every version, so undo never loses saved/favourite. */
+  function updateAllVersions(id: string, patch: Partial<Route>) {
+    const routes = readRoutes()
+    routes[id] = versionsOf(id).map((r) => ({ ...r, ...patch }))
+    writeRoutes(routes)
+  }
 
   function effectivePrefs(request: RouteRequest): Preferences {
     return { ...DEFAULT_PREFERENCES, ...(readPrefs() ?? {}), ...(request.overrides ?? {}) }
@@ -182,11 +230,17 @@ export function createDataModule(
         return
       }
       case 'mas_barato': {
-        const index = route.stops.findIndex((s) => !s.locked && findPlace(s.placeId)?.paid && findPlace(s.placeId)?.kind === 'sight')
+        const isMust = (s: Stop) => {
+          const place = findPlace(s.placeId)
+          return !!place && route.request.mustInclude.some((m) => matchesMustInclude(place, m))
+        }
+        const index = route.stops.findIndex(
+          (s) => !s.locked && !isMust(s) && findPlace(s.placeId)?.paid && findPlace(s.placeId)?.kind === 'sight',
+        )
         if (index < 0) return
         const old = findPlace(route.stops[index].placeId)
         const free = catalog.places
-          .filter((p) => p.kind === 'sight' && !p.paid && !inRoute.has(p.id))
+          .filter((p) => p.kind === 'sight' && !p.paid && !p.altOnly && !inRoute.has(p.id))
           .sort((a, b) => {
             const shared = (p: CatalogPlace) => p.categories.filter((c) => old?.categories.includes(c)).length
             return shared(b) - shared(a) || a.order - b.order
@@ -234,6 +288,62 @@ export function createDataModule(
     }
   }
 
+  /** Pick, link and schedule the places of a new route (shared by createRoute and the login seeds). */
+  function buildRoute(request: RouteRequest): Route {
+    const prefs = effectivePrefs(request)
+    const catalog = getCityCatalog(request.city)
+    const window = toMinutes(request.timeWindow.to) - toMinutes(request.timeWindow.from)
+    const count = window >= 7 * 60 ? 5 : 4
+
+    const picked = catalog.places
+      .filter((p) => p.kind !== 'pause')
+      .map((p) => ({ p, score: scorePlace(p, request, prefs) }))
+      .sort((a, b) => b.score - a.score || a.p.order - b.p.order)
+      .slice(0, count)
+      .map((x) => x.p)
+      .sort((a, b) => a.order - b.order)
+
+    const route: Route = {
+      id: newId(),
+      name:
+        window >= FULL_DAY_MINUTES
+          ? t('data.routeNameDay', { city: request.city })
+          : t('data.routeNameHours', { city: request.city, duration: formatDuration(window) }),
+      request: clone(request),
+      stops: picked.map((p) => stopFor(p)),
+      version: 1,
+      saved: false,
+      favorite: false,
+    }
+    relink(route, catalog, prefs.transport, route.stops.map((_, i) => i))
+
+    // Fit the visits into the window when the selection is too long.
+    const travelTotal = route.stops.reduce((sum, s) => sum + (s.travelToNext?.minutes ?? 0), 0)
+    const visitTotal = route.stops.reduce((sum, s) => sum + s.visitMinutes, 0)
+    if (window > 0 && travelTotal + visitTotal > window) {
+      const factor = Math.max(0, window - travelTotal) / visitTotal
+      for (const s of route.stops) s.visitMinutes = Math.max(MIN_VISIT, Math.round((s.visitMinutes * factor) / 5) * 5)
+    }
+
+    reschedule(route)
+    return route
+  }
+
+  function seedExamples(email: string) {
+    if (savedRoutesOf(email).length > 0) return
+    const ratings = readRatings()
+    for (const seed of exampleRoutes(now())) {
+      const route = buildRoute(seed.request)
+      if (seed.name) route.name = seed.name
+      route.saved = true
+      route.favorite = seed.favorite
+      pushVersion(route)
+      setOwner(route.id, email)
+      if (seed.rating) ratings[route.id] = seed.rating
+    }
+    writeRatings(ratings)
+  }
+
   return {
     async getPreferences() {
       await tick()
@@ -247,20 +357,22 @@ export function createDataModule(
 
     async getSession() {
       await tick()
-      return storage.read<Session>(STORAGE_KEYS.session, { kind: 'guest' })
+      return readSession()
     },
 
     async register(email) {
       await tick()
-      const session: Session = { kind: 'account', email, name: email.split('@')[0] }
+      const session = accountSession(email)
       storage.write(STORAGE_KEYS.session, session)
       return session
     },
 
     async login(email) {
       await tick()
-      const session: Session = { kind: 'account', email, name: email.split('@')[0] }
+      const session = accountSession(email)
       storage.write(STORAGE_KEYS.session, session)
+      // An "existing account": it comes with three example saved routes.
+      seedExamples(session.email ?? '')
       return session
     },
 
@@ -271,43 +383,7 @@ export function createDataModule(
 
     async createRoute(request) {
       await tick()
-      const prefs = effectivePrefs(request)
-      const catalog = getCityCatalog(request.city)
-      const window = toMinutes(request.timeWindow.to) - toMinutes(request.timeWindow.from)
-      const count = window >= 7 * 60 ? 5 : 4
-
-      const picked = catalog.places
-        .filter((p) => p.kind !== 'pause')
-        .map((p) => ({ p, score: scorePlace(p, request, prefs) }))
-        .sort((a, b) => b.score - a.score || a.p.order - b.p.order)
-        .slice(0, count)
-        .map((x) => x.p)
-        .sort((a, b) => a.order - b.order)
-
-      const route: Route = {
-        id: newId(),
-        name:
-          window >= FULL_DAY_MINUTES
-            ? t('data.routeNameDay', { city: request.city })
-            : t('data.routeNameHours', { city: request.city, duration: formatDuration(window) }),
-        request: clone(request),
-        stops: picked.map((p) => stopFor(p)),
-        version: 1,
-        saved: false,
-        favorite: false,
-      }
-      relink(route, catalog, prefs.transport, route.stops.map((_, i) => i))
-
-      // Fit the visits into the window when the selection is too long.
-      const travelTotal = route.stops.reduce((sum, s) => sum + (s.travelToNext?.minutes ?? 0), 0)
-      const visitTotal = route.stops.reduce((sum, s) => sum + s.visitMinutes, 0)
-      if (window > 0 && travelTotal + visitTotal > window) {
-        const factor = Math.max(0, window - travelTotal) / visitTotal
-        for (const s of route.stops) s.visitMinutes = Math.max(MIN_VISIT, Math.round((s.visitMinutes * factor) / 5) * 5)
-      }
-
-      reschedule(route)
-      return pushVersion(route)
+      return pushVersion(buildRoute(request))
     },
 
     async refineRoute(id, action) {
@@ -337,16 +413,20 @@ export function createDataModule(
 
     async listRoutes() {
       await tick()
-      return Object.values(readRoutes())
-        .filter((v) => v.length > 0)
-        .map((v) => clone(v[v.length - 1]))
+      // Saved routes belong to the account: guests see none.
+      const session = readSession()
+      if (session.kind !== 'account') return []
+      return savedRoutesOf(session.email)
+        .map(clone)
+        .sort((a, b) => b.request.date.localeCompare(a.request.date))
     },
 
     async saveRoute(id) {
       await tick()
-      const routes = readRoutes()
-      routes[id] = versionsOf(id).map((r) => ({ ...r, saved: true }))
-      writeRoutes(routes)
+      const session = readSession()
+      if (session.kind !== 'account') throw new Error(DATA_ERRORS.guestCannotSave)
+      updateAllVersions(id, { saved: true })
+      setOwner(id, session.email)
       return current(id)
     },
 
@@ -355,17 +435,59 @@ export function createDataModule(
       const routes = readRoutes()
       delete routes[id]
       writeRoutes(routes)
-      const ratings = storage.read<Record<string, Rating>>(STORAGE_KEYS.ratings, {})
+      const ratings = readRatings()
       delete ratings[id]
-      storage.write(STORAGE_KEYS.ratings, ratings)
+      writeRatings(ratings)
+      setOwner(id, undefined)
     },
 
     async rateRoute(id, rating) {
       await tick()
       versionsOf(id)
-      const ratings = storage.read<Record<string, Rating>>(STORAGE_KEYS.ratings, {})
-      ratings[id] = rating
-      storage.write(STORAGE_KEYS.ratings, ratings)
+      const ratings = readRatings()
+      ratings[id] = clone(rating)
+      writeRatings(ratings)
+    },
+
+    async getRating(id) {
+      await tick()
+      const rating = readRatings()[id]
+      return rating ? clone(rating) : null
+    },
+
+    async setFavorite(id, favorite) {
+      await tick()
+      updateAllVersions(id, { favorite })
+      return current(id)
+    },
+
+    async updateAccount(patch) {
+      await tick()
+      const session = readSession()
+      if (session.kind !== 'account') throw new Error(DATA_ERRORS.notAnAccount)
+      const next: Session = {
+        ...session,
+        ...patch,
+        kind: 'account',
+        settings: { ...DEFAULT_ACCOUNT_SETTINGS, ...session.settings, ...patch.settings },
+      }
+      storage.write(STORAGE_KEYS.session, next)
+      if (next.email !== session.email) {
+        const owners = readOwners()
+        for (const [rid, owner] of Object.entries(owners)) if (owner === session.email) owners[rid] = next.email ?? ''
+        storage.write(STORAGE_KEYS.owners, owners)
+      }
+      return next
+    },
+
+    async deleteAccount() {
+      await tick()
+      // Preferences stay: the four onboarding questions are asked only once.
+      storage.remove(STORAGE_KEYS.session)
+      storage.remove(STORAGE_KEYS.routes)
+      storage.remove(STORAGE_KEYS.ratings)
+      storage.remove(STORAGE_KEYS.owners)
+      storage.remove(STORAGE_KEYS.currentRoute)
     },
 
     async getPlace(id) {
@@ -380,22 +502,35 @@ export function createDataModule(
       const route = current(routeId)
       const stop = route.stops.find((s) => s.order === order)
       const base = stop ? findPlace(stop.placeId) : undefined
+      // Pauses have no alternatives.
+      if (!base || base.kind === 'pause') return []
       const inRoute = new Set(route.stops.map((s) => s.placeId))
       const catalog = getCityCatalog(route.request.city)
-      return catalog.places
-        .filter((p) => p.kind !== 'pause' && !inRoute.has(p.id))
-        .sort((a, b) => {
-          const shared = (p: CatalogPlace) => p.categories.filter((c) => base?.categories.includes(c)).length
-          return shared(b) - shared(a) || a.order - b.order
-        })
-        .slice(0, 3)
-        .map(toPlace)
+      const prefs = effectivePrefs(route.request)
+      const candidates = catalog.places.filter((p) => p.kind !== 'pause' && !inRoute.has(p.id))
+      const shared = (p: CatalogPlace) => p.categories.filter((c) => base.categories.includes(c)).length
+      const byFit = (a: CatalogPlace, b: CatalogPlace) => shared(b) - shared(a) || a.order - b.order
+      const handPicked = (base.alternatives ?? [])
+        .map((id) => candidates.find((p) => p.id === id))
+        .filter((p): p is CatalogPlace => Boolean(p))
+      const rest = candidates.filter((p) => !handPicked.includes(p))
+      // Same kind first (sight for sight, food for food), then anything else to reach three.
+      const ordered = [
+        ...handPicked,
+        ...rest.filter((p) => p.kind === base.kind).sort(byFit),
+        ...rest.filter((p) => p.kind !== base.kind).sort(byFit),
+      ]
+      return ordered.slice(0, 3).map(
+        (p): PlaceWithHints => ({ ...toPlace(p), travel: travel(catalog, base.id, p.id, prefs.transport) }),
+      )
     },
   }
 }
 
-function toPlace(p: CatalogPlace): Place {
-  return { id: p.id, name: p.name, categories: [...p.categories], why: p.why, hours: p.hours, price: p.price, photo: p.photo }
+/** Contract Place plus the optional presentation hints (src/lib/placeHints.ts). */
+function toPlace(p: CatalogPlace): PlaceWithHints {
+  const place: Place = { id: p.id, name: p.name, categories: [...p.categories], why: p.why, hours: p.hours, price: p.price, photo: p.photo }
+  return { ...place, activity: activityOf(p), visitMinutes: p.visitMinutes }
 }
 
 /** Default instance backed by window.localStorage. */

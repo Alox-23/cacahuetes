@@ -1,4 +1,4 @@
-import type { Preferences } from '../contract/types'
+import type { AccountSettings, Preferences } from '../contract/types'
 
 /** Saved by "Omitir" in onboarding (tech spec §7.1). */
 export const DEFAULT_PREFERENCES: Preferences = {
@@ -25,3 +25,6 @@ export const PACE_VALUES: Preferences['pace'][] = ['relajado', 'equilibrado', 'i
 export const TRANSPORT_VALUES: Preferences['transport'] = ['a_pie', 'transporte_publico', 'coche', 'bici']
 export const COMPANY_VALUES: Preferences['company'][] = ['solo', 'pareja', 'con_ninos', 'grupo']
 export const BUDGET_VALUES: Preferences['budget'][] = ['bajo', 'medio', 'alto']
+
+/** Reminder settings of a new account (tech spec feature 2 §5). */
+export const DEFAULT_ACCOUNT_SETTINGS: AccountSettings = { remindDayBefore: true, remindToRate: true }

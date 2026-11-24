@@ -40,7 +40,18 @@ export type AssistantReply = {
   changes?: string[];       // en "change"
 };
 
-export type Session = { kind: "guest" | "account"; name?: string; email?: string };
+// Añadido en feature 2: ajustes de la cuenta (avisos).
+export type AccountSettings = { remindDayBefore: boolean; remindToRate: boolean };
+
+export type Session = {
+  kind: "guest" | "account";
+  name?: string;
+  email?: string;
+  settings?: AccountSettings;      // Añadido en feature 2: solo para cuentas; por defecto { true, true }
+};
+
+// Añadido en feature 2: valoración de una ruta (estrellas, me gusta por parada y comentario).
+export type Rating = { stars: number; stops: Record<number, boolean>; comment?: string };
 
 export type RefineAction =
   | { type: "quick"; value: "menos_caminar" | "mas_comida" | "mas_barato" | "anadir_pausa" }
@@ -65,12 +76,16 @@ export interface DataModule {
   refineRoute(id: string, action: RefineAction): Promise<Route>;
   undo(id: string): Promise<Route>;
   getRoute(id: string): Promise<Route>;
-  listRoutes(): Promise<Route[]>;
+  listRoutes(): Promise<Route[]>;            // solo rutas guardadas de la cuenta, la más reciente primero
   saveRoute(id: string): Promise<Route>;
   deleteRoute(id: string): Promise<void>;
-  rateRoute(id: string, rating: { stars: number; stops: Record<number, boolean>; comment?: string }): Promise<void>;
+  rateRoute(id: string, rating: Rating): Promise<void>;
   getPlace(id: string): Promise<Place>;
   getAlternatives(routeId: string, order: number): Promise<Place[]>;
+  setFavorite(id: string, favorite: boolean): Promise<Route>;                                     // Añadido en feature 2
+  getRating(id: string): Promise<Rating | null>;                                                  // Añadido en feature 2
+  updateAccount(patch: Partial<Pick<Session, "name" | "email" | "settings">>): Promise<Session>;  // Añadido en feature 2
+  deleteAccount(): Promise<void>;                                                                 // Añadido en feature 2
 }
 
 // Responsable: spec 1 (guion del asistente simulado)

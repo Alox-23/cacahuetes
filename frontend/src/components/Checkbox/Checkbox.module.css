@@ -1,0 +1,28 @@
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: var(--size-touch-target);
+  font-size: var(--font-size-body);
+  line-height: 1.35;
+  cursor: pointer;
+}
+
+.box {
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  margin: 0;
+  accent-color: var(--color-primary);
+}
+
+.error {
+  font-size: var(--font-size-label);
+  color: var(--color-danger);
+}

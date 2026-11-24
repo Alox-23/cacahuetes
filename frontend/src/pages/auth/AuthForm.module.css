@@ -1,0 +1,49 @@
+.oauth {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.oauthButton {
+  height: 52px;
+  border-radius: var(--radius-input);
+  border: 1px solid var(--color-border-input);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-family: inherit;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.oauthButton:hover {
+  border-color: var(--color-primary);
+}
+
+.oauthButton:disabled {
+  opacity: 0.45;
+}
+
+.divider {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: var(--font-size-label);
+  color: var(--color-text-muted);
+}
+
+.line {
+  flex-grow: 1;
+  height: 1px;
+  background: var(--color-border);
+}
+
+.forgot {
+  font-size: 14px;
+}
+
+.footer {
+  gap: 18px;
+  padding-top: 18px;
+}

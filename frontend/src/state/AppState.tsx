@@ -14,7 +14,9 @@ import type { AssistantDeps, AssistantMode, RichReply } from '../assistant/types
 import type { DataModule, Preferences, Route, RouteRequest, Session } from '../contract/types'
 import { dataModule } from '../data/mockData'
 import { STORAGE_KEYS, createStorage, type JsonStorage } from '../data/storage'
+import { Toast } from '../components/Toast/Toast'
 import { t } from '../i18n'
+import { isoDate, nextWeekday, parseIsoDate } from '../lib/time'
 
 export type ChatMessage =
   | { id: string; role: 'user'; text: string }
@@ -29,23 +31,40 @@ export type ChatState = {
 
 type SendInput = { text?: string; option?: string }
 
+type StartOpts = { key?: string; route?: Route; request?: RouteRequest; greet?: boolean }
+
+export const TOAST_MS = 2500
+
+/** A stored request ready to reuse: a past date moves to the next same weekday. */
+export function reuseRequest(request: RouteRequest, today: Date = new Date()): RouteRequest {
+  const copy: RouteRequest = JSON.parse(JSON.stringify(request))
+  if (copy.date < isoDate(today)) copy.date = isoDate(nextWeekday(today, parseIsoDate(copy.date).getDay()))
+  return copy
+}
+
 type AppStateValue = {
   data: DataModule
   preferences: Preferences | null
   savePreferences: (p: Preferences) => Promise<void>
   session: Session
   setSession: (s: Session) => void
+  /** Re-read the session from the data module (after login, register, logout, account changes). */
+  refreshSession: () => Promise<Session>
   currentRouteId: string | null
   setCurrentRouteId: (id: string | null) => void
   pendingRequest: RouteRequest | null
   setPendingRequest: (r: RouteRequest | null) => void
   chats: Record<AssistantMode, ChatState>
   /** Reset a transcript (and its assistant) and optionally ask for the opening message. */
-  startChat: (mode: AssistantMode, opts?: { key?: string; route?: Route; greet?: boolean }) => void
+  startChat: (mode: AssistantMode, opts?: StartOpts) => void
   /** Like startChat, but only if this mode is not already running for `key`. */
   ensureChat: (mode: AssistantMode, opts: { key: string; route?: Route; greet?: boolean }) => void
   /** Send to the assistant; `echo` is the user bubble text (defaults to input.text). */
   send: (mode: AssistantMode, input: SendInput, echo?: string) => Promise<RichReply | undefined>
+  /** "Reutilizar": a new request conversation whose first reply is the summary of `request`. */
+  startReuse: (request: RouteRequest, echo?: string) => void
+  /** Short message in the bottom toast (auto-hides). */
+  showToast: (message: string) => void
 }
 
 const AppStateContext = createContext<AppStateValue | null>(null)
@@ -82,6 +101,7 @@ export function AppStateProvider({
     store.read<string | null>(STORAGE_KEYS.currentRoute, null),
   )
   const [pendingRequest, setPendingRequest] = useState<RouteRequest | null>(null)
+  const [toast, setToast] = useState<{ message: string; id: number } | null>(null)
   const [chats, setChats] = useState<Record<AssistantMode, ChatState>>({
     onboarding: emptyChat(),
     request: emptyChat(),
@@ -111,6 +131,22 @@ export function AppStateProvider({
     },
     [data],
   )
+
+  const refreshSession = useCallback(async () => {
+    const s = await data.getSession()
+    setSession(s)
+    return s
+  }, [data])
+
+  const showToast = useCallback((message: string) => {
+    setToast((prev) => ({ message, id: (prev?.id ?? 0) + 1 }))
+  }, [])
+
+  useEffect(() => {
+    if (!toast) return
+    const timer = setTimeout(() => setToast(null), TOAST_MS)
+    return () => clearTimeout(timer)
+  }, [toast])
 
   const setCurrentRouteId = useCallback(
     (id: string | null) => {
@@ -172,11 +208,11 @@ export function AppStateProvider({
   }, [])
 
   const startChat = useCallback(
-    (mode: AssistantMode, opts: { key?: string; route?: Route; greet?: boolean } = {}) => {
+    (mode: AssistantMode, opts: StartOpts = {}) => {
       epochs.current[mode] += 1
       busy.current[mode] = false
       keys.current[mode] = opts.key
-      ;(assistants.current as Record<AssistantMode, MockAssistant>)[mode].reset(mode, { route: opts.route })
+      ;(assistants.current as Record<AssistantMode, MockAssistant>)[mode].reset(mode, { route: opts.route, request: opts.request })
       setChats((prev) => ({ ...prev, [mode]: { messages: [], pending: false, key: opts.key } }))
       if (opts.greet) void send(mode, {})
     },
@@ -191,6 +227,14 @@ export function AppStateProvider({
     [startChat],
   )
 
+  const startReuse = useCallback(
+    (request: RouteRequest, echo?: string) => {
+      startChat('request', { key: `reuse-${Date.now()}`, request: reuseRequest(request) })
+      void send('request', {}, echo)
+    },
+    [startChat, send],
+  )
+
   const value = useMemo<AppStateValue>(
     () => ({
       data,
@@ -198,6 +242,7 @@ export function AppStateProvider({
       savePreferences,
       session,
       setSession,
+      refreshSession,
       currentRouteId,
       setCurrentRouteId,
       pendingRequest,
@@ -206,12 +251,19 @@ export function AppStateProvider({
       startChat,
       ensureChat,
       send,
+      startReuse,
+      showToast,
     }),
-    [data, preferences, savePreferences, session, currentRouteId, setCurrentRouteId, pendingRequest, chats, startChat, ensureChat, send],
+    [data, preferences, savePreferences, session, refreshSession, currentRouteId, setCurrentRouteId, pendingRequest, chats, startChat, ensureChat, send, startReuse, showToast],
   )
 
   if (!loaded) return null
-  return <AppStateContext.Provider value={value}>{children}</AppStateContext.Provider>
+  return (
+    <AppStateContext.Provider value={value}>
+      {children}
+      <Toast key={toast?.id} message={toast?.message ?? null} />
+    </AppStateContext.Provider>
+  )
 }
 
 export function useAppState(): AppStateValue {
@@ -230,8 +282,17 @@ export function usePreferences() {
 }
 
 export function useSession() {
-  const { session, setSession } = useAppState()
-  return { session, setSession }
+  const { session, setSession, refreshSession } = useAppState()
+  return { session, setSession, refreshSession, isAccount: session.kind === 'account' }
+}
+
+export function useToast() {
+  const { showToast } = useAppState()
+  return { show: showToast }
+}
+
+export function useReuse() {
+  return useAppState().startReuse
 }
 
 export function useCurrentRoute() {
@@ -252,7 +313,7 @@ export function useChat(mode: AssistantMode) {
     pending: chat.pending,
     chatKey: chat.key,
     send: useCallback((input: SendInput, echo?: string) => send(mode, input, echo), [send, mode]),
-    start: useCallback((opts?: { key?: string; route?: Route; greet?: boolean }) => startChat(mode, opts), [startChat, mode]),
+    start: useCallback((opts?: StartOpts) => startChat(mode, opts), [startChat, mode]),
     ensure: useCallback((opts: { key: string; route?: Route; greet?: boolean }) => ensureChat(mode, opts), [ensureChat, mode]),
   }
 }

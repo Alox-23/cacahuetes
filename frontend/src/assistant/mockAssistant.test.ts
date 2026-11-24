@@ -271,7 +271,7 @@ describe('assistant · change mode', () => {
     const food = await a.sendMessage({ option: 'quick:mas_comida' })
     expect(food.changes?.[0]).toMatch(/He añadido Cal Pep para comer después de/)
     const cheaper = await a.sendMessage({ option: 'quick:mas_barato' })
-    expect(cheaper.changes?.[0]).toMatch(/He cambiado Sagrada Família por .+, que es gratis\./)
+    expect(cheaper.changes?.[0]).toMatch(/He cambiado Casa Batlló por .+, que es gratis\./)
   })
 
   it('says so when the change is not understood', async () => {
@@ -280,5 +280,28 @@ describe('assistant · change mode', () => {
     expect(r.kind).toBe('question')
     expect(r.text).toMatch(/No he entendido el cambio/)
     expect(r.options).toHaveLength(4)
+  })
+})
+
+describe('assistant · reuse a saved route (feature 2)', () => {
+  it('reset("request", { request }) answers with the summary of that request, then keeps refining it', async () => {
+    const { a } = assistantFor('request')
+    const request = {
+      city: 'Sevilla',
+      date: '2026-11-28',
+      timeWindow: { from: '16:00', to: '20:00' },
+      start: { label: 'Mi hotel' },
+      mustInclude: [],
+      overrides: { pace: 'relajado' as const, transport: ['a_pie' as const] },
+    }
+    a.reset('request', { request })
+    const first = await a.sendMessage({})
+    expect(first.kind).toBe('summary')
+    expect(first.request).toEqual(request)
+    expect(first.display?.lead?.[0]).toContain('ruta guardada')
+    const next = await a.sendMessage({ text: 'mejor en Valencia' })
+    expect(next.kind).toBe('summary')
+    expect(next.request?.city).toBe('Valencia')
+    expect(next.request?.timeWindow).toEqual(request.timeWindow)
   })
 })
