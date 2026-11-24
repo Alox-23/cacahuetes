@@ -337,7 +337,12 @@ export function createAssistant(deps: AssistantDeps): MockAssistant {
     options: [{ label: t('request.opt_city_marbella'), value: 'city:Marbella' }] })
 
   async function request(input: { text?: string; option?: string }): Promise<RichReply> {
+    const clarification = (message: string): RichReply => ({
+      kind: 'question', text: message,
+      options: summaryShown ? [{ label: t('request.viewDraft'), value: 'show-summary' }] : [],
+    })
     if (input.option) {
+      if (input.option === 'show-summary') return askNext([])
       if (input.option.startsWith('city:')) {
         return input.option === 'city:Marbella' ? askNext([]) : localScopeReply()
       }
@@ -348,6 +353,12 @@ export function createAssistant(deps: AssistantDeps): MockAssistant {
     const text = (input.text ?? '').trim()
     if (!text) return askNext([])
     if (asksForAnotherCity(text)) return localScopeReply()
+    const words = normalize(text)
+    if (/\bca[bv]are(?:ts?|s)?\b/.test(words) && !/\b(?:no quiero|sin|evitar)\b/.test(words)) return clarification(t('request.noCabaret'))
+    if (summaryShown &&
+        /^(?:(?:aun|todavia) )?(?:(?:me )?faltan? (?:cosas|algo|detalles)|echo de menos algo)$/.test(words)) {
+      return clarification(t('request.missingDetail'))
+    }
     const nearby = localStart(text)
     const choosingStart = awaitingOtherStart || asked === 'start'
     if (choosingStart && /\b(no (?:lo )?se|ni idea|no estoy segur[oa]|no conozco marbella)\b/.test(normalize(text))) {
@@ -378,6 +389,7 @@ export function createAssistant(deps: AssistantDeps): MockAssistant {
       if (!point) delete draft.start
     }
     if (!parsed.recognized) {
+      if (summaryShown) return clarification(lead[0] ?? t('request.missingDetail'))
       if (lead.length) return askNext(lead)
       // While asking for the start point, any free text is taken as the address.
       if (asked === 'start') {
