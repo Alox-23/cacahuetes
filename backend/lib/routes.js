@@ -14,9 +14,7 @@ function walkingMinutes(from, to, pace) {
   return Math.ceil(kilometres * 1.35 / speeds[pace] * 60);
 }
 
-export function routeInput(body, savedProfile = {}) {
-  const profile = validateProfile(body.profile ?? savedProfile);
-  if (nextQuestion(profile)) throw badRequest('Completa primero el perfil de Cacahuete.');
+export function routeOptions(body) {
   const avoidStops = body.avoidStops ?? [];
   if (!Array.isArray(avoidStops) || avoidStops.length > places.length ||
     !avoidStops.every((id) => places.some((place) => place.id === id))) {
@@ -26,7 +24,13 @@ export function routeInput(body, savedProfile = {}) {
   if (scenario !== null && (scenario !== 'busy-centre' || process.env.DEMO_SCENARIOS !== 'true')) {
     throw badRequest('El escenario de simulación no está disponible.');
   }
-  return { profile, avoidStops, scenario };
+  return { avoidStops, scenario };
+}
+
+export function routeInput(body, savedProfile = {}) {
+  const profile = validateProfile(body.profile ?? savedProfile);
+  if (nextQuestion(profile)) throw badRequest('Completa primero el perfil de Cacahuete.');
+  return { profile, ...routeOptions(body) };
 }
 
 function directions(from, to) {

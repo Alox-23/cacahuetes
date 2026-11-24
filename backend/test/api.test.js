@@ -116,6 +116,76 @@ test('interpreta respuestas libres con el modelo y guarda solo el perfil de la c
   assert.equal((await call('status', { token })).status, 401);
 });
 
+test('el chat pide solo lo que falta y recalcula una ruta al cambiar el tiempo', async () => {
+  const send = (body) => call('chat', { method: 'POST', body, ip: '192.0.2.21' }).then((response) => response.json());
+  const first = await send({ message: 'Tengo una hora y media y quiero museos y tapas, sin escaleras.' });
+  assert.equal(first.state, 'question');
+  assert.equal(first.question.id, 'start');
+  assert.equal(first.profile.minutes, 90);
+  assert.deepEqual(first.profile.interests, ['arte', 'gastronomia']);
+  assert.equal(first.profile.avoidStairs, true);
+
+  const destination = await send({ profile: first.profile, message: 'Quiero visitar Puerto Banús' });
+  assert.equal(destination.question.id, 'start');
+  assert.equal(destination.profile.start, undefined);
+
+  const trip = await send({ profile: first.profile, questionId: 'start', answer: 'naranjos' });
+  assert.equal(trip.state, 'route');
+  assert.equal(trip.route.start.name, 'Plaza de los Naranjos');
+  assert.ok(trip.route.stops.length > 0);
+  assert.ok(trip.route.totalMinutes <= 90);
+  assert.ok(trip.route.stops.every((stop) => stop.id !== 'grabado'));
+  assert.equal(trip.appliedDefaults.avoidStairs, undefined);
+
+  const shorter = await send({ profile: trip.profile, message: 'Mejor 30 minutos', avoidStops: ['naranjos'] });
+  assert.equal(shorter.profile.minutes, 30);
+  assert.ok(shorter.route.stops.length > 0);
+  assert.ok(shorter.route.totalMinutes <= 30 && shorter.route.totalMinutes < trip.route.totalMinutes);
+  assert.ok(shorter.route.stops.every((stop) => stop.id !== 'naranjos'));
+  assert.equal(shorter.quota.expiresAt, trip.quota.expiresAt);
+});
+
+test('el chat extrae preferencias con OpenAI y aplica cambios válidos al perfil de la cuenta', async (t) => {
+  const { account, token } = await createAccount('chat@example.test');
+  process.env.OPENAI_API_KEY = 'test-key';
+  t.after(() => delete process.env.OPENAI_API_KEY);
+  const requestToModel = t.mock.method(globalThis, 'fetch', async (url, config) => {
+    assert.equal(url, 'https://api.openai.com/v1/responses');
+    const request = JSON.parse(config.body);
+    assert.equal(request.store, false);
+    assert.equal(request.text.format.name, 'visit_preferences');
+    assert.equal(request.text.format.strict, true);
+    assert.deepEqual(JSON.parse(request.input).perfil, {});
+    assert.doesNotMatch(request.input, /chat@example|Bearer/);
+    const text = JSON.stringify({
+      start: 'alameda', minutes: 120, interests: ['historia', 'gastronomia'],
+      budget: 'bajo', pace: null, avoidStairs: false, crowd: 'evitar', plan: 'premium'
+    });
+    return Response.json({ output: [{ content: [{ type: 'output_text', text }] }] });
+  });
+  const response = await call('chat', {
+    method: 'POST', token, body: { message: 'Salimos de la Alameda. Tenemos dos horas, queremos historia y comer barato.' }
+  });
+  assert.equal(response.status, 200);
+  const result = await response.json();
+  assert.equal(result.state, 'route');
+  assert.equal(result.interpretation, 'openai');
+  assert.equal(requestToModel.mock.callCount(), 1);
+  assert.equal(result.quota.plan, 'free');
+  assert.equal(result.profile.plan, undefined);
+  assert.equal(result.profile.pace, undefined);
+  assert.equal(result.appliedDefaults.pace, 'normal');
+  assert.ok(result.route.totalMinutes <= 120);
+
+  const status = await (await call('status', { token })).json();
+  assert.equal(status.account.id, account.id);
+  assert.deepEqual(status.account.profile, result.profile);
+  await db.query("UPDATE accounts SET trial_started_at = now() - interval '4 hours' WHERE id = $1", [account.id]);
+  const expired = await call('chat', { method: 'POST', token, body: { message: 'Mejor 45 minutos' } });
+  assert.equal(expired.status, 403);
+  assert.equal(requestToModel.mock.callCount(), 1);
+});
+
 test('Premium se activa mediante pago firmado y recalcula con escenario de afluencia', async (t) => {
   const { account, token } = await createAccount('premium@example.test');
   process.env.STRIPE_SECRET_KEY = 'sk_test_example';

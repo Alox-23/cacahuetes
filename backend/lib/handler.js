@@ -1,6 +1,7 @@
 import { authenticate, login, publicAccount, register, saveProfile } from './accounts.js';
 import { startCheckout, stripeWebhook } from './billing.js';
 import { listPlaces, starts } from './catalog.js';
+import { chatInput, chatTurn } from './chat.js';
 import { getPool } from './db.js';
 import { ApiError, configuredOrigins, json, readJson } from './http.js';
 import { takeTurn, validateProfile, validateTurn } from './onboarding.js';
@@ -9,7 +10,7 @@ import { buildRoutes, routeInput } from './routes.js';
 
 const methods = new Map([
   ['health', 'GET'], ['catalog', 'GET'], ['status', 'GET'], ['register', 'POST'], ['login', 'POST'],
-  ['logout', 'POST'], ['profile', 'PUT'], ['onboarding', 'POST'], ['route', 'POST'],
+  ['logout', 'POST'], ['profile', 'PUT'], ['chat', 'POST'], ['onboarding', 'POST'], ['route', 'POST'],
   ['checkout', 'POST'], ['stripe-webhook', 'POST']
 ]);
 
@@ -85,6 +86,13 @@ export function createHandler(database = getPool) {
       }
 
       const body = await readJson(request);
+      if (action === 'chat') {
+        const turn = chatInput(body, account?.profile);
+        const quota = await authorizeAgent(db, account, network);
+        const result = await chatTurn(turn, quota.plan === 'premium');
+        if (account && result.state === 'route' && result.accepted) await saveProfile(db, account, result.profile);
+        return json({ ...result, quota }, 200, headers);
+      }
       if (action === 'onboarding') {
         const turn = validateTurn(body, account?.profile);
         const quota = await authorizeAgent(db, account, network);
