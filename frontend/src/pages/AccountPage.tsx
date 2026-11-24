@@ -1,11 +1,12 @@
 /* Cuenta (Cuenta.html): name, email, password, language, reminders and delete account. */
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Button, Card, Checkbox, ConfirmSheet, Header, ListRow, Screen, TextField } from '../components'
+import { Button, Card, Checkbox, ConfirmSheet, Header, ListRow, Screen, TextField, VerifyEmailNotice } from '../components'
 import type { AccountSettings } from '../contract/types'
 import { DEFAULT_ACCOUNT_SETTINGS } from '../data/defaults'
 import { t } from '../i18n'
 import { useBack } from '../lib/useBack'
+import { useResendVerification } from '../lib/useResendVerification'
 import { isValidEmail } from '../lib/validation'
 import { useCurrentRoute, useData, useSession, useToast } from '../state/AppState'
 import layout from './layout.module.css'
@@ -23,6 +24,7 @@ export function AccountPage() {
   const [submitted, setSubmitted] = useState(false)
   const [confirming, setConfirming] = useState(false)
   const [busy, setBusy] = useState(false)
+  const verification = useResendVerification()
   const pending = () => toast.show(t('toast.pending'))
 
   const errors = submitted
@@ -62,6 +64,9 @@ export function AccountPage() {
     <Screen fixed className={layout.page}>
       <div className={layout.body}>
         <Header onBack={back} label={t('account.header')} className={layout.header} />
+        {session.kind === 'account' && session.emailVerified === false && (
+          <VerifyEmailNotice busy={verification.busy} onResend={() => void verification.resend()} />
+        )}
         <div className={layout.spacer} />
         <TextField label={t('account.name')} autoComplete="name" placeholder={t('account.namePlaceholder')} value={name} onChange={(e) => setName(e.target.value)} error={errors.name} />
         <TextField

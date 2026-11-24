@@ -28,3 +28,32 @@
   font-size: var(--font-size-label);
   color: var(--color-danger);
 }
+
+/* Feature 4: help line and an inline control on the right (password "Mostrar"). */
+.hint {
+  font-size: var(--font-size-label);
+  color: var(--color-text-muted);
+}
+
+.control {
+  position: relative;
+  display: flex;
+}
+
+.control .input {
+  flex-grow: 1;
+  min-width: 0;
+}
+
+.withTrailing {
+  padding-right: 96px;
+}
+
+.trailing {
+  position: absolute;
+  top: 0;
+  right: 4px;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+}

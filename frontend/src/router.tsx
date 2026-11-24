@@ -2,6 +2,7 @@ import { useState, type ReactNode } from 'react'
 import { Navigate, Route, Routes, useParams } from 'react-router-dom'
 import { AccountPage } from './pages/AccountPage'
 import { AlternativesPage } from './pages/AlternativesPage'
+import { AuthCallbackPage } from './pages/AuthCallbackPage'
 import { ChangeChatPage } from './pages/ChangeChatPage'
 import { ChatPage } from './pages/ChatPage'
 import { ConversationPage } from './pages/ConversationPage'
@@ -18,6 +19,8 @@ import { RoutePage } from './pages/RoutePage'
 import { SavedRoutePage } from './pages/SavedRoutePage'
 import { SaveGuestPage } from './pages/SaveGuestPage'
 import { StopPage } from './pages/StopPage'
+import { VerifyEmailPage } from './pages/VerifyEmailPage'
+import { VerifyPendingPage } from './pages/VerifyPendingPage'
 import { usePreferences, useSession } from './state/AppState'
 
 /** /chat… needs onboarding done; otherwise go answer the four questions. */
@@ -58,7 +61,7 @@ function SaveGuestRoute() {
   )
 }
 
-/** URL map (tech specs feature 1 §2 and feature 2 §2). */
+/** URL map (tech specs feature 1 §2, feature 2 §2 and feature 4 §5.7). */
 export function AppRoutes() {
   return (
     <Routes>
@@ -136,6 +139,16 @@ export function AppRoutes() {
           </RequireAccount>
         }
       />
+      <Route
+        path="/verify-pending"
+        element={
+          <RequireAccount fallback="/login">
+            <VerifyPendingPage />
+          </RequireAccount>
+        }
+      />
+      <Route path="/verify-email" element={<VerifyEmailPage />} />
+      <Route path="/auth/callback" element={<AuthCallbackPage />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   )

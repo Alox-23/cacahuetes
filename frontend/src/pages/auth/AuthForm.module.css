@@ -47,3 +47,27 @@
   gap: 18px;
   padding-top: 18px;
 }
+
+/* Feature 4: "Mostrar"/"Ocultar" inside the password field. */
+.reveal {
+  min-width: var(--size-touch-target);
+  min-height: var(--size-touch-target);
+  padding: 0 12px;
+  border: 0;
+  background: transparent;
+  color: var(--color-primary);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.reveal:hover {
+  color: var(--color-primary-hover);
+}
+
+/* Feature 4: errors that belong to no field (wrong credentials, rate limit, network). */
+.formError {
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--color-danger);
+}

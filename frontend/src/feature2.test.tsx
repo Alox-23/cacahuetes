@@ -76,6 +76,10 @@ describe('feature 2 smoke tests', () => {
     await user.click(screen.getByLabelText('Acepto los términos y la política de privacidad'))
     await user.click(submit)
 
+    // Feature 4: the route is saved, then Confirma tu correo shows once; "Continuar" goes on to it.
+    await waitFor(() => expect(location()).toBe('/verify-pending'))
+    expect(await screen.findByText('Te hemos enviado un enlace a ana@ejemplo.com. Ábrelo para confirmar tu cuenta.')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Continuar' }))
     await waitFor(() => expect(location()).toBe(`/my-routes/${route.id}`))
     expect(await screen.findByRole('heading', { name: 'Marbella en 5 horas' })).toBeInTheDocument()
     expect(await ctx.data.getSession()).toMatchObject({ kind: 'account', email: 'ana@ejemplo.com', name: 'Ana' })

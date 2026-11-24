@@ -1,9 +1,10 @@
 /* Perfil (Perfil.html): user card (or guest card), settings list, preference chips and sign out. */
 import { useState } from 'react'
-import { Button, Card, Chip, ConfirmSheet, ListRow, Screen } from '../components'
+import { Button, Card, Chip, ConfirmSheet, ListRow, Screen, VerifyEmailNotice } from '../components'
 import { budgetChip, companyLabel, interestLabel, paceLabel } from '../assistant/format'
 import type { Preferences } from '../contract/types'
 import { t } from '../i18n'
+import { useResendVerification } from '../lib/useResendVerification'
 import { useData, usePreferences, useSession, useToast } from '../state/AppState'
 import layout from './layout.module.css'
 import styles from './ProfilePage.module.css'
@@ -20,6 +21,7 @@ export function ProfilePage() {
   const toast = useToast()
   const [confirming, setConfirming] = useState(false)
   const [busy, setBusy] = useState(false)
+  const verification = useResendVerification()
   const pending = () => toast.show(t('toast.pending'))
 
   async function logout() {
@@ -40,6 +42,10 @@ export function ProfilePage() {
       <div className={styles.titleRow}>
         <h1 className={layout.h1}>{t('profile.title')}</h1>
       </div>
+
+      {isAccount && session.emailVerified === false && (
+        <VerifyEmailNotice busy={verification.busy} onResend={() => void verification.resend()} />
+      )}
 
       <Card padding="16px 20px" className={styles.userCard}>
         <div className={styles.user}>
