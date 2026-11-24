@@ -24,7 +24,10 @@ function credentials(body, registering) {
 }
 
 export function publicAccount(account) {
-  return { id: account.id, email: account.email, plan: account.plan, profile: account.profile };
+  return {
+    id: account.id, email: account.email, plan: account.plan, profile: account.profile,
+    emailVerified: Boolean(account.email_verified_at)
+  };
 }
 
 function sessionToken() {

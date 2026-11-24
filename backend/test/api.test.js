@@ -163,6 +163,8 @@ test('el chat clasifica intereses localmente, genera la ruta y respeta el límit
 
 test('Premium se activa mediante pago firmado y recalcula con escenario de afluencia', async (t) => {
   const { account, token } = await createAccount('premium@example.test');
+  // Feature 4: Premium needs a confirmed email (verification is active locally).
+  await db.query('UPDATE accounts SET email_verified_at = now() WHERE id = $1', [account.id]);
   process.env.STRIPE_SECRET_KEY = 'sk_test_example';
   process.env.STRIPE_PRICE_ID = 'price_example';
   t.after(() => {

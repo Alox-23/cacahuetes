@@ -9,11 +9,15 @@ import { authorizeAgent, rateLimit, trialInfo, visitorNetwork } from './quota.js
 import { buildRoutes, routeInput } from './routes.js';
 import { claimGuest, guestForLogin, tripAction, tripMethods } from './trip-api.js';
 import { isMarbella } from './marbella-scope.js';
+import { verificationActive } from './mail.js';
+import { providers } from './oauth.js';
+import { issueVerification, verifyEmail } from './verification.js';
 
 const methods = new Map([
   ['health', 'GET'], ['catalog', 'GET'], ['status', 'GET'], ['register', 'POST'], ['login', 'POST'],
   ['logout', 'POST'], ['profile', 'PUT'], ['chat', 'POST'], ['onboarding', 'POST'], ['route', 'POST'],
-  ['checkout', 'POST'], ['stripe-webhook', 'POST'], ...tripMethods
+  ['checkout', 'POST'], ['stripe-webhook', 'POST'], ['verifyEmail', 'POST'], ['resendVerification', 'POST'],
+  ...tripMethods
 ]);
 
 function corsHeaders(request) {
@@ -60,10 +64,27 @@ export function createHandler(database = getPool) {
         const guest = guestForLogin(request);
         const auth = action === 'register' ? await register(db, body) : await login(db, body);
         if (guest) await claimGuest(db, guest, auth.account.id);
+        if (action === 'register' && verificationActive()) {
+          // A mail outage must not block sign-up: the user can resend from the app.
+          await issueVerification(db, auth.account)
+            .catch((error) => console.error('Verification mail failed:', error.code ?? error.name));
+        }
         return json({ account: publicAccount(auth.account), token: auth.token, quota: trialInfo(auth.account) },
           action === 'register' ? 201 : 200, headers);
       }
-      const account = await authenticate(db, request, ['logout', 'profile', 'checkout'].includes(action));
+      if (action === 'verifyEmail') {
+        await rateLimit(db, `verifyEmail:${visitorNetwork(request, localIp)}`, 20, 300);
+        const { token } = await readJson(request);
+        return json(await verifyEmail(db, token), 200, headers);
+      }
+      const account = await authenticate(db, request,
+        ['logout', 'profile', 'checkout', 'resendVerification'].includes(action));
+      if (action === 'resendVerification') {
+        if (account.email_verified_at) throw new ApiError(409, 'ALREADY_VERIFIED', 'Tu correo ya está confirmado.');
+        await rateLimit(db, `resendVerification:${account.id}`, 3, 600);
+        await issueVerification(db, account);
+        return new Response(null, { status: 204, headers });
+      }
       if (tripMethods.has(action)) {
         const result = await tripAction(db, action, request, account, localIp);
         if (result === undefined) return new Response(null, { status: 204, headers });
@@ -81,6 +102,9 @@ export function createHandler(database = getPool) {
       }
       if (action === 'checkout') {
         await rateLimit(db, `checkout:${account.id}`, 5);
+        if (verificationActive() && !account.email_verified_at) {
+          throw new ApiError(403, 'EMAIL_NOT_VERIFIED', 'Confirma tu correo antes de pasar a Premium.');
+        }
         return json(await startCheckout(db, account), 200, headers);
       }
       const network = account ? null : visitorNetwork(request, localIp);
@@ -90,8 +114,11 @@ export function createHandler(database = getPool) {
           ({ rows: [guestTrial] } = await db.query(
             'SELECT started_at AS trial_started_at FROM guest_trials WHERE network_key = $1', [network]));
         }
-        return json({ account: account ? publicAccount(account) : null, quota: trialInfo(account, account ?? guestTrial) },
-          200, headers);
+        return json({
+          account: account ? publicAccount(account) : null,
+          quota: trialInfo(account, account ?? guestTrial),
+          auth: { providers: providers(), mail: verificationActive() }
+        }, 200, headers);
       }
 
       const body = await readJson(request);
