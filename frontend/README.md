@@ -1,15 +1,17 @@
-# Frontend · rutas turísticas (features 1 and 2)
+# Frontend · rutas turísticas (features 1, 2 and 3)
 
 Mobile-first web app in Spanish where a guest answers four questions inside the chat, asks the AI assistant
 **Cacahuete** for a route, confirms "Esto es lo que entendí", watches the route being created and asks for
 changes by chat. Feature 2 completes the app: the Route screen with a schematic map and per-stop actions, saving
 routes (guest → account), register and login, Mis rutas with saved-route detail and rating, and the profile with
-editable preferences and account settings. The app can use the Cacahuete HTTP API and PostgreSQL (see
+editable preferences and account settings. Feature 3 lets the user play Peanut Run (here "Cacahuete Run") while
+the route is being created. The app can use the Cacahuete HTTP API and PostgreSQL (see
 [the backend README](../backend/README.md)) or run the standalone demo, where the assistant is a client-side
 script and all data lives in `localStorage`.
 
 - Tech specs: [`docs/tech-specs/feature-1-base-y-asistente.md`](docs/tech-specs/feature-1-base-y-asistente.md),
-  [`docs/tech-specs/feature-2-ruta-mis-rutas-perfil.md`](docs/tech-specs/feature-2-ruta-mis-rutas-perfil.md)
+  [`docs/tech-specs/feature-2-ruta-mis-rutas-perfil.md`](docs/tech-specs/feature-2-ruta-mis-rutas-perfil.md),
+  [`docs/tech-specs/feature-3-juego-mientras-se-crea-la-ruta.md`](docs/tech-specs/feature-3-juego-mientras-se-crea-la-ruta.md)
 - Design package (read only): [`docs/`](docs/README-paquete.md) — screens in `docs/design/screens/*.html`
 
 ## Run
@@ -38,7 +40,7 @@ To start from scratch, clear the site's `localStorage` (keys `rt.*`).
 | `/onboarding` | Four questions in the chat (redirects to `/chat` once preferences exist) |
 | `/chat` | Main chat (redirects to `/onboarding` until preferences exist) |
 | `/chat/conversation` | Request, clarifying questions and "Esto es lo que entendí" |
-| `/creating` | Creating the route (redirects to `/chat` without a pending request) |
+| `/creating` | Creating the route, with the game (redirects to `/chat` without a pending request) |
 | `/route/:id` | Ruta: map, stops, quick changes, "Deshacer", save and share |
 | `/route/:id/change` | Change the route by chat |
 | `/route/:id/stop/:order` | Detalle de lugar: why, hours, price; change, remove, lock |
@@ -69,6 +71,28 @@ The tab bar is on every screen: `/my-routes*` highlights Mis rutas; `/profile`, 
 - **Reuse:** "Reutilizar" opens the request conversation with "Esto es lo que entendí" pre-filled (a past date
   moves to the next same weekday); "Crear ruta" creates a new route.
 
+## Juego mientras se crea la ruta
+
+The Creating screen (`/creating`) shows the four steps and, under them, **Peanut Run**, the one-button endless
+runner from the `peanut-run-game` branch, in Spanish ("Cacahuete Run"). Tap the game, or focus it and press
+Space / Up / W, to start and to jump; M toggles the sound.
+
+- **Never interrupted:** if the game was never started, the screen goes to the route as soon as it is ready, as
+  before. If the user is playing (or has played), the screen stays: the title becomes "Tu ruta está lista" and a
+  banner with "Ver ruta" appears above where Cancel was. Answering "No" to "¿Otra partida?" also opens the route
+  once it is ready.
+- **Code:** the engine is vendored, as JavaScript, in `src/game/peanut-run/` (origin commit and the only local
+  change, the `strings` option for the Spanish texts, in [`src/game/peanut-run/SOURCE.md`](src/game/peanut-run/SOURCE.md)).
+  `index.d.ts` types its API; ESLint skips the vendored `.js`. `src/game/PeanutRunGame.tsx` is the React wrapper
+  (creates the game once, destroys it on unmount, polls the state every 250 ms because the engine has no
+  state-change event). Texts live in `es.json` under `game`.
+- **Storage:** best score in `rt.peanutRun.highScore`, mute preference in `rt.peanutRun.muted`.
+- **Small screens:** under 700 px of viewport height the steps card collapses to one line ("Paso 2 de 4 ·
+  Trayectos calculados"). In a game slot narrower than 560 px the game-over dialog is laid out in two columns so
+  its buttons are 44 px tall (scoped rules in `PeanutRunGame.module.css`; the vendored CSS is untouched).
+- **Without canvas** (jsdom, very old browsers) the wrapper renders nothing and the screen behaves as if the user
+  never played.
+
 ## Structure
 
 ```
@@ -83,6 +107,7 @@ src/
   state/AppState.tsx                 provider + hooks (preferences, session, current route, chats)
   components/                        shared UI (CSS Modules), exported from components/index.ts
   pages/                             screens; pages/chat/ holds the shared transcript renderers
+  game/                              Peanut Run: vendored engine (peanut-run/) and the React wrapper
   lib/                               small helpers (text, time, route text, filters, share, validation, tabs)
 ```
 
@@ -91,7 +116,8 @@ stop count), `FloatingBackButton`, `Sheet`, `StopRow`, `ListRow`, `Checkbox`, `T
 `ConfirmSheet` (destructive confirmations), `Toast` (rendered by the provider; `useToast().show(message)`),
 `SearchField`, `IconButton`, `AlternativeOption`.
 
-Rules kept in the code: components use only CSS variables (no raw hex), every interactive element is at least
+Rules kept in the code: components and pages use only CSS variables (no raw hex; the vendored game CSS under
+`src/game/peanut-run/` keeps its own art and is exempt), every interactive element is at least
 44 px, option chips use `aria-pressed`, the pace selector is a `radiogroup`, transcripts are `role="log"` with
 `aria-live="polite"`, and `<html lang="es">`.
 
