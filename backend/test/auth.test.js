@@ -415,3 +415,9 @@ test('state erróneo, caducado o reutilizado; cancelación; nonce y audiencia in
   assert.equal(fragment(await googleReturn({ code: 'rechazado', state: refused.state })).error, 'exchange_failed');
   claimsQueue = [];
 });
+
+test('common-passwords.json es idéntico en backend y frontend', async () => {
+  const backend = await readFile(new URL('../lib/common-passwords.json', import.meta.url));
+  const frontend = await readFile(new URL('../../frontend/src/lib/common-passwords.json', import.meta.url));
+  assert.ok(backend.equals(frontend), 'copy backend/lib/common-passwords.json to frontend/src/lib/');
+});

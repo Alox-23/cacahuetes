@@ -68,11 +68,11 @@ describe('feature 2 smoke tests', () => {
     expect(location()).toBe('/register')
     expect(screen.getByLabelText('Correo electrónico')).toHaveAttribute('aria-invalid', 'true')
     expect(screen.getByText('Escribe un correo válido, por ejemplo nombre@correo.com.')).toBeInTheDocument()
-    expect(screen.getByText('La contraseña debe tener al menos 8 caracteres.')).toBeInTheDocument()
+    expect(screen.getByText('La contraseña debe tener al menos 12 caracteres.')).toBeInTheDocument()
     expect(screen.getByText('Acepta los términos para crear la cuenta.')).toBeInTheDocument()
 
     await user.type(screen.getByLabelText('Correo electrónico'), 'ejemplo.com')
-    await user.type(screen.getByLabelText('Contraseña'), '-larga')
+    await user.type(screen.getByLabelText('Contraseña'), '-y-bien-larga')
     await user.click(screen.getByLabelText('Acepto los términos y la política de privacidad'))
     await user.click(submit)
 

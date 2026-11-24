@@ -140,3 +140,53 @@ test('una ruta anterior de otra ciudad se conserva sin aparecer en la app de Mar
   await assert.rejects(() => data.undo(route.id), /encontrado/);
   assert.equal((await db.query('SELECT id FROM travel_routes WHERE id=$1', [route.id])).rows.length, 1);
 });
+
+test('adaptador HTTP: reglas de contraseña, verificación del correo y acceso con proveedores', async (t) => {
+  const realFetch = globalThis.fetch;
+  const mails = [];
+  const env = { RESEND_API_KEY: 'test', MAIL_FROM: 'Cacahuete <no-reply@example.test>' };
+  Object.assign(process.env, env);
+  t.after(() => {
+    for (const key of [...Object.keys(env), 'GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET']) delete process.env[key];
+  });
+  // Mail goes to a mocked Resend; the adapter's own requests still reach the local server.
+  t.mock.method(globalThis, 'fetch', async (url, init) => {
+    if (String(url) === 'https://api.resend.com/emails') {
+      mails.push(JSON.parse(init.body));
+      return Response.json({ id: 'mail' });
+    }
+    return realFetch(url, init);
+  });
+
+  const email = 'verifica@example.org';
+  const data = createHttpDataModule(endpoint, storage(), { session: storage() });
+  assert.deepEqual(await data.getSession(), { kind: 'guest' });
+  assert.deepEqual(await data.authProviders(), []);
+  await assert.rejects(() => data.register('corta@example.org', 'once-chars!'), (error) =>
+    error.code === 'INVALID_INPUT' && error.status === 400 &&
+    error.details.field === 'password' && error.details.reason === 'PASSWORD_TOO_SHORT');
+  assert.equal((await data.register(email, 'fruta-y-rutas-1234')).emailVerified, false);
+  assert.equal((await data.getSession()).emailVerified, false);
+  await assert.rejects(() => data.register(email, 'fruta-y-rutas-1234'), (error) => error.code === 'EMAIL_EXISTS');
+  const token = mails.at(-1).text.match(/verify-email\?token=([A-Za-z0-9_-]{43})/)[1];
+  assert.deepEqual(await data.verifyEmail(token), { email });
+  assert.equal((await data.getSession()).emailVerified, true);
+  await assert.rejects(() => data.verifyEmail(token), (error) => error.code === 'INVALID_TOKEN' && error.status === 400);
+  await assert.rejects(() => data.resendVerification(), (error) => error.code === 'ALREADY_VERIFIED');
+
+  process.env.GOOGLE_CLIENT_ID = 'cacahuete-test.apps.googleusercontent.com';
+  process.env.GOOGLE_CLIENT_SECRET = 'google-test-secret';
+  const tab = storage();
+  let leave;
+  const left = new Promise((resolve) => { leave = resolve; });
+  const browser = createHttpDataModule(endpoint, storage(), { session: tab, navigate: (url) => leave(url) });
+  assert.deepEqual(await browser.authProviders(), ['google']);
+  void browser.signInWith('google');
+  const authorize = new URL(await left);
+  assert.equal(authorize.host, 'accounts.google.com');
+  const stateKey = `rt.api.${endpoint}.oauthState`;
+  assert.equal(tab.getItem(stateKey), authorize.searchParams.get('state'));
+  await assert.rejects(() => browser.completeSignIn('#state=wrong&ticket=x'), (error) => error.code === 'INVALID_STATE');
+  assert.equal(tab.getItem(stateKey), null, 'the stored state is single use');
+  await assert.rejects(() => browser.completeSignIn('#error=access_denied'), (error) => error.code === 'ACCESS_DENIED');
+});

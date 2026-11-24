@@ -1,10 +1,11 @@
 /* Crear cuenta (Registro.html) and Entrar (Login.html): one form, two modes. Mock auth, client-side checks. */
 import { useRef, useState, type FormEvent } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
+import type { AuthProvider } from '../../contract/types'
 import { Button, Checkbox, Header, Screen, TextField } from '../../components'
 import { t } from '../../i18n'
 import { useBack } from '../../lib/useBack'
-import { isValidEmail, isValidPassword } from '../../lib/validation'
+import { hasPassword, isValidEmail, passwordProblem } from '../../lib/validation'
 import { useData, useSession, useToast } from '../../state/AppState'
 import layout from '../layout.module.css'
 import styles from './AuthForm.module.css'
@@ -15,13 +16,13 @@ export type AuthState = { returnTo?: string; saveRouteId?: string } | null
 type Mode = 'register' | 'login'
 type Errors = { email?: string; password?: string; terms?: string }
 
-/** Mock sign-in password for the Google/Apple buttons (not shown anywhere). */
-const OAUTH_PASSWORD = 'mock-oauth'
-
 function validate(mode: Mode, email: string, password: string, terms: boolean): Errors {
   const errors: Errors = {}
   if (!isValidEmail(email)) errors.email = t('auth.errorEmail')
-  if (!isValidPassword(password)) errors.password = t('auth.errorPassword')
+  if (mode === 'register') {
+    const reason = passwordProblem(password, email)
+    if (reason) errors.password = t(`auth.reason.${reason}`)
+  } else if (!hasPassword(password)) errors.password = t('auth.errorPassword')
   if (mode === 'register' && !terms) errors.terms = t('auth.errorTerms')
   return errors
 }
@@ -46,11 +47,11 @@ export function AuthForm({ mode }: { mode: Mode }) {
   const errors = submitted ? validate(mode, email, password, terms) : {}
   const register = mode === 'register'
 
-  async function enter(how: 'form' | 'oauth', address: string, secret: string) {
+  async function enter(how: 'form' | AuthProvider, address = '', secret = '') {
     setBusy(true)
     try {
-      // The Google/Apple mocks are an "existing account": they go through login (seeds the examples).
-      if (how === 'form' && register) await data.register(address.trim(), secret)
+      if (how !== 'form') await data.signInWith(how)
+      else if (register) await data.register(address.trim(), secret)
       else await data.login(address.trim(), secret)
       if (state?.saveRouteId) {
         try {
@@ -92,10 +93,10 @@ export function AuthForm({ mode }: { mode: Mode }) {
           </div>
           <div className={layout.spacer} />
           <div className={styles.oauth}>
-            <button type="button" className={styles.oauthButton} disabled={busy} onClick={() => void enter('oauth', t('auth.googleEmail'), OAUTH_PASSWORD)}>
+            <button type="button" className={styles.oauthButton} disabled={busy} onClick={() => void enter('google')}>
               {t('auth.google')}
             </button>
-            <button type="button" className={styles.oauthButton} disabled={busy} onClick={() => void enter('oauth', t('auth.appleEmail'), OAUTH_PASSWORD)}>
+            <button type="button" className={styles.oauthButton} disabled={busy} onClick={() => void enter('apple')}>
               {t('auth.apple')}
             </button>
           </div>

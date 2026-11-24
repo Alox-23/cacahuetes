@@ -19,6 +19,10 @@ export const STORAGE_KEYS = {
   /** Saved route id → account email (routes belong to the account). */
   owners: 'rt.routeOwners',
   currentRoute: 'rt.currentRoute',
+  /** Feature 4: emails registered in this browser (register refuses them again). */
+  accounts: 'rt.accounts',
+  /** Feature 4: the demo verification link `{ token, email }` (one at a time). */
+  verifyToken: 'rt.verifyToken',
 } as const
 
 /** In-memory backend: used in tests and when localStorage is unavailable. */

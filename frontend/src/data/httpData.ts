@@ -1,9 +1,21 @@
-import type { AccountSettings, DataModule, Rating, Route, Session } from '../contract/types'
+import type { AccountSettings, AuthProvider, DataModule, Rating, Route, Session } from '../contract/types'
 import type { AssistantDeps } from '../assistant/types'
 import { DEFAULT_ACCOUNT_SETTINGS } from './defaults.ts'
+import { ApiClientError } from './errors.ts'
 
-type Account = { email: string }
+type Account = { email: string; emailVerified?: boolean }
 type AuthResult = { token: string; account: Account }
+/** `status.auth` (feature 4): configured providers and whether email verification is in play. */
+type AuthInfo = { providers: AuthProvider[]; mail: boolean }
+type StatusResult = { account: Account | null; auth?: AuthInfo }
+type KeyValue = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>
+
+export type HttpDataOptions = {
+  /** Per-tab storage for the OAuth `state` (default: window.sessionStorage). */
+  session?: KeyValue
+  /** Leaves the app for the provider's sign-in page (default: window.location.assign). */
+  navigate?: (url: string) => void
+}
 /** Name and settings the server does not store yet (see TODO(backend) below), kept per email. */
 type LocalAccount = { name?: string; settings?: AccountSettings }
 type LocalAccounts = Record<string, LocalAccount>
@@ -11,7 +23,13 @@ type LocalAccounts = Record<string, LocalAccount>
 type ConnectedData = DataModule & Required<Pick<AssistantDeps, 'interpretRequest' | 'refineConversation'>>
 
 /** Pass the full /api/cacahuete URL (local or deployed) to use the PostgreSQL backend. */
-export function createHttpDataModule(endpoint: string, storage: Storage = window.localStorage): ConnectedData {
+export function createHttpDataModule(
+  endpoint: string,
+  storage: KeyValue = window.localStorage,
+  options: HttpDataOptions = {},
+): ConnectedData {
+  const tabStorage = options.session ?? globalThis.sessionStorage
+  const navigate = options.navigate ?? ((url: string) => window.location.assign(url))
   const base = new URL(endpoint, globalThis.location?.origin)
   const prefix = 'rt.api.' + base.href
   const tokenKey = prefix + '.session'
@@ -19,6 +37,9 @@ export function createHttpDataModule(endpoint: string, storage: Storage = window
   const accountKey = prefix + '.account'
   const favoritesKey = prefix + '.favorites'
   const ratingsKey = prefix + '.ratings'
+  const oauthStateKey = prefix + '.oauthState'
+  // Last `status.auth`; sign-in responses carry no `auth`, so they reuse it.
+  let auth: AuthInfo | null = null
 
   function readJson<T>(key: string, fallback: T): T {
     try {
@@ -56,9 +77,27 @@ export function createHttpDataModule(endpoint: string, storage: Storage = window
         if (storage.getItem(tokenKey) === token) storage.removeItem(tokenKey)
         if (action === 'status' || action === 'getPreferences') return call<T>(action)
       }
-      throw new Error(problem?.error?.message ?? `Error HTTP ${response.status}`)
+      const { code, message, ...details } = (problem?.error ?? {}) as Record<string, unknown>
+      throw new ApiClientError(
+        typeof message === 'string' ? message : `Error HTTP ${response.status}`,
+        typeof code === 'string' ? code : `HTTP_${response.status}`,
+        response.status,
+        details,
+      )
     }
     return response.status === 204 ? undefined as T : response.json()
+  }
+
+  async function status() {
+    const result = await call<StatusResult>('status')
+    // An API without feature 4 sends no `auth`: no providers, no verification.
+    auth = result.auth ?? { providers: [], mail: false }
+    return result
+  }
+
+  async function loadAuth(): Promise<AuthInfo> {
+    if (!auth) await status()
+    return auth ?? { providers: [], mail: false }
   }
 
   function asSession(account: Account | null): Session {
@@ -69,15 +108,19 @@ export function createHttpDataModule(endpoint: string, storage: Storage = window
       email: account.email,
       name: local.name ?? account.email.split('@')[0],
       settings: local.settings ?? { ...DEFAULT_ACCOUNT_SETTINGS },
+      emailVerified: auth?.mail ? account.emailVerified : undefined,
     }
   }
 
-  async function signIn(action: string, email: string, password: string) {
-    const { account, token } = await call<AuthResult>(action, 'POST', { email, password })
+  async function startSession({ account, token }: AuthResult) {
     storage.setItem(tokenKey, token)
     storage.removeItem(guestKey)
+    if (!auth) await status().catch(() => undefined)
     return asSession(account)
   }
+
+  const signIn = async (action: string, email: string, password: string) =>
+    startSession(await call<AuthResult>(action, 'POST', { email, password }))
 
   // TODO(backend): the API has no favourite flag yet; it is kept per browser and
   // overlaid on every route the server returns.
@@ -102,7 +145,7 @@ export function createHttpDataModule(endpoint: string, storage: Storage = window
     },
     getPreferences: () => call('getPreferences'),
     savePreferences: p => call('savePreferences', 'PUT', p),
-    getSession: async () => asSession((await call<{ account: Account | null }>('status')).account),
+    getSession: async () => asSession((await status()).account),
     register: (email, password) => signIn('register', email, password),
     login: (email, password) => signIn('login', email, password),
     logout: async () => {
@@ -149,7 +192,7 @@ export function createHttpDataModule(endpoint: string, storage: Storage = window
     },
     getRating: async id => readJson<Record<string, Rating>>(ratingsKey, {})[id] ?? null,
     updateAccount: async patch => {
-      const { account } = await call<{ account: Account | null }>('status')
+      const { account } = await status()
       if (!account) throw new Error('NOT_AN_ACCOUNT')
       const session = asSession(account)
       // TODO(backend): name and settings are not stored server side; the email cannot change yet.
@@ -166,6 +209,30 @@ export function createHttpDataModule(endpoint: string, storage: Storage = window
       } finally {
         for (const key of [tokenKey, accountKey, favoritesKey, ratingsKey]) storage.removeItem(key)
       }
+    },
+
+    // Feature 4: email verification and Google/Apple sign-in.
+    verifyEmail: async token => {
+      const { email } = await call<{ email: string }>('verifyEmail', 'POST', { token })
+      return { email }
+    },
+    resendVerification: () => call('resendVerification', 'POST', {}),
+    authProviders: async () => (await loadAuth()).providers,
+    signInWith: async provider => {
+      const { url, state } = await call<{ url: string; state: string }>('oauthStart', 'POST', { provider })
+      tabStorage?.setItem(oauthStateKey, state)
+      navigate(url)
+      // The page is leaving for the provider; the sign-in finishes on /auth/callback.
+      return new Promise<Session>(() => {})
+    },
+    completeSignIn: async fragment => {
+      const params = new URLSearchParams(fragment.replace(/^#/, ''))
+      const expected = tabStorage?.getItem(oauthStateKey) ?? null
+      tabStorage?.removeItem(oauthStateKey)
+      const error = params.get('error')
+      if (error) throw new ApiClientError(error, error.toUpperCase(), 400)
+      if (!expected || params.get('state') !== expected) throw new ApiClientError('INVALID_STATE', 'INVALID_STATE', 400)
+      return startSession(await call<AuthResult>('oauthExchange', 'POST', { ticket: params.get('ticket') ?? '' }))
     },
   }
 }

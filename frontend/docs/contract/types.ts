@@ -43,11 +43,15 @@ export type AssistantReply = {
 // Añadido en feature 2: ajustes de la cuenta (avisos).
 export type AccountSettings = { remindDayBefore: boolean; remindToRate: boolean };
 
+// Añadido en feature 4: acceso con proveedores externos.
+export type AuthProvider = "google" | "apple";
+
 export type Session = {
   kind: "guest" | "account";
   name?: string;
   email?: string;
   settings?: AccountSettings;      // Añadido en feature 2: solo para cuentas; por defecto { true, true }
+  emailVerified?: boolean;         // Añadido en feature 4: solo cuentas; undefined = la verificación no está activa
 };
 
 // Añadido en feature 2: valoración de una ruta (estrellas, me gusta por parada y comentario).
@@ -86,6 +90,13 @@ export interface DataModule {
   getRating(id: string): Promise<Rating | null>;                                                  // Añadido en feature 2
   updateAccount(patch: Partial<Pick<Session, "name" | "email" | "settings">>): Promise<Session>;  // Añadido en feature 2
   deleteAccount(): Promise<void>;                                                                 // Añadido en feature 2
+  verifyEmail(token: string): Promise<{ email: string }>;                                         // Añadido en feature 4
+  resendVerification(): Promise<void>;                                                            // Añadido en feature 4
+  authProviders(): Promise<AuthProvider[]>;                                                       // Añadido en feature 4
+  /** Starts the provider sign-in. With a backend it navigates away and never resolves; the demo resolves with the session. */
+  signInWith(provider: AuthProvider): Promise<Session>;                                           // Añadido en feature 4
+  /** Finishes the provider sign-in on /auth/callback from the URL fragment (state + ticket). */
+  completeSignIn(fragment: string): Promise<Session>;                                             // Añadido en feature 4
 }
 
 // Responsable: spec 1 (guion del asistente simulado)
