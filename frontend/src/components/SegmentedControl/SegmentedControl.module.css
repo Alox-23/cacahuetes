@@ -1,0 +1,30 @@
+.track {
+  display: grid;
+  gap: 4px;
+  padding: 4px;
+  background: var(--color-segmented-track);
+  border-radius: var(--radius-input);
+}
+
+.segment {
+  height: var(--size-touch-target);
+  min-width: 0;
+  padding: 0 4px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--color-segmented-text);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.checked {
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-weight: 600;
+}

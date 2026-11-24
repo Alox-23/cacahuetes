@@ -1,0 +1,15 @@
+.log {
+  flex-grow: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 12px 20px 16px;
+  overscroll-behavior: contain;
+}
+
+/* Anchor messages to the bottom without breaking scroll (instead of justify-content: flex-end). */
+.log > :first-child {
+  margin-top: auto;
+}

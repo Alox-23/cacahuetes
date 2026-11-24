@@ -1,0 +1,12 @@
+.bubble {
+  align-self: flex-end;
+  /* Design: max-width 280px content-box (+ 2×16 padding) = 312px border-box. */
+  max-width: min(312px, 90%);
+  padding: 12px 16px;
+  border-radius: var(--radius-bubble) var(--radius-bubble) 4px var(--radius-bubble);
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+  font-size: var(--font-size-body);
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
