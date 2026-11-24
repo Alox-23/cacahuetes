@@ -34,6 +34,8 @@ El chat llama a `OLLAMA_BASE_URL` (por defecto `http://localhost:11434/v1`) con 
 
 Para mostrar fotos sin conexión, coloca fotos autorizadas en `frontend/public/places/<id-del-catálogo>.jpg` antes de compilar. También puedes incorporarlas a `frontend/dist/places/` después. La ficha muestra la mascota local si la foto falta o está dañada.
 
+El mapa completo usa Leaflet para situar las paradas y unirlas sobre sus coordenadas. Para añadir un callejero sin conexión, coloca teselas XYZ de Marbella en `frontend/public/tiles/{z}/{x}/{y}.png` y define `VITE_LOCAL_TILE_URL=/tiles/{z}/{x}/{y}.png` antes de compilar. Sin esas teselas se muestran los puntos del catálogo y el trazado sobre un fondo liso.
+
 ## Contrato para el frontend
 
 El adaptador HTTP implementa `frontend/src/contract/types.ts`. El chat conserva el cuestionario, las opciones y el resumen que el visitante confirma. Las peticiones de texto pasan por el intérprete de Cacahuete y las rutas se crean al confirmar. El único destino es Marbella. El chat propone puntos de salida del catálogo y acepta sus nombres o alias. Los horarios parten de ese lugar. La API devuelve HTTP 400 si la ciudad, la salida o un imprescindible quedan fuera del catálogo. Las rutas antiguas de otras ciudades se conservan en la base y quedan fuera de las consultas. Los tiempos de desplazamiento son estimaciones.

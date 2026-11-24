@@ -23,8 +23,20 @@ export type RouteRequest = {
 export type Stop = {
   order: number; placeId: string; name: string;
   arrive: string; visitMinutes: number;
-  travelToNext?: { mode: string; minutes: number };
+  travelToNext?: { mode: string; minutes: number; note?: string };
   locked: boolean;
+  lat?: number;
+  lon?: number;
+  area?: string;
+  photo?: string;
+  hours?: string;
+  price?: string;
+  rating?: number;
+  reviewsCount?: number;
+  address?: string;
+  googleMapsUrl?: string;
+  partner?: boolean;
+  partnerPerk?: string;
 };
 
 export type Route = {
@@ -66,6 +78,8 @@ export type RefineAction =
 export type Place = {
   id: string; name: string; categories: string[];
   why?: string; hours?: string; price?: string; photo?: string;
+  rating?: number; reviewsCount?: number; address?: string; googleMapsUrl?: string;
+  lat?: number; lon?: number; area?: string; partner?: boolean; partnerPerk?: string;
 };
 
 // Responsable: spec 2 (módulo de datos simulados)
