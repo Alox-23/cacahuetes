@@ -28,6 +28,7 @@ npm run preview  # serve dist/
 For the API, prepare the database and start the backend as described in [the backend README](../backend/README.md).
 Copy `.env.example` to `.env.local` in this directory and restart Vite. For deployment, set
 `VITE_CACAHUETE_API_URL` to the full public function URL before building. Leaving it unset starts the standalone demo.
+To start from scratch, clear the site's `localStorage` (keys `rt.*`).
 
 ## URLs
 
@@ -57,9 +58,11 @@ The tab bar is on every screen: `/my-routes*` highlights Mis rutas; `/profile`, 
 ## Trying feature 2
 
 - **Example routes:** log in (any valid email and a password of 8+ characters, or "Continuar con Google / Apple")
-  and the account gets three saved routes with dates relative to today: Barcelona in 12 days, Valencia with kids in
-  26 days (Próximas) and Sevilla 10 days ago (Pasadas, favourite, rated 4 stars). Registering never seeds, so a new
-  account starts with the empty state. Seeding happens once per account email.
+  and the account gets three saved Marbella routes with dates relative to today: Plaza de los Naranjos in 5 hours
+  (in 12 days); "Puerto Banús con niños, día completo" in 26 days (both in Próximas); and "Paseo marítimo, tarde
+  tranquila" 10 days ago (Pasadas, favourite, rated 4 stars). Registering never seeds, so a new account starts with
+  the empty state. Seeding happens once per account email (routes from other destinations left in storage do not
+  count).
 - **Guest save:** create a route from the chat as a guest, tap "Guardar ruta", then "Crear cuenta": the route is
   saved and you land on its saved-route page.
 - **Share:** uses `navigator.share` when available, otherwise copies a text summary (toast either way).

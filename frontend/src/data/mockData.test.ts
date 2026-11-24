@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { RouteRequest } from '../contract/types'
 import { routeEnd } from '../lib/route'
+import { findPlace } from './catalog'
 import { DEFAULT_PREFERENCES } from './defaults'
 import { createDataModule } from './mockData'
 import { STORAGE_KEYS, createStorage, memoryBackend } from './storage'
@@ -119,9 +120,24 @@ describe('mock data module', () => {
   it('mas_barato replaces the first paid place with a free one', async () => {
     const { data } = setup()
     const route = await data.createRoute({ ...localRequest, start: { label: 'grabado' }, mustInclude: [], overrides: { interests: ['museos'] } })
-    expect(route.stops.map(s => s.placeId)).toContain('grabado')
+    const i = route.stops.findIndex(s => s.placeId === 'grabado')
+    expect(i).toBeGreaterThanOrEqual(0)
     const next = await data.refineRoute(route.id, { type: 'quick', value: 'mas_barato' })
     expect(next.stops.map(s => s.placeId)).not.toContain('grabado')
+    expect(findPlace(next.stops[i].placeId)?.paid).toBe(false)
+  })
+
+  it('mas_barato never replaces a must-include place', async () => {
+    const { data } = setup()
+    const route = await data.createRoute({
+      ...localRequest,
+      start: { label: 'grabado' },
+      mustInclude: ['Museo del Grabado Español Contemporáneo'],
+      overrides: { interests: ['museos'] },
+    })
+    expect(route.stops.map(s => s.placeId)).toContain('grabado')
+    const next = await data.refineRoute(route.id, { type: 'quick', value: 'mas_barato' })
+    expect(next.stops.map(s => s.placeId)).toContain('grabado')
   })
 
   it('a text action can apply several changes in one version', async () => {

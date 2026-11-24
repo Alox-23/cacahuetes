@@ -22,7 +22,7 @@ export function activityLabel(stop: Stop, activity: Activity = 'visit'): string 
   return tDynamic(`routeScreen.activity.${activity}`, { duration: formatVisit(stop.visitMinutes) })
 }
 
-/** "Visita 1 h 15 · luego 20 min en metro" or "Paseo 45 min · fin de la ruta". */
+/** "Visita 1 h 15 · luego 20 min en transporte público" or "Paseo 45 min · fin de la ruta". */
 export function stopDetail(stop: Stop, activity?: Activity): string {
   const next = stop.travelToNext ? t('routeScreen.then', { leg: legLabel(stop.travelToNext) }) : t('routeScreen.end')
   return t('routeScreen.detail', { activity: activityLabel(stop, activity), next })
@@ -44,7 +44,7 @@ export function effectivePreferences(route: Route, preferences: Preferences | nu
   return { ...DEFAULT_PREFERENCES, ...(preferences ?? {}), ...(route.request.overrides ?? {}) }
 }
 
-/** "4 paradas · 10:00 a 15:00 · a pie y metro" */
+/** "4 paradas · 10:00 a 15:00 · a pie y bus" */
 export function routeSubtitle(route: Route, preferences: Preferences | null): string {
   const transport = effectivePreferences(route, preferences).transport
   return t('routeScreen.subtitle', {

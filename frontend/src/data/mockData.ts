@@ -344,7 +344,7 @@ export function createDataModule(
   }
 
   function seedExamples(email: string) {
-    if (savedRoutesOf(email).length > 0) return
+    if (savedRoutesOf(email).some(isLocalRoute)) return
     const ratings = readRatings()
     for (const seed of exampleRoutes(now())) {
       const route = buildRoute(seed.request)

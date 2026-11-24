@@ -64,7 +64,7 @@ export function formatWindowShort(window: RouteRequest['timeWindow']): string {
   return formatDuration(toMinutes(window.to) - toMinutes(window.from))
 }
 
-/** { label: "Mi hotel" } → "Desde mi hotel"; { label: "Calle Mayor 3" } → "Desde Calle Mayor 3". */
+/** { label: "Plaza de los Naranjos" } → "Desde Plaza de los Naranjos"; a label starting with "Mi " is lowercased ("Desde mi …"). */
 export function startChip(start: RouteRequest['start']): string {
   const label = /^mi\s/i.test(start.label) ? lowerFirst(start.label) : start.label
   return t('summary.startPrefix', { label })

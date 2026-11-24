@@ -1,11 +1,12 @@
 import type { AccountSettings, DataModule, Rating, Route, Session } from '../contract/types'
 import type { AssistantDeps } from '../assistant/types'
-import { DEFAULT_ACCOUNT_SETTINGS } from './defaults'
+import { DEFAULT_ACCOUNT_SETTINGS } from './defaults.ts'
 
 type Account = { email: string }
 type AuthResult = { token: string; account: Account }
-/** Name and settings the server does not store yet (see TODO(backend) below). */
+/** Name and settings the server does not store yet (see TODO(backend) below), kept per email. */
 type LocalAccount = { name?: string; settings?: AccountSettings }
+type LocalAccounts = Record<string, LocalAccount>
 
 type ConnectedData = DataModule & Required<Pick<AssistantDeps, 'interpretRequest' | 'refineConversation'>>
 
@@ -62,7 +63,7 @@ export function createHttpDataModule(endpoint: string, storage: Storage = window
 
   function asSession(account: Account | null): Session {
     if (!account) return { kind: 'guest' }
-    const local = readJson<LocalAccount>(accountKey, {})
+    const local = readJson<LocalAccounts>(accountKey, {})[account.email] ?? {}
     return {
       kind: 'account',
       email: account.email,
@@ -84,10 +85,21 @@ export function createHttpDataModule(endpoint: string, storage: Storage = window
   const withFavorite = (route: Route): Route => ({ ...route, favorite: favorites()[route.id] ?? route.favorite ?? false })
   const routeCall = (...args: Parameters<typeof call>) => call<Route>(...args).then(withFavorite)
 
+  // The backend clears a route's rating on every refine/undo; drop the local copy too.
+  function forgetRating(id: string) {
+    const ratings = { ...readJson<Record<string, Rating>>(ratingsKey, {}) }
+    if (!(id in ratings)) return
+    delete ratings[id]
+    writeJson(ratingsKey, ratings)
+  }
+
   return {
     interpretRequest: text => call('interpretRequest', 'POST', { text }),
-    refineConversation: (route, changes) =>
-      call<Route[]>('refineConversation', 'POST', { changes, version: route.version }, route.id).then(steps => steps.map(withFavorite)),
+    refineConversation: async (route, changes) => {
+      const steps = await call<Route[]>('refineConversation', 'POST', { changes, version: route.version }, route.id)
+      forgetRating(route.id)
+      return steps.map(withFavorite)
+    },
     getPreferences: () => call('getPreferences'),
     savePreferences: p => call('savePreferences', 'PUT', p),
     getSession: async () => asSession((await call<{ account: Account | null }>('status')).account),
@@ -98,8 +110,16 @@ export function createHttpDataModule(endpoint: string, storage: Storage = window
       storage.removeItem(tokenKey)
     },
     createRoute: request => routeCall('createRoute', 'POST', request),
-    refineRoute: (id, action) => routeCall('refineRoute', 'POST', action, id),
-    undo: id => routeCall('undo', 'POST', undefined, id),
+    refineRoute: async (id, action) => {
+      const route = await routeCall('refineRoute', 'POST', action, id)
+      forgetRating(id)
+      return route
+    },
+    undo: async id => {
+      const route = await routeCall('undo', 'POST', undefined, id)
+      forgetRating(id)
+      return route
+    },
     getRoute: id => routeCall('getRoute', 'GET', undefined, id),
     listRoutes: () =>
       call<Route[]>('listRoutes').then(routes => routes.filter(r => r.saved).map(withFavorite)
@@ -110,9 +130,7 @@ export function createHttpDataModule(endpoint: string, storage: Storage = window
       const favs = { ...favorites() }
       delete favs[id]
       writeJson(favoritesKey, favs)
-      const ratings = { ...readJson<Record<string, Rating>>(ratingsKey, {}) }
-      delete ratings[id]
-      writeJson(ratingsKey, ratings)
+      forgetRating(id)
     },
     rateRoute: async (id, rating) => {
       await call('rateRoute', 'PUT', rating, id)
@@ -131,20 +149,23 @@ export function createHttpDataModule(endpoint: string, storage: Storage = window
     },
     getRating: async id => readJson<Record<string, Rating>>(ratingsKey, {})[id] ?? null,
     updateAccount: async patch => {
-      const session = await call<{ account: Account | null }>('status').then(r => asSession(r.account))
-      if (session.kind !== 'account') throw new Error('NOT_AN_ACCOUNT')
+      const { account } = await call<{ account: Account | null }>('status')
+      if (!account) throw new Error('NOT_AN_ACCOUNT')
+      const session = asSession(account)
       // TODO(backend): name and settings are not stored server side; the email cannot change yet.
-      const local = readJson<LocalAccount>(accountKey, {})
-      writeJson(accountKey, {
-        name: patch.name ?? local.name,
-        settings: patch.settings ?? local.settings,
-      } satisfies LocalAccount)
+      const all = readJson<LocalAccounts>(accountKey, {})
+      const local = all[account.email] ?? {}
+      all[account.email] = { name: patch.name ?? local.name, settings: patch.settings ?? local.settings }
+      writeJson(accountKey, all)
       return { ...session, name: patch.name ?? session.name, settings: patch.settings ?? session.settings }
     },
     deleteAccount: async () => {
       // TODO(backend): no deleteAccount action yet; this only signs out and clears local data.
-      if (storage.getItem(tokenKey)) await call('logout', 'POST')
-      for (const key of [tokenKey, accountKey, favoritesKey, ratingsKey]) storage.removeItem(key)
+      try {
+        if (storage.getItem(tokenKey)) await call('logout', 'POST')
+      } finally {
+        for (const key of [tokenKey, accountKey, favoritesKey, ratingsKey]) storage.removeItem(key)
+      }
     },
   }
 }
