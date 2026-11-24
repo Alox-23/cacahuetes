@@ -1,4 +1,4 @@
-# Frontend · rutas turísticas (features 1 and 2)
+# Frontend · rutas turísticas (features 1, 2 and 4)
 
 Mobile-first web app in Spanish where a guest answers four questions inside the chat, asks the AI assistant
 **Cacahuete** for a route, confirms "Esto es lo que entendí", watches the route being created and asks for
@@ -9,7 +9,8 @@ editable preferences and account settings. The app can use the Cacahuete HTTP AP
 script and all data lives in `localStorage`.
 
 - Tech specs: [`docs/tech-specs/feature-1-base-y-asistente.md`](docs/tech-specs/feature-1-base-y-asistente.md),
-  [`docs/tech-specs/feature-2-ruta-mis-rutas-perfil.md`](docs/tech-specs/feature-2-ruta-mis-rutas-perfil.md)
+  [`docs/tech-specs/feature-2-ruta-mis-rutas-perfil.md`](docs/tech-specs/feature-2-ruta-mis-rutas-perfil.md),
+  [`docs/tech-specs/feature-4-cuenta-segura.md`](docs/tech-specs/feature-4-cuenta-segura.md)
 - Design package (read only): [`docs/`](docs/README-paquete.md) — screens in `docs/design/screens/*.html`
 
 ## Run
@@ -51,23 +52,38 @@ To start from scratch, clear the site's `localStorage` (keys `rt.*`).
 | `/profile` | Perfil (account or guest card) |
 | `/preferences` | Preferencias de viaje |
 | `/account` | Cuenta (accounts only; guests go to `/login`) |
+| `/verify-pending` | Confirma tu correo, shown once after registering (accounts only; verified ones skip to `returnTo`) |
+| `/verify-email?token=…` | Correo confirmado: opens the link from the verification email (public) |
+| `/auth/callback#state=…&ticket=…` | Entrando…: finishes the Google/Apple sign-in started by the backend (public) |
 
 The tab bar is on every screen: `/my-routes*` highlights Mis rutas; `/profile`, `/preferences`, `/account`,
 `/login` and `/register` highlight Perfil; everything else highlights Asistente.
 
 ## Trying feature 2
 
-- **Example routes:** log in (any valid email and a password of 8+ characters, or "Continuar con Google / Apple")
+- **Example routes:** log in (any valid email and any password, or "Continuar con Google / Apple")
   and the account gets three saved Marbella routes with dates relative to today: Plaza de los Naranjos in 5 hours
   (in 12 days); "Puerto Banús con niños, día completo" in 26 days (both in Próximas); and "Paseo marítimo, tarde
   tranquila" 10 days ago (Pasadas, favourite, rated 4 stars). Registering never seeds, so a new account starts with
   the empty state. Seeding happens once per account email (routes from other destinations left in storage do not
   count).
 - **Guest save:** create a route from the chat as a guest, tap "Guardar ruta", then "Crear cuenta": the route is
-  saved and you land on its saved-route page.
+  saved, "Confirma tu correo" shows once and "Continuar" opens its saved-route page.
 - **Share:** uses `navigator.share` when available, otherwise copies a text summary (toast either way).
 - **Reuse:** "Reutilizar" opens the request conversation with "Esto es lo que entendí" pre-filled (a past date
   moves to the next same weekday); "Crear ruta" creates a new route.
+
+## Trying feature 4
+
+- **Password rules:** Crear cuenta asks for 12–128 characters, at least 4 different ones, not containing the email
+  and not in `src/lib/common-passwords.json` (a byte-identical copy of `backend/lib/common-passwords.json`). The
+  first unmet rule shows under the field while typing; the server applies the same rules.
+- **Email verification (demo):** after registering you land on Confirma tu correo. In `npm run dev` the console
+  prints `[demo] Enlace de verificación: /verify-email?token=demo-…`; open it to confirm. Until then Perfil and
+  Cuenta show "Confirma tu correo para proteger tu cuenta." with "Reenviar correo".
+- **Google / Apple:** in the demo both buttons sign in as `google@ejemplo.com` / `apple@ejemplo.com` (existing
+  accounts). With the API they appear only for the providers configured on the backend and go through the
+  provider's page and back to `/auth/callback`.
 
 ## Structure
 
@@ -108,6 +124,15 @@ The HTTP adapter (`src/data/httpData.ts`) implements these four methods and the 
 The mock also attaches optional presentation hints to `Place` objects (`activity`, `visitMinutes`, `travel`, see
 `src/lib/placeHints.ts`), used for "Visita / Paseo / Comida / Pausa" and the alternatives subtitle. They are not
 part of the contract; screens fall back gracefully when a real API omits them.
+
+## Contract additions (feature 4)
+
+Marked `// Añadido en feature 4`: `AuthProvider`, `Session.emailVerified` (accounts only; `undefined` when the
+deployment does not verify emails) and the `DataModule` methods `verifyEmail`, `resendVerification`,
+`authProviders`, `signInWith` and `completeSignIn`. Data modules reject with `ApiClientError`
+(`src/data/errors.ts`: `code`, `status`, `details`), which the forms map to Spanish copy in `es.json`.
+`createHttpDataModule(endpoint, storage, { session, navigate })` accepts the tab storage for the OAuth `state` and
+the function that leaves for the provider (tests inject both).
 
 ## API integration
 
