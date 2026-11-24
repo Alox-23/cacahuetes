@@ -349,8 +349,12 @@ export function createAssistant(deps: AssistantDeps): MockAssistant {
     if (!text) return askNext([])
     if (asksForAnotherCity(text)) return localScopeReply()
     const nearby = localStart(text)
-    if (awaitingOtherStart || (asked === 'start' && nearby)) {
-      if (!nearby) return { kind: 'question', text: t('request.askOther'), options: slotOptions('start') }
+    const choosingStart = awaitingOtherStart || asked === 'start'
+    if (choosingStart && /\b(no (?:lo )?se|ni idea|no estoy segur[oa]|no conozco marbella)\b/.test(normalize(text))) {
+      return { kind: 'question', text: t('request.suggestStart'), options: slotOptions('start') }
+    }
+    const asking = /[¿?]|^(?:cuéntame|háblame|dime)\s/i.test(text)
+    if (choosingStart && nearby && !asking) {
       awaitingOtherStart = false
       draft.start = { label: nearby }
       return askNext([])

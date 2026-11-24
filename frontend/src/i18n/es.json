@@ -145,6 +145,7 @@
     "missingOne": "Solo me falta un dato: {question}",
     "missingMany": "Me faltan {count} datos. Primero: {question}",
     "notUnderstood": "No te he entendido del todo.",
+    "suggestStart": "Te propongo salir de la Plaza de los Naranjos, en el casco antiguo. ¿Empezamos allí?",
     "askOther": "¿Qué lugar de Marbella tienes cerca? Puedes salir de la Plaza de los Naranjos, la Alameda o Puerto Banús.",
     "known_date": "día",
     "known_time": "duración",
