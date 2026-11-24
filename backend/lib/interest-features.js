@@ -1,4 +1,7 @@
+import pieces from '../model/bpemb-es-pieces.json' with { type: 'json' };
+
 const buckets = 768;
+const publicRanks = new Map(pieces.slice(3).map((piece, index) => [piece, index]));
 
 function hash(value) {
   let result = 2166136261;
@@ -35,6 +38,7 @@ export function features(text, embeddings) {
   for (const word of words) {
     const normalized = word.normalize('NFD').replace(/\p{Diacritic}/gu, '');
     result[hash(`w:${normalized}`)] += 2;
+    for (const piece of subwords(word, publicRanks)) result[hash(`bpe:${piece}`)]++;
     const bounded = `^${normalized}$`;
     for (const size of [3, 4]) {
       for (let offset = 0; offset <= bounded.length - size; offset++) {

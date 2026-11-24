@@ -1,12 +1,18 @@
 import { randomUUID } from 'node:crypto';
-import { mkdir, rename, rm, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
+import { join } from 'node:path';
 import { gunzipSync } from 'node:zlib';
 import { classify, features, prepareEmbeddings, probability } from '../lib/interest-features.js';
 import { evaluation, examples, neutral } from './interest-examples.js';
+import { conversations, dialogueEvaluation, phrases } from './dialogue-examples.js';
+import { trainRanking } from './route-examples.js';
 
 const labels = Object.keys(examples);
 const usePublicBase = process.argv.includes('--bpemb');
 const bpemb = 'https://bpemb.h-its.org/es/es.wiki.bpe.vs3000';
+const localFlag = process.argv.indexOf('--bpemb-dir');
+const localDirectory = localFlag > -1 ? process.argv[localFlag + 1] : undefined;
+if (localFlag > -1 && (!localDirectory || localDirectory.startsWith('--'))) throw new Error('Falta la carpeta de los ficheros BPEmb.');
 
 async function download(url) {
   const response = await fetch(url, { signal: AbortSignal.timeout(20_000) });
@@ -29,9 +35,8 @@ function textFromArchive(compressed) {
 }
 
 async function loadPublicBase() {
-  const [vocabulary, archive] = await Promise.all([
-    download(`${bpemb}.vocab`), download(`${bpemb}.d25.w2v.txt.tar.gz`)
-  ]);
+  const [vocabulary, archive] = await Promise.all(['.vocab', '.d25.w2v.txt.tar.gz'].map(suffix =>
+    localDirectory ? readFile(join(localDirectory, 'es.wiki.bpe.vs3000' + suffix)) : download(bpemb + suffix)));
   const ranks = vocabulary.toString('utf8').trim().split(/\r?\n/).slice(3).map((row, index) =>
     [row.split('\t')[0], index]);
   const [header, ...lines] = textFromArchive(archive).trim().split(/\r?\n/);
@@ -70,12 +75,14 @@ function train(label, rows) {
   const weights = new Float64Array(rows[0].input.length);
   const classifier = { label, weights, bias: 0, threshold: 0.59 };
   const gradients = new Float64Array(weights.length);
+  const positives = rows.filter(row => row.labels.includes(label)).length;
+  const positiveWeight = (rows.length - positives) / positives;
   for (let epoch = 0; epoch < 360; epoch++) {
     gradients.fill(0);
     let bias = 0;
     for (const row of rows) {
       const expected = Number(row.labels.includes(label));
-      const error = (expected - probability(row.input, classifier)) * (expected ? 2 : 1);
+      const error = (expected - probability(row.input, classifier)) * (expected ? positiveWeight : 1);
       bias += error;
       for (const index of row.nonzero) gradients[index] += row.input[index] * error;
     }
@@ -88,14 +95,28 @@ function train(label, rows) {
   return { ...classifier, weights: Array.from(weights, (value) => Number(value.toFixed(5))) };
 }
 
-const base = usePublicBase ? await loadPublicBase() : null;
+const base = usePublicBase || localDirectory ? await loadPublicBase() : null;
 const embeddings = prepareEmbeddings(base);
-const rows = trainingExamples().map(([text, labels]) => {
+function encode([text, labels]) {
   const input = features(text, embeddings);
   const nonzero = [...input.keys()].filter((index) => input[index] !== 0);
   return { input, nonzero, labels };
-});
+}
+const turns = conversations.flat();
+const rows = [...trainingExamples(), ...turns.map(([text, tags]) => [text, tags.filter(tag => labels.includes(tag))])].map(encode);
 const classifiers = labels.map((label) => train(label, rows));
+const dialogueLabels = Object.keys(phrases);
+const dialogueRows = [
+  ...turns,
+  ...Object.entries(phrases).flatMap(([label, messages]) => messages.map(text => [text, [label]])),
+  ...Object.values(examples).flat().map(text => [text, []]),
+  ...neutral.filter(text => !/quiero|prefiero|despacio|aglomeraciones|evitar|opción/.test(text)).map(text => [text, []])
+].map(encode);
+const dialogue = dialogueLabels.map(label => train(label, dialogueRows));
+const dialogueExact = dialogueEvaluation.filter(([text, expected]) => {
+  const found = classify(features(text, embeddings), dialogue);
+  return found.length === expected.length && found.every(label => expected.includes(label));
+}).length;
 
 let exact = 0;
 let tp = 0;
@@ -110,8 +131,9 @@ for (const [text, expected] of evaluation) {
 }
 
 const model = {
-  version: 1, base, classifiers,
-  evaluation: { trainingExamples: rows.length, heldOut: evaluation.length, exact, microF1: 2 * tp / (2 * tp + fp + fn) }
+  version: 2, name: 'Cacahuete', tokenizer: 'BPEmb es vs3000', base, classifiers, dialogue, ranking: trainRanking(),
+  evaluation: { trainingExamples: rows.length, heldOut: evaluation.length, exact, microF1: 2 * tp / (2 * tp + fp + fn),
+    conversations: conversations.length, dialogueTraining: dialogueRows.length, dialogueHeldOut: dialogueEvaluation.length, dialogueExact }
 };
 const outputDirectory = new URL('../model/', import.meta.url);
 await mkdir(outputDirectory, { recursive: true });
@@ -122,4 +144,5 @@ try {
 } finally {
   await rm(pending, { force: true });
 }
-console.log(JSON.stringify({ base: base?.name ?? 'clasificador propio sin inicialización externa', ...model.evaluation }, null, 2));
+console.log(JSON.stringify({ name: model.name, tokenizer: model.tokenizer, vectors: base?.name ?? null,
+  ...model.evaluation, routeComparisons: model.ranking.examples, routeHeldOut: model.ranking.heldOut, routeCorrect: model.ranking.correct }, null, 2));

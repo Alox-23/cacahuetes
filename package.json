@@ -1,0 +1,7 @@
+{
+  "name": "cacahuete",
+  "private": true,
+  "scripts": {
+    "train:chat": "node backend/scripts/train-interests.js"
+  }
+}

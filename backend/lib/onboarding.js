@@ -1,4 +1,4 @@
-import { interests, starts } from './catalog.js';
+import { interests, places, starts } from './catalog.js';
 import { badRequest, object } from './http.js';
 import { inferInterests } from './interest-model.js';
 
@@ -54,16 +54,34 @@ export function validateProfile(value) {
     if (!validAnswer(question, raw[question.id])) throw badRequest(`Respuesta no válida para ${question.id}.`);
     profile[question.id] = raw[question.id];
   }
+  if (Object.hasOwn(raw, 'mealMinutes')) {
+    const minutes = raw.mealMinutes;
+    if (minutes !== null && (!Number.isInteger(minutes) || minutes < 0 || minutes > 480)) {
+      throw badRequest('Los minutos para comer deben estar entre 0 y 480.');
+    }
+    profile.mealMinutes = minutes;
+  }
+  for (const [field, allowed] of [['excludedInterests', interests], ['excludedStops', places.map(place => place.id)]]) {
+    if (!Object.hasOwn(raw, field)) continue;
+    if (!Array.isArray(raw[field]) || raw[field].length > allowed.length || !raw[field].every(id => allowed.includes(id))) {
+      throw badRequest(`Preferencia no válida en ${field}.`);
+    }
+    profile[field] = [...new Set(raw[field])];
+  }
   return profile;
 }
 
 export const normalize = (text) => text.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase().trim();
 
 function minutesFromText(text) {
+  if (text === 'hora y media') return 90;
+  const tens = { veinte: 20, treinta: 30, cuarenta: 40, cincuenta: 50, sesenta: 60, noventa: 90 };
+  text = text.replace(/\b(veinte|treinta|cuarenta|cincuenta|sesenta|noventa)( y cinco)?\b/g,
+    (_, word, five) => String(tens[word] + (five ? 5 : 0)));
   const numeric = text.match(/^(?:tengo )?(\d{1,3})(?:\s*(?:min(?:utos?)?|m))?$/);
   if (numeric) return Number(numeric[1]);
   if (/^(?:media|1\/2) hora$/.test(text)) return 30;
-  if (/^(?:una|1) hora y media$/.test(text)) return 90;
+  text = text.replace(/\s+y media$/, ' y 30 min');
   const hours = text.match(/^(?:tengo )?(una|dos|tres|cuatro|cinco|seis|siete|ocho|\d+(?:[.,]\d+)?)\s*(?:h|horas?)(?:\s*(?:(?:y\s+)?(\d{1,2})\s*(?:min(?:utos?)?|m)?))?$/);
   if (!hours) return null;
   const words = ['una', 'dos', 'tres', 'cuatro', 'cinco', 'seis', 'siete', 'ocho'];

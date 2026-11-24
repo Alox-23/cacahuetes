@@ -26,7 +26,7 @@ npm run dev
 2. Conecta PostgreSQL, por ejemplo Neon desde el Marketplace. Configura `DATABASE_URL` con la URL del pool y ejecuta `npm run migrate` una vez con esa misma base antes de conectar el frontend.
 3. Configura `QUOTA_SECRET` y `FRONTEND_ORIGINS` en el entorno del despliegue. En la última, indica orígenes completos separados por comas, como `https://ejemplo.pages.dev,https://turismo.ejemplo.org`, sin barras finales. El navegador llama directamente a Vercel por HTTPS. Cloudflare Pages puede servir la web desde su dominio propio o el de Pages.
 4. La función de Vercel carga `model/interests.json` desde el proyecto. Para el escenario de afluencia de la demo, establece `DEMO_SCENARIOS=true`. `PARTNER_PLACE_IDS` acepta los ID de socios confirmados, separados por comas.
-5. Despliega y consulta `https://TU_API.vercel.app/api/cacahuete?action=health`. En el frontend, usa la URL de Vercel como base pública. Las claves de PostgreSQL, OpenAI y Stripe se configuran solo en el servidor.
+5. Despliega y consulta `https://TU_API.vercel.app/api/cacahuete?action=health`. En el frontend, usa la URL de Vercel como base pública. Las claves de PostgreSQL y Stripe se configuran solo en el servidor.
 
 Documentación de [Vercel Functions](https://vercel.com/docs/functions/runtimes/node-js) y [PostgreSQL en Vercel](https://vercel.com/docs/postgres).
 
@@ -71,6 +71,8 @@ Si `state` es `"question"`, muestra `message` y las opciones de `question` junto
 
 Cacahuete necesita un punto de partida, una duración y al menos un interés. El visitante puede indicar también presupuesto, ritmo, preferencia sobre escaleras y afluencia. `appliedDefaults` muestra los valores que el planificador aplicó cuando faltaban esas opciones. Conserva `profile` para el siguiente turno, con las preferencias expresadas por el visitante.
 
+Si el visitante quiere parar para comer, Cacahuete pregunta cuánto tiempo apartar del total. La respuesta se conserva en `profile.mealMinutes`. El itinerario reserva esa pausa al final del paseo. `route.totalMinutes` incluye desplazamientos, visitas y pausa. Una reserva de mesa requeriría una integración con el restaurante. Conserva también `excludedStops` y `excludedInterests` dentro del perfil devuelto para respetar los descartes en los turnos siguientes.
+
 El formulario que integraba `onboarding` y `route` puede seguir enviando la pregunta paso a paso. Cuando `complete` sea `true`, envía el perfil a `route`.
 
 Una ruta incluye coordenadas, explicación por parada, marca de patrocinio, minutos orientativos y un enlace de navegación a pie. Para la demo, envía `scenario: "busy-centre"` junto al perfil y establece `profile.crowd` en `"evitar"`. Puedes enviar `avoidStops: ["naranjos"]` para saltar paradas elegidas por el visitante. Marca como simulada la afluencia cuando `crowdSource === "simulated"`. Las alternativas Premium indican si cambian las paradas (`different-stops`) o acortan el recorrido (`shorter`).
@@ -80,20 +82,20 @@ Al agotarse el acceso, la API responde con HTTP 403 y `error.code: "AGENT_TIME_E
 ## Comportamiento del MVP
 
 - Invitados y cuentas gratuitas reciben tres horas corridas desde su primera petición válida al agente. Las cuentas tienen su propio reloj. Para invitados se conserva una marca temporal asociada a un HMAC de la IP de conexión que ve Vercel. Usuarios de una misma red pública pueden compartir esa cuota. El perfil del invitado se mantiene en el cliente. La API guarda preferencias de cuentas registradas al terminar el cuestionario o al guardar explícitamente el perfil.
-- El agente combina un clasificador supervisado de intereses en español con reglas para reconocer duración, puntos de partida y restricciones explícitas. La función calcula todo el turno y la ruta a partir del catálogo, el perfil y la cuota. `interpretation: "model"` indica que los intereses de ese turno los identificó el clasificador.
+- El agente combina clasificadores de intereses y preferencias en español con reglas para interpretar duración, punto de partida y correcciones. La función calcula el turno y la ruta a partir del catálogo, el perfil y la cuota. `interpretation: "model"` indica que intervino el clasificador en la interpretación de ese turno.
 - Premium usa una búsqueda más amplia, admite hasta cinco paradas y devuelve hasta dos itinerarios alternativos. Aplica una penalización a lugares patrocinados y permite como máximo uno por itinerario. La versión gratuita admite hasta tres paradas.
 - Para un pago único Premium, configura `STRIPE_SECRET_KEY`, `STRIPE_PRICE_ID` con un precio de pago único y `STRIPE_WEBHOOK_SECRET`. Configura en Stripe el endpoint `/api/cacahuete?action=stripe-webhook` para `checkout.session.completed` y `checkout.session.async_payment_succeeded`. El frontend redirige a `checkoutUrl` y, al regresar, consulta `status` hasta que Stripe confirme el plan. El MVP no automatiza reembolsos ni revocaciones. [Documentación de Stripe Checkout](https://docs.stripe.com/checkout/fulfillment)
 - Las paradas y sus coordenadas son puntos de referencia. Las duraciones de marcha estiman la distancia a pie. Los horarios, accesibilidad del trayecto, aforo real y reserva de actividades quedan fuera del catálogo inicial. [Turismo de España](https://www.spain.info/es/destino/marbella/) · [Casco Antiguo de Marbella](https://cascoantiguodemarbella.com/para-visitar/)
 
-## Entrenar el modelo de intereses
+## Entrenar Cacahuete
 
-En `scripts/interest-examples.js` están los ejemplos en español, agrupados por interés, y un conjunto separado para evaluar. Son peticiones sintéticas del proyecto. El entrenamiento aprende una regresión logística por interés y permite devolver varias categorías de un mismo mensaje. Para tiempos, tolerancia a las escaleras y otras restricciones explícitas se reutiliza el analizador de la API.
+Desde la raíz del repositorio o desde `backend/`, ejecuta `npm run train:chat`. Con Node.js 22, el entrenamiento y la inferencia funcionan en CPU. El entrenamiento escribe el resultado en `backend/model/interests.json`. La función de Vercel carga ese archivo junto con el vocabulario al arrancar.
 
-```bash
-npm run train:chat
-npm run train:chat -- --bpemb
-```
+Cacahuete utiliza las 3.000 piezas del vocabulario público español BPEmb de Benjamin Heinzerling y Michael Strube. La segmentación usa su orden de fusión en palabras normalizadas. Sobre esas piezas, palabras y fragmentos de caracteres se entrenan clasificadores multietiqueta propios. El modelo incluido usa el vocabulario público y pesos de clasificación aprendidos con los ejemplos del proyecto. Los vectores semánticos BPEmb de 25 dimensiones son opcionales. [Vocabulario original](https://bpemb.h-its.org/es/es.wiki.bpe.vs3000.vocab) · [Proyecto BPEmb](https://bpemb.h-its.org/es/)
 
-El primer comando reproduce el artefacto actual con características de palabras y fragmentos de texto. El segundo descarga el BPEmb público en español de 3.000 subpalabras y 25 dimensiones, añade sus vectores preentrenados y vuelve a entrenar las capas de clasificación. Esa descarga solo ocurre durante el entrenamiento. El script imprime el resultado sobre los ejemplos reservados y deja el modelo que usará la función en `model/interests.json`. Si se interrumpe la descarga, el artefacto anterior sigue disponible.
+- `scripts/interest-examples.js` contiene peticiones en español etiquetadas con seis intereses turísticos.
+- `scripts/dialogue-examples.js` contiene conversaciones sintéticas y paráfrasis. Cada turno se etiqueta por lo que aporta, como ritmo lento, acceso sin escalones, presupuesto o una pausa para comer. El chat interpreta el texto junto con el perfil del turno anterior y decide con reglas qué dato falta. Los ejemplos se escribieron para la demo.
+- `scripts/route-examples.js` contiene pares de paradas de Marbella que caben en un mismo itinerario y una elección preferida para cada par. De ellos se aprenden los pesos para puntuar la coincidencia con intereses, la variedad y la proporción del tiempo que se consume caminando. El planificador aplica las restricciones de la visita y las condiciones del plan de usuario.
+- Al terminar se imprimen las métricas de los ejemplos reservados. Los tres conjuntos de evaluación son pequeños y sintéticos.
 
-Entrena desde `backend/` y versiona el JSON resultante junto con el código para desplegarlo. `base: null` identifica el modelo entrenado desde cero. Un objeto en `base` identifica los vectores públicos que se usaron. [BPEmb de Heinzerling y Strube](https://bpemb.h-its.org/es/)
+Para incorporar los vectores semánticos publicados, usa `npm run train:chat -- --bpemb` con acceso al servidor oficial. Si ya tienes `es.wiki.bpe.vs3000.vocab` y `es.wiki.bpe.vs3000.d25.w2v.txt.tar.gz` en la misma carpeta, usa `npm run train:chat -- --bpemb-dir ./carpeta`. El campo `base` del artefacto identifica los vectores cuando están presentes. Un fallo de descarga conserva el último modelo completo.
