@@ -70,7 +70,7 @@ URL base `/api/cacahuete?action=<acción>`. Envía `Content-Type: application/js
 | POST | `route` | `{ profile?, avoidStops?, scenario? }`. Devuelve `route`, `alternatives` y `quota`. |
 | POST | `checkout` | Una cuenta gratuita iniciada obtiene `{ checkoutUrl }` si Stripe está configurado. Con la verificación activa, exige el correo confirmado (403 `EMAIL_NOT_VERIFIED`). |
 | POST | `verifyEmail` | `{ token }` del enlace del correo. Devuelve `{ email, verified: true }`; 400 `INVALID_TOKEN` o 410 `TOKEN_EXPIRED`. |
-| POST | `resendVerification` | Requiere cuenta. Envía un enlace nuevo (anula los anteriores) y devuelve 204. Máximo 3 cada 10 minutos; 409 `ALREADY_VERIFIED`. |
+| POST | `resendVerification` | Requiere cuenta. Envía un enlace nuevo (anula los anteriores) y devuelve 204. Máximo 3 cada 10 minutos; 409 `ALREADY_VERIFIED`; 503 `MAIL_UNAVAILABLE` si la verificación no está activa (Vercel sin correo). |
 | POST | `oauthStart` | `{ provider: "google" \| "apple" }`. Devuelve `{ url, state }`; el navegador guarda `state` y abre `url`. 503 `PROVIDER_UNAVAILABLE` si faltan las claves. |
 | GET, POST | `oauthCallback` | Vuelta desde Google (GET) o Apple (`form_post`). Redirige siempre a `${APP_URL}/auth/callback#state=…&ticket=…` o `#state=…&error=…`. |
 | POST | `oauthExchange` | `{ ticket }` (un uso, 120 s). Devuelve `account`, `token` y `quota` como `login` y reclama el invitado de `X-Guest-Token`. |

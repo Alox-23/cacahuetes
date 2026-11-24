@@ -100,6 +100,8 @@ export function createHandler(database = getPool) {
         ['logout', 'profile', 'checkout', 'resendVerification'].includes(action));
       if (action === 'resendVerification') {
         if (account.email_verified_at) throw new ApiError(409, 'ALREADY_VERIFIED', 'Tu correo ya está confirmado.');
+        // Without real mail on Vercel nothing would be delivered and the link would end up in the logs.
+        if (!verificationActive()) throw new ApiError(503, 'MAIL_UNAVAILABLE', 'El correo todavía no está disponible.');
         await rateLimit(db, `resendVerification:${account.id}`, 3, 600);
         await issueVerification(db, account);
         return new Response(null, { status: 204, headers });

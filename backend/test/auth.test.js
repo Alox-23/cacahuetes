@@ -167,6 +167,23 @@ test('reenviar el correo: límite por cuenta y 409 cuando ya está confirmado', 
   assert.equal((await call('resendVerification', { method: 'POST', body: {} })).status, 401);
 });
 
+test('sin correo real en Vercel no se reenvía nada (el enlace no acaba en los logs)', async (t) => {
+  const { token } = await register('vercel-sin-correo@example.test');
+  const saved = process.env.RESEND_API_KEY;
+  delete process.env.RESEND_API_KEY;
+  process.env.VERCEL = '1';
+  t.after(() => {
+    process.env.RESEND_API_KEY = saved;
+    delete process.env.VERCEL;
+  });
+  const logged = t.mock.method(console, 'log', () => {});
+  const response = await call('resendVerification', { method: 'POST', token, body: {} });
+  assert.equal(response.status, 503);
+  assert.equal(await errorCode(response), 'MAIL_UNAVAILABLE');
+  assert.equal(logged.mock.callCount(), 0);
+  assert.equal((await status(token)).auth.mail, false);
+});
+
 test('Premium exige un correo confirmado', async (t) => {
   process.env.STRIPE_SECRET_KEY = 'sk_test_example';
   process.env.STRIPE_PRICE_ID = 'price_example';
