@@ -1,4 +1,4 @@
-p align="center"><img src="frontend/public/mascot/cacahuete.svg" width="104" alt="Mascota de Cacahuete"></p><h1 align="center">Cacahuete</h1>
+<p align="center"><img src="frontend/public/mascot/cacahuete.svg" width="104" alt="Mascota de Cacahuete"></p><h1 align="center">Cacahuete</h1>
 <p align="center"><strong>Un guía local para recorrer Marbella a pie</strong></p><p align="center">
   <a href="#arranque-rápido"><img alt="Lanzadores para Fedora, macOS y Windows" src="https://img.shields.io/badge/Fedora%20%C2%B7%20macOS%20%C2%B7%20Windows-334155?style=flat-square"></a>
   <a href="#cómo-funciona"><img alt="Modelo local con Ollama" src="https://img.shields.io/badge/modelo_local-Ollama-386641?style=flat-square"></a>
