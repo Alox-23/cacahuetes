@@ -36,16 +36,18 @@ import {
   slotQuestion,
   type Slot,
 } from './script'
-import type { AssistantDeps, AssistantMode, RichReply } from './types'
+import type { AssistantDeps, AssistantMode, AssistantTurn, RichReply } from './types'
 
 export interface MockAssistant extends Assistant {
-  sendMessage(input: { text?: string; option?: string }): Promise<RichReply>
+  sendMessage(input: { text?: string; option?: string }): Promise<AssistantTurn>
   /**
    * Start a mode. `route` feeds change mode; `request` (feature 2, "Reutilizar")
    * pre-fills request mode so the first reply is the "Esto es lo que entendí" summary.
    */
-  reset(mode: AssistantMode, ctx?: { route?: Route; request?: RouteRequest }): void
+  reset(mode: AssistantMode, ctx?: { route?: Route; request?: RouteRequest; suggestions?: string[] }): void
   getState(): { mode: AssistantMode; onboardingStep: number; onboardingComplete: boolean; routeId?: string }
+  /** Feature 5: set by the conversational agent (free text, the model's suggestions); absent on the script. */
+  readonly conversational?: boolean
 }
 
 type Draft = {

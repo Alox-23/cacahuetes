@@ -1,4 +1,5 @@
-// Starts `ollama serve` when nothing answers and shuts Ollama down again when the launcher ends.
+// Starts `ollama serve` when nothing answers, pulls and warms the models, and shuts Ollama down again
+// (or unloads the models) when the launcher ends.
 // Every side effect (spawn, fetch, kill, external commands, sleeps) is injectable so the tests never
 // touch a real Ollama.
 import { spawn, spawnSync } from 'node:child_process';
@@ -8,12 +9,20 @@ import { setTimeout as sleep } from 'node:timers/promises';
 export const STOP_MODES = ['started', 'always', 'never'];
 export const MESSAGES = {
   stopped: 'Ollama detenido.',
-  unloaded: 'Modelo descargado de memoria; Ollama sigue en ejecución.',
-  notUnloaded: 'Ollama sigue en ejecución; no se pudo descargar el modelo de memoria.',
+  unloaded: 'Modelos descargados de memoria; Ollama sigue en ejecución.',
+  notUnloaded: 'Ollama sigue en ejecución; no se pudieron descargar los modelos de memoria.',
   never: 'Ollama se deja en ejecución (OLLAMA_STOP_ON_EXIT=never).'
 };
 const UNLOAD_TIMEOUT_MS = 3000;
+const WARM_TIMEOUT_MS = 180000;
+// The context size of every agent call: a warm-up with another num_ctx would load the model again on the first turn.
+const NUM_CTX = 4096;
 const POLL_MS = 100;
+
+// `models` (array) or the older single `model`; empty names and duplicates are dropped.
+export function modelList({ models, model } = {}) {
+  return [...new Set((models ?? [model]).filter(Boolean))];
+}
 
 // '' or undefined → 'started'; an unknown value → null (the caller warns and uses 'started').
 export function parseStopMode(value) {
@@ -53,6 +62,47 @@ export async function startOllamaIfNeeded({ endpoint, handle = {}, spawnImpl = s
   return handle;
 }
 
+// `ollama show` each model and `ollama pull` the ones that are missing (a failed pull throws).
+export function ensureModels({ models, execImpl = runCommand, log = console.log }) {
+  const pulled = [];
+  for (const name of modelList({ models })) {
+    // No timeout: a busy daemon must not turn an installed model into a pull, which fails offline.
+    if (execImpl('ollama', ['show', name], { timeout: undefined }) === 0) continue;
+    log(`Falta ${name}; se descarga con ollama pull.`);
+    if (execImpl('ollama', ['pull', name], { stdio: 'inherit', timeout: undefined }) !== 0) {
+      throw new Error(`Falló ollama pull ${name}`);
+    }
+    pulled.push(name);
+  }
+  return pulled;
+}
+
+// Loads each model into memory for an hour, one after the other, with the agent's num_ctx. `prefixes` maps a
+// model to the fixed start of its requests ({ messages, tools }, e.g. the decision system prompt): that model is
+// warmed through /api/chat with it, generating one token, so Ollama keeps the prompt prefix cached. A failure only
+// warns: the chat falls back to its templates. Returns the models that loaded.
+export async function warmModels({ models, endpoint, prefixes = {}, fetchImpl = fetch, log = console.log,
+  warn = console.warn }) {
+  const warmed = [];
+  for (const name of modelList({ models })) {
+    log(`Cargando ${name} en memoria…`);
+    const prefix = Object.hasOwn(prefixes, name) ? prefixes[name] : null;
+    const body = prefix
+      ? { model: name, messages: prefix.messages, tools: prefix.tools, stream: false, keep_alive: '1h',
+        options: { num_ctx: NUM_CTX, num_predict: 1 } }
+      : { model: name, stream: false, keep_alive: '1h', options: { num_ctx: NUM_CTX } };
+    try {
+      const response = await fetchImpl(new URL(prefix ? '/api/chat' : '/api/generate', endpoint), { method: 'POST',
+        headers: { 'Content-Type': 'application/json' }, signal: AbortSignal.timeout(WARM_TIMEOUT_MS),
+        body: JSON.stringify(body) });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      await response.json();
+      warmed.push(name);
+    } catch (error) { warn(`Ollama aún no está listo para ${name}. El chat dispone de plantillas.`, error.message); }
+  }
+  return warmed;
+}
+
 // The shutdown steps, shared by the async (signals) and sync ('exit' event) paths. Yields
 // ['sleep', ms] and ['unload'] effects and returns the status line.
 function* shutdownSteps({ handle, mode, platform, killImpl, execImpl, graceMs, pollAlive = true }) {
@@ -78,7 +128,7 @@ function* shutdownSteps({ handle, mode, platform, killImpl, execImpl, graceMs, p
     }
     return MESSAGES.stopped;
   }
-  // Someone else's daemon (menu-bar app, systemd, container…): free the model's memory first.
+  // Someone else's daemon (menu-bar app, systemd, container…): free the models' memory first.
   const unloaded = yield ['unload'];
   if (mode === 'always' && stopExternalDaemon(platform, execImpl)) return MESSAGES.stopped;
   return unloaded ? MESSAGES.unloaded : MESSAGES.notUnloaded;
@@ -108,11 +158,13 @@ function prepare(options, defaults) {
   };
 }
 
-// Async shutdown, used from the signal handlers. Returns the status line, or null if already stopped.
+// Async shutdown, used from the signal handlers. Unloads every model in `models` (or the single
+// `model`). Returns the status line, or null if already stopped.
 export async function stopOllama(options) {
   const context = prepare(options, { graceMs: 5000 });
   if (!context) return null;
-  const { model, endpoint, fetchImpl = fetch, sleepImpl = sleep } = context;
+  const { endpoint, fetchImpl = fetch, sleepImpl = sleep } = context;
+  const models = modelList(context);
   const steps = shutdownSteps(context);
   let step = steps.next();
   while (!step.done) {
@@ -122,25 +174,28 @@ export async function stopOllama(options) {
       step = steps.next();
       continue;
     }
-    let ok = false;
-    try {
-      const response = await fetchImpl(new URL('/api/generate', endpoint), { method: 'POST',
-        headers: { 'Content-Type': 'application/json' }, body: unloadBody(model),
-        signal: AbortSignal.timeout(UNLOAD_TIMEOUT_MS) });
-      ok = response.ok;
-    } catch { /* Ollama not answering */ }
-    step = steps.next(ok);
+    // In parallel, so two models cost one timeout at most; the unload counts only if every model went.
+    const results = await Promise.all(models.map(async name => {
+      try {
+        const response = await fetchImpl(new URL('/api/generate', endpoint), { method: 'POST',
+          headers: { 'Content-Type': 'application/json' }, body: unloadBody(name),
+          signal: AbortSignal.timeout(UNLOAD_TIMEOUT_MS) });
+        return response.ok;
+      } catch { return false; } // Ollama not answering
+    }));
+    step = steps.next(results.every(Boolean));
   }
   return step.value;
 }
 
 // Synchronous shutdown for the 'exit' event (uncaught error, process.exit), where async work never runs.
-// The unload request runs in a short-lived child Node process.
+// The unload requests (one per model, in parallel) run in a single short-lived child Node process.
 export function stopOllamaSync(options) {
   const context = prepare(options, { graceMs: 1000 });
   if (!context) return null;
   context.pollAlive = false;
-  const { model, endpoint, execImpl } = context;
+  const { endpoint, execImpl } = context;
+  const bodies = modelList(context).map(unloadBody);
   const steps = shutdownSteps(context);
   let step = steps.next();
   while (!step.done) {
@@ -151,9 +206,10 @@ export function stopOllamaSync(options) {
       continue;
     }
     const url = new URL('/api/generate', endpoint).href;
-    const script = `fetch(${JSON.stringify(url)}, { method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: ${JSON.stringify(unloadBody(model))}, signal: AbortSignal.timeout(${UNLOAD_TIMEOUT_MS}) })
-      .then(r => process.exit(r.ok ? 0 : 1), () => process.exit(1));`;
+    const script = `Promise.all(${JSON.stringify(bodies)}.map(body => fetch(${JSON.stringify(url)}, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body,
+      signal: AbortSignal.timeout(${UNLOAD_TIMEOUT_MS}) }).then(r => r.ok, () => false)))
+      .then(all => process.exit(all.every(Boolean) ? 0 : 1));`;
     step = steps.next(execImpl(process.execPath, ['-e', script], { timeout: UNLOAD_TIMEOUT_MS + 2000 }) === 0);
   }
   return step.value;

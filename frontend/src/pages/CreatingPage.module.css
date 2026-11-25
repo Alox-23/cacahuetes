@@ -3,7 +3,7 @@
   gap: 16px;
 }
 
-/* Top-aligned: the game section takes the space left between the steps and the footer. */
+/* Top-aligned: the chase animation sits centred in the space left between the steps and the footer. */
 .center {
   flex-grow: 1;
   display: flex;
@@ -87,51 +87,15 @@
   flex-shrink: 0;
 }
 
-/*
- * The growing block of the column; the game slot grows inside it (128-420 px).
- * min-height stays auto: on very short screens the label, the 128 px game and the
- * hint keep their size and the page scrolls instead of the hint sliding under the footer.
- */
-.game {
-  flex: 1 1 0;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-/* Same label style as "Ejemplo · Barcelona" on Main. */
-.gameLabel {
-  font-size: var(--font-size-label);
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--color-text-muted);
-}
-
-.hint {
-  font-size: var(--font-size-label);
-  line-height: 1.4;
-  color: var(--color-text-muted);
+/* Fixed aspect ratio (its viewBox), 96-160 px tall at mobile widths; it does not grow to fill the column. */
+.chase {
+  flex-shrink: 0;
+  margin-block: auto;
 }
 
 .footer {
   display: flex;
   flex-direction: column;
-}
-
-.banner {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  background: var(--color-selected);
-  border-color: var(--color-selected);
-}
-
-.bannerText {
-  font-size: var(--font-size-body);
-  font-weight: 600;
 }
 
 .cancel {

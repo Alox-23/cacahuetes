@@ -39,6 +39,9 @@ export function preferences(value, partial = false) {
   return result;
 }
 
+export const validTime = t => typeof t === 'string' && /^(?:[01]\d|2[0-3]):[0-5]\d$/.test(t);
+export const validDate = d => typeof d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d) && new Date(d + 'T12:00:00Z').toJSON()?.slice(0, 10) === d;
+
 export const minutes = time => Number(time.slice(0, 2)) * 60 + Number(time.slice(3));
 export const clock = value => [Math.floor(value / 60), value % 60].map(n => String(n).padStart(2, '0')).join(':');
 
@@ -49,11 +52,11 @@ export function tripRequest(raw) {
   const label = localStart(shortText(raw.start?.label, 'start.label', 240));
   if (!label) throw badRequest('Elige un punto de salida del catálogo de Marbella.');
   const date = shortText(raw.date, 'date', 10);
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || new Date(date + 'T12:00:00Z').toJSON()?.slice(0, 10) !== date) {
+  if (!validDate(date)) {
     throw badRequest('La fecha debe ser un día válido en formato AAAA-MM-DD.');
   }
   const { from, to } = object(raw.timeWindow, 'timeWindow');
-  if (![from, to].every(t => typeof t === 'string' && /^(?:[01]\d|2[0-3]):[0-5]\d$/.test(t)) || from >= to) {
+  if (![from, to].every(validTime) || from >= to) {
     throw badRequest('Indica una franja horaria válida dentro del mismo día.');
   }
   return { city, date, timeWindow: { from, to }, start: { label }, mustInclude: strings(raw.mustInclude, 'mustInclude'),

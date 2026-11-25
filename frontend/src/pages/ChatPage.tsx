@@ -1,16 +1,21 @@
+import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Card, ChatInput, Chip, Mascot, Screen } from '../components'
 import { preferenceChips } from '../assistant/format'
 import { t } from '../i18n'
-import { useChat, usePreferences } from '../state/AppState'
+import { useAppState, useChat, usePreferences } from '../state/AppState'
 import styles from './ChatPage.module.css'
 
 const SUGGESTIONS = ['chat.suggestion1', 'chat.suggestion2', 'chat.suggestion3'] as const
+/** Feature 5 (API mode): the same texts as examples that prefill the input instead of sending. */
+const EXAMPLES = ['chat.example1', 'chat.example2', 'chat.example3'] as const
 
 export function ChatPage() {
   const navigate = useNavigate()
   const { preferences } = usePreferences()
   const { start, send } = useChat('request')
+  const { conversational } = useAppState()
+  const [prefill, setPrefill] = useState<{ text: string; id: number }>()
 
   function startRequest(text: string) {
     start({ key: `request-${Date.now()}` })
@@ -45,20 +50,41 @@ export function ChatPage() {
           <Mascot size={72} />
           <div className={styles.intro}>
             <h2 className={styles.heading}>{t('chat.heading')}</h2>
-            <p className={styles.helper}>{t('chat.helper')}</p>
+            <p className={styles.helper}>{conversational ? t('chat.helperAgent') : t('chat.helper')}</p>
           </div>
-          <ul className={styles.suggestions} aria-label={t('chat.suggestionsLabel')}>
-            {SUGGESTIONS.map((key) => (
-              <li key={key}>
-                <button type="button" className={styles.suggestion} onClick={() => startRequest(t(key))}>
-                  {t(key)}
-                </button>
-              </li>
-            ))}
-          </ul>
+          {conversational ? (
+            <>
+              <p id="chat-examples-hint" className="sr-only">
+                {t('chat.examplesHint')}
+              </p>
+              <ul className={styles.suggestions} aria-label={t('chat.examplesLabel')} aria-describedby="chat-examples-hint">
+                {EXAMPLES.map((key) => (
+                  <li key={key}>
+                    <button
+                      type="button"
+                      className={styles.suggestion}
+                      onClick={() => setPrefill((p) => ({ text: t(key), id: (p?.id ?? 0) + 1 }))}
+                    >
+                      {t(key)}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </>
+          ) : (
+            <ul className={styles.suggestions} aria-label={t('chat.suggestionsLabel')}>
+              {SUGGESTIONS.map((key) => (
+                <li key={key}>
+                  <button type="button" className={styles.suggestion} onClick={() => startRequest(t(key))}>
+                    {t(key)}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
       </div>
-      <ChatInput placeholder={t('chat.placeholder')} onSend={startRequest} />
+      <ChatInput placeholder={t('chat.placeholder')} onSend={startRequest} prefill={prefill} />
     </Screen>
   )
 }

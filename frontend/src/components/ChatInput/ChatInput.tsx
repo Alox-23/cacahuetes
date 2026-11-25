@@ -1,4 +1,4 @@
-import { forwardRef, useId, useLayoutEffect, useRef, useState, type FormEvent, type KeyboardEvent } from 'react'
+import { forwardRef, useEffect, useId, useLayoutEffect, useRef, useState, type FormEvent, type KeyboardEvent } from 'react'
 import { t } from '../../i18n'
 import { cx } from '../../lib/cx'
 import { SendIcon } from '../icons/icons'
@@ -11,6 +11,8 @@ type ChatInputProps = {
   disabled?: boolean
   label?: string
   className?: string
+  /** Puts `text` in the field and focuses it (feature 5 examples); a new `id` prefills again. */
+  prefill?: { text: string; id: number }
 }
 
 /** Four lines of 22 px plus the vertical padding (spec 4: grows to four lines, then scrolls). */
@@ -21,13 +23,19 @@ const MAX_HEIGHT = 4 * 22 + 26
  * Enter sends, Shift+Enter inserts a line break (never while an IME composes).
  */
 export const ChatInput = forwardRef<HTMLTextAreaElement, ChatInputProps>(function ChatInput(
-  { placeholder, onSend, disabled = false, label, className },
+  { placeholder, onSend, disabled = false, label, className, prefill },
   forwardedRef,
 ) {
   const id = useId()
   const [value, setValue] = useState('')
   const inner = useRef<HTMLTextAreaElement | null>(null)
   const canSend = !disabled && value.trim().length > 0
+
+  useEffect(() => {
+    if (!prefill) return
+    setValue(prefill.text)
+    inner.current?.focus()
+  }, [prefill])
 
   useLayoutEffect(() => {
     const el = inner.current

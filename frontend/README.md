@@ -4,17 +4,18 @@ Mobile-first web app in Spanish where a guest answers four questions inside the 
 **Cacahuete** for a route, confirms "Esto es lo que entendí", watches the route being created and asks for
 changes by chat. Feature 2 completes the app: the Route screen with a schematic map and per-stop actions, saving
 routes (guest → account), register and login, Mis rutas with saved-route detail and rating, and the profile with
-editable preferences and account settings. Feature 3 lets the user play Peanut Run (here "Cacahuete Run") while
-the route is being created. The app can use the Cacahuete HTTP API and PostgreSQL (see
-[the backend README](../backend/README.md)) or run the standalone demo, where the assistant is a client-side
-script and all data lives in `localStorage`.
+editable preferences and account settings. While the route is being created, the mobile screen shows a short
+animation of Cacahuete running from a squirrel (feature 5, which replaced the Peanut Run game of feature 3). The
+app can use the Cacahuete HTTP API and PostgreSQL (see [the backend README](../backend/README.md)) or run the
+standalone demo, where the assistant is a client-side script and all data lives in `localStorage`.
 
 Feature 3 makes it one responsive codebase: below 768 px it is the mobile app; from 1,024 px a desktop window with a
 sidebar, an always-visible chat and a right panel that appears when there is a route, a saved route or settings to show.
 
 - Tech specs: [`docs/tech-specs/feature-1-base-y-asistente.md`](docs/tech-specs/feature-1-base-y-asistente.md),
   [`docs/tech-specs/feature-2-ruta-mis-rutas-perfil.md`](docs/tech-specs/feature-2-ruta-mis-rutas-perfil.md),
-  [`docs/tech-specs/feature-3-juego-mientras-se-crea-la-ruta.md`](docs/tech-specs/feature-3-juego-mientras-se-crea-la-ruta.md),
+  [`docs/tech-specs/feature-3-juego-mientras-se-crea-la-ruta.md`](docs/tech-specs/feature-3-juego-mientras-se-crea-la-ruta.md)
+  (superseded by [`feature-5-animacion-de-espera.md`](docs/tech-specs/feature-5-animacion-de-espera.md)),
   [`docs/tech-specs/feature-4-cuenta-segura.md`](docs/tech-specs/feature-4-cuenta-segura.md),
   [`docs/tech-specs/feature-3-version-de-escritorio.md`](docs/tech-specs/feature-3-version-de-escritorio.md)
   (desktop version and chat interface; §12 explains how it was ported onto this branch)
@@ -60,7 +61,7 @@ One URL space for both layouts.
 | `/onboarding` | Four questions in the chat (redirects to `/chat` once preferences exist) | The questions in the full-width chat; "Omitir" in the chat header |
 | `/chat` | Main chat (redirects to `/onboarding` until preferences exist) | Full-width chat with the suggestions and a collapsible preferences strip |
 | `/chat/conversation` | Request, clarifying questions and "Esto es lo que entendí" | The same conversation in the full-width chat |
-| `/creating` | Creating the route, with the Peanut Run game (redirects to `/chat` without a creation in progress) | Progress bubble in the chat, no panel yet (no game on desktop) |
+| `/creating` | Creating the route: steps and the waiting animation, then the route (redirects to `/chat` without a creation in progress) | Progress bubble in the chat, no panel yet (no animation on desktop) |
 | `/route/:id` | Ruta: map, stops, quick changes, "Deshacer", save and share | Route panel next to the chat; map and list linked; reorder (mock data only) |
 | `/route/:id/change` | Change the route by chat | Redirects to `/route/:id` (the chat is already next to the route) |
 | `/route/:id/stop/:order` | Detalle de lugar: why, hours, price; change, remove, lock | Slide-over on the stop list |
@@ -93,27 +94,20 @@ replaces it.
 - **Reuse:** "Reutilizar" opens the request conversation with "Esto es lo que entendí" pre-filled (a past date
   moves to the next same weekday); "Crear ruta" creates a new route.
 
-## Juego mientras se crea la ruta
+## Animación mientras se crea la ruta
 
-The Creating screen (`/creating`) shows the four steps and, under them, **Peanut Run**, the one-button endless
-runner from the `peanut-run-game` branch, in Spanish ("Cacahuete Run"). Tap the game, or focus it and press
-Space / Up / W, to start and to jump; M toggles the sound.
+The Creating screen (`/creating`) shows the four steps and, under them, a small decorative animation: Cacahuete
+running from the squirrel along a scrolling dashed ground (feature 5; it replaced the Peanut Run game).
 
-- **Never interrupted:** if the game was never started, the screen goes to the route as soon as it is ready, as
-  before. If the user is playing (or has played), the screen stays: the title becomes "Tu ruta está lista" and a
-  banner with "Ver ruta" appears above where Cancel was. Answering "No" to "¿Otra partida?" also opens the route
-  once it is ready.
-- **Code:** the engine is vendored, as JavaScript, in `src/game/peanut-run/` (origin commit and the only local
-  change, the `strings` option for the Spanish texts, in [`src/game/peanut-run/SOURCE.md`](src/game/peanut-run/SOURCE.md)).
-  `index.d.ts` types its API; ESLint skips the vendored `.js`. `src/game/PeanutRunGame.tsx` is the React wrapper
-  (creates the game once, destroys it on unmount, polls the state every 250 ms because the engine has no
-  state-change event). Texts live in `es.json` under `game`.
-- **Storage:** best score in `rt.peanutRun.highScore`, mute preference in `rt.peanutRun.muted`.
+- **Nothing to play:** the animation is an inline SVG (`src/components/ChaseAnimation/`), `aria-hidden`, not
+  focusable, with no handlers. The screen opens the route as soon as it is ready, every time; Cancel returns to
+  the conversation.
+- **Cheap:** CSS keyframes on `transform` only (a 1.4 s loop); no canvas, no timers, no JavaScript at runtime, no
+  storage. Under `prefers-reduced-motion` the figures stand still (the global rule in `global.css`).
+- **Size:** it fills the column width with a fixed aspect ratio (about 120 px tall on a phone, at most 160 px) and
+  sits centred between the steps and the footer.
 - **Small screens:** under 700 px of viewport height the steps card collapses to one line ("Paso 2 de 4 ·
-  Trayectos calculados"). In a game slot narrower than 560 px the game-over dialog is laid out in two columns so
-  its buttons are 44 px tall (scoped rules in `PeanutRunGame.module.css`; the vendored CSS is untouched).
-- **Without canvas** (jsdom, very old browsers) the wrapper renders nothing and the screen behaves as if the user
-  never played.
+  Trayectos calculados").
 
 ## Trying feature 4
 
@@ -152,7 +146,6 @@ src/
                                      pages/chat/ holds the shared transcript renderers
   shell/                             desktop: DesktopRoutes (guards, dialogs), DesktopShell, Sidebar, ChatDock (the
                                      one desktop chat), DesktopPanels, DesktopDialogs, DesktopMain (Inicio)
-  game/                              Peanut Run: vendored engine (peanut-run/) and the React wrapper
   lib/                               small helpers (text, time, route text, filters, share, validation, tabs,
                                      breakpoints, useLayout)
 ```
@@ -162,8 +155,7 @@ stop count), `FloatingBackButton`, `Sheet`, `StopRow`, `ListRow`, `Checkbox`, `T
 `ConfirmSheet` (destructive confirmations), `Toast` (rendered by the provider; `useToast().show(message)`),
 `SearchField`, `IconButton`, `AlternativeOption`.
 
-Rules kept in the code: components and pages use only CSS variables (no raw hex; the vendored game CSS under
-`src/game/peanut-run/` keeps its own art and is exempt), every interactive element is at least
+Rules kept in the code: components and pages use only CSS variables (no raw hex), every interactive element is at least
 44 px, option chips use `aria-pressed`, the pace selector is a `radiogroup`, transcripts are `role="log"` with
 `aria-live="polite"`, and `<html lang="es">`.
 

@@ -142,10 +142,16 @@
     "savedPreferences": "Tus preferencias guardadas",
     "heading": "¿Qué te apetece hacer en Marbella?",
     "helper": "Dime el día, cuánto tiempo tienes y qué rincón de Marbella quieres conocer.",
+    "helperAgent": "Cuéntame tu plan con tus palabras: cuánto tiempo tienes, desde dónde sales y qué te apetece.",
     "suggestionsLabel": "Sugerencias",
     "suggestion1": "Casco antiguo y tapas en Marbella, 5 horas",
     "suggestion2": "Un día en familia por la Alameda y la Fontanilla",
     "suggestion3": "Puerto Banús y Playa del Duque a pie por la tarde",
+    "examplesLabel": "Ejemplos",
+    "examplesHint": "Al pulsar un ejemplo se copia en el cuadro de texto para que lo edites.",
+    "example1": "Casco antiguo y tapas en Marbella, 5 horas",
+    "example2": "Un día en familia por la Alameda y la Fontanilla",
+    "example3": "Puerto Banús y Playa del Duque a pie por la tarde",
     "placeholder": "Escribe tu petición",
     "you": "Tú:",
     "newMessage": "Mensaje nuevo"
@@ -153,7 +159,9 @@
   "conversation": {
     "placeholder": "Responde o añade algo",
     "placeholderSummary": "Corrige o añade algo",
-    "note": "El asistente solo pregunta lo que falta. Tus preferencias guardadas se aplican solas."
+    "placeholderAgent": "Cuéntame más o pídeme un cambio",
+    "note": "El asistente solo pregunta lo que falta. Tus preferencias guardadas se aplican solas.",
+    "noteAgent": "Cacahuete decide los cambios con lo que le cuentas; puedes corregirle en la siguiente frase."
   },
   "request": {
     "generic": "Vamos a preparar tu paseo por Marbella.",
@@ -223,33 +231,7 @@
     "stateActive": "en curso",
     "statePending": "pendiente",
     "error": "No he podido crear la ruta. Vuelve a la conversación e inténtalo de nuevo.",
-    "titleReady": "Tu ruta está lista",
-    "stepShort": "Paso {index} de {total} · {step}",
-    "gameLabel": "Mientras tanto, juega",
-    "gameHint": "Toca el juego para saltar. Tu ruta sigue en marcha.",
-    "readyBanner": "Tu ruta está lista",
-    "viewRoute": "Ver ruta"
-  },
-  "game": {
-    "title": "Cacahuete Run",
-    "startHint": "Toca o pulsa espacio para empezar",
-    "paused": "En pausa",
-    "pausedHint": "Toca o pulsa espacio para seguir",
-    "caught": "¡La ardilla te ha pillado!",
-    "score": "Puntos",
-    "best": "Mejor",
-    "newHigh": "¡Nuevo récord!",
-    "playAgain": "¿Otra partida?",
-    "yes": "Sí",
-    "no": "No",
-    "thanks": "¡Gracias por jugar!",
-    "finalScore": "Puntuación final: {n}",
-    "play": "Jugar",
-    "ariaLabel": "Juego Cacahuete Run. Toca o pulsa espacio para saltar.",
-    "mute": "Silenciar",
-    "unmute": "Activar sonido",
-    "soundOn": "Sonido activado (M)",
-    "soundOff": "Sonido desactivado (M)"
+    "stepShort": "Paso {index} de {total} · {step}"
   },
   "route": {
     "backToChat": "Volver al chat",
@@ -297,6 +279,39 @@
     "cheaper": "He cambiado {old} por {new}, que es gratis.",
     "noCheaper": "No he encontrado una alternativa más barata para ninguna parada.",
     "noChange": "Esta vez no ha cambiado nada."
+  },
+  "agent": {
+    "greetingRoute": "Aquí tienes tu ruta. Dime qué cambio quieres, por ejemplo quitar una parada, acabar antes o añadir un café.",
+    "degraded": "Modo sin IA: he respondido con reglas sencillas.",
+    "routeGone": "Esa ruta ya no está disponible. Pídeme otra cuando quieras.",
+    "reuse": "Quiero repetir una ruta el {date} ({iso}) de {from} a {to}, saliendo desde {start}.",
+    "reuseWith": "Quiero repetir una ruta el {date} ({iso}) de {from} a {to}, saliendo desde {start}, con {places}.",
+    "reusePrefs": {
+      "lead": "Para esta ruta: {list}.",
+      "interests": "intereses {list}",
+      "pace": "ritmo {pace}",
+      "budget": "presupuesto {budget}",
+      "company": "voy {company}",
+      "transport": "me muevo {list}"
+    },
+    "event": {
+      "created": "Ruta creada: {name}, {stops} de {from} a {to}.",
+      "createdShort": "He creado una ruta nueva.",
+      "assumptions": "He supuesto: {list}.",
+      "changed": "He cambiado la ruta.",
+      "undone": "He deshecho el último cambio.",
+      "change": {
+        "add_stop": "He añadido una parada.",
+        "remove_stop": "He quitado una parada.",
+        "replace_stop": "He cambiado una parada por otra.",
+        "lock_stop": "He fijado o liberado una parada.",
+        "reschedule": "He cambiado el horario.",
+        "menos_caminar": "He acortado los paseos a pie.",
+        "mas_comida": "He añadido más paradas de comida.",
+        "mas_barato": "He buscado opciones más baratas.",
+        "anadir_pausa": "He añadido una pausa para café."
+      }
+    }
   },
   "tabs": {
     "label": "Principal",

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { AssistantBubble, ChatInput, Chip, ChevronDownIcon, ChevronRightIcon, Mascot, QuickReply, SummaryCard } from '../components'
+import { AssistantBubble, ChaseAnimation, ChatInput, Chip, ChevronDownIcon, ChevronRightIcon, Mascot, QuickReply, SummaryCard } from '../components'
 import { describeSelection, formatDateLong, preferenceChips } from '../assistant/format'
 import type { AssistantMode, RichReply } from '../assistant/types'
 import { DEFAULT_PREFERENCES } from '../data/defaults'
@@ -37,6 +37,8 @@ function usePanelRoute(id: string | null): Route | null {
 }
 
 const SUGGESTIONS = ['chat.suggestion1', 'chat.suggestion2', 'chat.suggestion3'] as const
+/** Feature 5 (API mode): the same texts as examples that prefill the input instead of sending. */
+const EXAMPLES = ['chat.example1', 'chat.example2', 'chat.example3'] as const
 
 type ChatDockProps = { contextPath: string; panel: PanelKind | null }
 
@@ -48,13 +50,14 @@ type ChatDockProps = { contextPath: string; panel: PanelKind | null }
 export function ChatDock({ contextPath, panel }: ChatDockProps) {
   const navigate = useNavigate()
   const app = useAppState()
-  const { preferences, thread, epochs, pending, send, startChat, ensureChat, chatKey, addNotice, creation, startCreation, usedRequestEpoch } = app
+  const { preferences, thread, epochs, pending, send, startChat, ensureChat, chatKey, addNotice, creation, startCreation, usedRequestEpoch, conversational } = app
   const routeId = panelRouteId(panel)
   const route = usePanelRoute(routeId)
   const mode: AssistantMode = !preferences ? 'onboarding' : routeId ? 'change' : 'request'
   const section = tabForPath(contextPath)
   const input = useRef<HTMLTextAreaElement>(null)
   const [stripOpen, setStripOpen] = useState(false)
+  const [prefill, setPrefill] = useState<{ text: string; id: number }>()
 
   const requestItems = modeView(thread, 'request', epochs.request)
   const requestUsed = usedRequestEpoch === epochs.request
@@ -139,7 +142,9 @@ export function ChatDock({ contextPath, panel }: ChatDockProps) {
           ? t('desktop.placeholderCreating')
           : requestEmpty
             ? t('chat.placeholder')
-            : requestItems.some((i) => i.kind === 'assistant' && i.reply.kind === 'summary')
+            : conversational
+              ? t('conversation.placeholderAgent')
+              : requestItems.some((i) => i.kind === 'assistant' && i.reply.kind === 'summary')
               ? t('conversation.placeholderSummary')
               : t('conversation.placeholder')
 
@@ -170,7 +175,8 @@ export function ChatDock({ contextPath, panel }: ChatDockProps) {
         interactive={interactive}
         chosen={chosen}
         onOption={(o) => void send(itemMode, { option: o.value }, o.label)}
-        onUndo={() => void send('change', { option: 'undo' }, t('common.undo'))}
+        // Undo goes to the bubble's own conversation; a creation bubble has nothing to undo.
+        onUndo={reply.display?.createdRouteId ? undefined : () => void send(itemMode, { option: 'undo' }, t('common.undo'))}
         renderSummary={(r, live) =>
           r.request && (
             <SummaryCard
@@ -204,6 +210,8 @@ export function ChatDock({ contextPath, panel }: ChatDockProps) {
             <span>{t('desktop.creationCancelled')}</span>
           ) : (
             <>
+              {/* Only while it is being created: a finished progress bubble in the history stays still. */}
+              {status === 'running' && <ChaseAnimation className={styles.progressChase} />}
               <CreationSteps step={status === 'done' ? 4 : (live?.step ?? 0)} compact />
               {status === 'running' && <span className={chatStyles.hint}>{t('desktop.creatingHint')}</span>}
             </>
@@ -240,17 +248,38 @@ export function ChatDock({ contextPath, panel }: ChatDockProps) {
           <Mascot size={72} />
           <div className={styles.introText}>
             <h1 className={styles.heading}>{t('chat.heading')}</h1>
-            <p className={styles.helper}>{t('chat.helper')}</p>
+            <p className={styles.helper}>{conversational ? t('chat.helperAgent') : t('chat.helper')}</p>
           </div>
-          <ul className={styles.suggestions} aria-label={t('chat.suggestionsLabel')}>
-            {SUGGESTIONS.map((key) => (
-              <li key={key}>
-                <button type="button" className={styles.suggestion} onClick={() => startRequest(t(key))}>
-                  {t(key)}
-                </button>
-              </li>
-            ))}
-          </ul>
+          {conversational ? (
+            <>
+              <p id="dock-examples-hint" className="sr-only">
+                {t('chat.examplesHint')}
+              </p>
+              <ul className={styles.suggestions} aria-label={t('chat.examplesLabel')} aria-describedby="dock-examples-hint">
+                {EXAMPLES.map((key) => (
+                  <li key={key}>
+                    <button
+                      type="button"
+                      className={styles.suggestion}
+                      onClick={() => setPrefill((p) => ({ text: t(key), id: (p?.id ?? 0) + 1 }))}
+                    >
+                      {t(key)}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </>
+          ) : (
+            <ul className={styles.suggestions} aria-label={t('chat.suggestionsLabel')}>
+              {SUGGESTIONS.map((key) => (
+                <li key={key}>
+                  <button type="button" className={styles.suggestion} onClick={() => startRequest(t(key))}>
+                    {t(key)}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
       ) : null
 
@@ -301,7 +330,7 @@ export function ChatDock({ contextPath, panel }: ChatDockProps) {
         logClassName={styles.log}
       />
       <div className={styles.inputWrap}>
-        <ChatInput ref={input} className={styles.input} placeholder={placeholder} disabled={pending[mode]} onSend={onSend} />
+        <ChatInput ref={input} className={styles.input} placeholder={placeholder} disabled={pending[mode]} onSend={onSend} prefill={prefill} />
       </div>
     </div>
   )

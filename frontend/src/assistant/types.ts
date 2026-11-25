@@ -1,4 +1,4 @@
-import type { AssistantReply, Preferences, Route } from '../contract/types'
+import type { AgentReply, AssistantReply, Preferences, Route } from '../contract/types'
 import type { QuickRefine } from '../lib/refineKeywords'
 
 /**
@@ -25,9 +25,20 @@ export type ReplyDisplay = {
   complete?: boolean
   /** Change reply: the route id the "Ver ruta actualizada" button opens. */
   routeId?: string
+  /**
+   * Feature 5: the id of the route the agent created in this turn; the provider plays the Creando hand-over.
+   * Only the id is kept in the thread (the route itself travels on the turn, see AssistantTurn).
+   */
+  createdRouteId?: string
 }
 
 export type RichReply = AssistantReply & { display?: ReplyDisplay }
+
+/**
+ * What an assistant turn returns: the reply the thread stores, plus (feature 5) the route the agent created
+ * in this turn. The provider hands `createdRoute` to the Creando steps and never stores it in the thread.
+ */
+export type AssistantTurn = RichReply & { createdRoute?: Route }
 
 export type AssistantMode = 'onboarding' | 'request' | 'change'
 
@@ -42,6 +53,10 @@ export type AssistantDeps = {
   getRoute?: (id: string) => Promise<Route>
   refineRoute?: (id: string, action: { type: 'quick'; value: 'menos_caminar' | 'mas_comida' | 'mas_barato' | 'anadir_pausa' }) => Promise<Route>
   undo?: (id: string) => Promise<Route>
+  /** Feature 5: one turn of the conversational agent (API mode only). */
+  agent?: (input: { text: string; routeId?: string }) => Promise<AgentReply>
+  /** Feature 5: the agent changed the stored preferences; the provider re-reads them. */
+  preferencesChanged?: () => void | Promise<void>
   now?: () => Date
   /** Simulated thinking time; tests inject an instant one. */
   delay?: (ms: number) => Promise<void>

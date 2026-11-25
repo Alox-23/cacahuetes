@@ -5,7 +5,7 @@ import { ApiError, badRequest, object } from './http.js';
 import { normalize } from './onboarding.js';
 import { walkingMinutes } from './route-features.js';
 import { buildRoutes } from './routes.js';
-import { clock, minutes, shortText } from './trip-contract.js';
+import { clock, minutes, shortText, validDate, validTime } from './trip-contract.js';
 
 const paceMap = { relajado: 'tranquilo', equilibrado: 'normal', intenso: 'activo' };
 const interestMap = { arquitectura: 'historia', museos: 'arte', arte_urbano: 'arte', vida_nocturna: 'gastronomia' };
@@ -71,7 +71,19 @@ function matchesLabel(p, label) {
   return [p.name, p.id, ...p.aliases].some(alias => normalize(alias) === key);
 }
 
-function routeName(request) {
+// The pause place has no catalog aliases (the café alias belongs to Cafetería Parque Alameda).
+const pauseAliases = ['pausa', 'pausa para cafe', 'descanso', 'parada para cafe'];
+/** Catalog place (internal entry, pause included) for an id, name or alias; null when unknown. */
+export function resolvePlace(label) {
+  if (typeof label !== 'string' || !label.trim()) return null;
+  const key = normalize(label).replace(/^(?:la |el |los |las )/, '');
+  return catalog.places.find(p => matchesLabel(p, label) || matchesLabel(p, key))
+    ?? (pauseAliases.includes(key) ? catalog.places.find(p => p.kind === 'pause') : null);
+}
+/** Every place the planner knows (the 20 catalog places and the pause), for prompts and suggestions. */
+export const plannerPlaces = () => catalog.places.map(({ id, name, kind, categories }) => ({ id, name, kind, categories }));
+
+export function routeName(request) {
   const duration = minutes(request.timeWindow.to) - minutes(request.timeWindow.from);
   if (duration >= 540) return `Un día en ${request.city}`;
   const hours = Math.floor(duration / 60), rest = duration % 60;
@@ -174,7 +186,7 @@ export function alternatives(route, order, prefs) {
   }).slice(0, 3).map(asPlace);
 }
 
-const quickText = {
+export const quickText = {
   menos_caminar: /menos caminar|caminar menos|andar menos|menos andar|menos a pie/,
   anadir_pausa: /pausa|cafe|descans/,
   mas_barato: /barat|ahorrar|economic/,
@@ -185,10 +197,62 @@ function existingLegs(route) {
   return new Map(route.stops.slice(0, -1).map((s, i) => [s.placeId + '|' + route.stops[i + 1].placeId, s.travelToNext]));
 }
 
+const endTime = route => {
+  const last = route.stops.at(-1);
+  return minutes(last.arrive) + last.visitMinutes;
+};
+const lastLocked = route => route.stops.reduce((found, s, i) => (s.locked ? i : found), -1);
+
+function addStop(route, action, prefs, legs) {
+  const place = catalog.places.find(p => p.id === action.placeId);
+  if (!place) throw badRequest('Ese lugar no está en el catálogo de Marbella.');
+  if (route.stops.some(s => s.placeId === place.id)) throw badRequest(`${place.name} ya está en la ruta.`);
+  if (place.stairs && accessibility(prefs)) throw badRequest(`${place.name} tiene escaleras y tus preferencias piden evitarlas.`);
+  // Locked stops keep their index, so the new stop goes after the last locked one.
+  const first = lastLocked(route) + 1;
+  let indexes;
+  if (action.position !== undefined) {
+    if (!Number.isInteger(action.position) || action.position < 1 || action.position > route.stops.length + 1) {
+      throw badRequest('Esa posición no existe en la ruta.');
+    }
+    if (action.position - 1 < first) throw badRequest('Hay una parada fijada en esa posición.');
+    indexes = [action.position - 1];
+  } else {
+    indexes = Array.from({ length: route.stops.length + 1 - first }, (_, i) => first + i);
+  }
+  let best = null;
+  for (const i of indexes) {
+    const candidate = structuredClone(route);
+    candidate.stops.splice(i, 0, stopFor(place));
+    if (schedule(candidate, catalog, prefs, legs) && (!best || endTime(candidate) < endTime(best))) best = candidate;
+  }
+  if (!best) throw badRequest('El cambio no cabe en la franja horaria.');
+  route.stops = best.stops;
+}
+
+function reschedule(route, action, prefs, legs) {
+  const date = action.date ?? route.request.date;
+  const window = action.timeWindow ?? route.request.timeWindow;
+  if (!validDate(date)) throw badRequest('La fecha debe ser un día válido en formato AAAA-MM-DD.');
+  if (!window || typeof window !== 'object' || !validTime(window.from) || !validTime(window.to) || window.from >= window.to) {
+    throw badRequest('Indica una franja horaria válida dentro del mismo día.');
+  }
+  route.request = { ...route.request, date, timeWindow: { from: window.from, to: window.to } };
+  route.name = routeName(route.request);
+  // Shorter window: drop unlocked stops from the end until the rest fits (never below one stop).
+  while (!schedule(route, catalog, prefs, legs)) {
+    const i = route.stops.findLastIndex(s => !s.locked);
+    if (route.stops.length === 1 || i < 0) throw badRequest('La ruta no cabe en esa franja horaria.');
+    route.stops.splice(i, 1);
+  }
+}
+
 export function refineTrip(route, action, prefs) {
   object(action, 'action');
   const legs = existingLegs(route);
-  if (['remove_stop', 'lock_stop', 'swap_stop'].includes(action.type)) {
+  if (action.type === 'add_stop') addStop(route, action, prefs, legs);
+  else if (action.type === 'reschedule') reschedule(route, action, prefs, legs);
+  else if (['remove_stop', 'lock_stop', 'swap_stop'].includes(action.type)) {
     const i = stopIndex(route, action.order);
     const s = route.stops[i];
     if (action.type === 'lock_stop') s.locked = !s.locked;

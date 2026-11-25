@@ -1,5 +1,5 @@
 import catalog from '../../../backend/lib/marbella.json' with { type: 'json' }
-import type { AccountSettings, AuthProvider, DataModule, Place, Rating, Route, Session } from '../contract/types'
+import type { AccountSettings, AgentReply, AuthProvider, DataModule, Place, Rating, Route, Session } from '../contract/types'
 import type { AssistantDeps } from '../assistant/types'
 import { DEFAULT_ACCOUNT_SETTINGS } from './defaults.ts'
 import { ApiClientError } from './errors.ts'
@@ -21,7 +21,18 @@ export type HttpDataOptions = {
 type LocalAccount = { name?: string; settings?: AccountSettings }
 type LocalAccounts = Record<string, LocalAccount>
 
-type ConnectedData = DataModule & Required<Pick<AssistantDeps, 'interpretRequest' | 'refineConversation' | 'routeQuestion'>>
+type ConnectedData = DataModule &
+  Required<Pick<AssistantDeps, 'interpretRequest' | 'refineConversation' | 'routeQuestion'>> &
+  Required<Pick<DataModule, 'agent'>>
+
+const pad = (n: number) => String(n).padStart(2, '0')
+/** The visitor's wall clock (feature 5 §3): the server may run on another clock. */
+function clientClock(date = new Date()) {
+  return {
+    today: `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`,
+    now: `${pad(date.getHours())}:${pad(date.getMinutes())}`,
+  }
+}
 
 /** Pass the full /api/cacahuete URL (local or deployed) to use the PostgreSQL backend. */
 export function createHttpDataModule(
@@ -144,6 +155,23 @@ export function createHttpDataModule(
       const steps = await call<Route[]>('refineConversation', 'POST', { changes, version: route.version }, route.id)
       forgetRating(route.id)
       return steps.map(withFavorite)
+    },
+    // Feature 5: one turn of the conversational agent (the model decides, the planner computes).
+    agent: async ({ text, routeId }) => {
+      const reply = await call<AgentReply>('agent', 'POST', { text, routeId, client: clientClock() })
+      const touched = new Set<string>()
+      for (const event of reply.events ?? []) {
+        if (event.type === 'route_changed' || event.type === 'undone') touched.add(event.routeId)
+      }
+      for (const id of touched) forgetRating(id)
+      return {
+        text: reply.text ?? '',
+        suggestions: Array.isArray(reply.suggestions) ? reply.suggestions : [],
+        ...(reply.route ? { route: withFavorite(reply.route) } : {}),
+        ...(reply.routeId ? { routeId: reply.routeId } : {}),
+        events: Array.isArray(reply.events) ? reply.events : [],
+        source: reply.source === 'rules' ? 'rules' : 'agent',
+      }
     },
     getPreferences: () => call('getPreferences'),
     savePreferences: p => call('savePreferences', 'PUT', p),

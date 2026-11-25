@@ -6,6 +6,7 @@ import { t } from '../i18n'
 import { useChat, useCurrentRoute, useData } from '../state/AppState'
 import { MessageList } from './chat/MessageList'
 import { ReplyView } from './chat/ReplyView'
+import { useCreatedHandover } from './chat/useCreatedHandover'
 import styles from './chat/chat.module.css'
 
 export function ChangeChatPage() {
@@ -15,6 +16,8 @@ export function ChangeChatPage() {
   const { messages, pending, send, ensure } = useChat('change')
   const [route, setRoute] = useState<Route | null>(null)
   const [missing, setMissing] = useState(false)
+  // Feature 5: "hazme otra ruta" here also plays the Creando screen before opening the new route.
+  useCreatedHandover(messages)
 
   // Re-read the route after every reply so the header chip stays current.
   useEffect(() => {
@@ -63,9 +66,11 @@ export function ChangeChatPage() {
             reply={reply}
             interactive={isLast}
             chosen={chosen}
-            routeHref={`/route/${id}`}
+            // Feature 5: the agent may have moved to another route in this turn ("hazme otra ruta").
+            routeHref={`/route/${reply.display?.routeId ?? id}`}
             onOption={(o) => void send({ option: o.value }, o.label)}
-            onUndo={() => void send({ option: 'undo' }, t('common.undo'))}
+            // A creation bubble has nothing to undo: the new route is the context now.
+            onUndo={reply.display?.createdRouteId ? undefined : () => void send({ option: 'undo' }, t('common.undo'))}
           />
         )}
       />

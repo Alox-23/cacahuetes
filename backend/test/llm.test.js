@@ -179,7 +179,7 @@ test('La sonda de Ollama consulta /api/tags, se cachea 30 s y nunca falla', () =
   }));
 
 test('health informa del modelo y de Ollama caído sin dejar de responder', () => withEnv(
-  { OLLAMA_MODEL: 'qwen2.5:3b' }, async () => {
+  { OLLAMA_MODEL: 'qwen2.5:3b', OLLAMA_AGENT_MODEL: 'qwen2.5:1.5b' }, async () => {
     const database = () => ({ query: async () => ({ rows: [] }) });
     const health = async handler => {
       const response = await handler(new Request('https://api.example.test/api/cacahuete?action=health'), '127.0.0.1');
@@ -190,7 +190,7 @@ test('health informa del modelo y de Ollama caído sin dejar de responder', () =
       llmStatus: createLlmProbe({ fetchImpl: async () => { throw new Error('ECONNREFUSED'); } })
     });
     assert.deepEqual(await health(down),
-      { ok: true, service: 'cacahuete', city: 'Marbella', llm: { model: 'qwen2.5:3b', reachable: false } });
+      { ok: true, service: 'cacahuete', city: 'Marbella', llm: { model: 'qwen2.5:3b', agentModel: 'qwen2.5:1.5b', reachable: false } });
     const broken = createHandler(database, { llmStatus: () => { throw new Error('boom'); } });
-    assert.deepEqual((await health(broken)).llm, { model: 'qwen2.5:3b', reachable: false });
+    assert.deepEqual((await health(broken)).llm, { model: 'qwen2.5:3b', agentModel: 'qwen2.5:1.5b', reachable: false });
   }));

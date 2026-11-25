@@ -32,6 +32,25 @@ function Paragraphs({ items }: { items: string[] }) {
   )
 }
 
+type OptionsProps = { options: Option[]; interactive: boolean; chosen?: string; onOption?: (option: Option) => void }
+
+/** Quick replies; answered questions stay visible with their options disabled (spec 4). */
+function Options({ options, interactive, chosen, onOption }: OptionsProps) {
+  return (
+    <div className={styles.options}>
+      {options.map((o) => (
+        <QuickReply
+          key={o.value}
+          label={o.label}
+          disabled={!interactive}
+          selected={interactive ? undefined : chosen === o.value}
+          onClick={() => onOption?.(o)}
+        />
+      ))}
+    </div>
+  )
+}
+
 /**
  * Renders any assistant reply. Uses the mock's optional `display` hints when
  * present and falls back to the plain contract fields (text, options, changes).
@@ -53,6 +72,8 @@ export function ReplyView({ reply, interactive, chosen, onOption, renderOptions,
     )
   }
 
+  const options = reply.options ?? []
+  const changeOptions = reply.kind === 'change' ? options : []
   if (reply.kind === 'change') {
     return (
       <AssistantBubble>
@@ -75,12 +96,14 @@ export function ReplyView({ reply, interactive, chosen, onOption, renderOptions,
             {t('common.undo')}
           </Button>
         )}
+        {/* Feature 5: the agent's suggestions and its "modo sin IA" hint (the script sends neither here). */}
+        {changeOptions.length > 0 && <Options options={changeOptions} interactive={interactive} chosen={chosen} onOption={onOption} />}
+        {d.hint && <span className={styles.hint}>{d.hint}</span>}
       </AssistantBubble>
     )
   }
 
   const hasPrompt = Boolean(d.prompt)
-  const options = reply.options ?? []
   return (
     <>
       {intro}
@@ -94,18 +117,7 @@ export function ReplyView({ reply, interactive, chosen, onOption, renderOptions,
           (renderOptions ? (
             renderOptions(reply, interactive, chosen)
           ) : (
-            <div className={styles.options}>
-              {options.map((o) => (
-                <QuickReply
-                  key={o.value}
-                  label={o.label}
-                  // Answered questions stay visible with their options disabled (spec 4).
-                  disabled={!interactive}
-                  selected={interactive ? undefined : chosen === o.value}
-                  onClick={() => onOption?.(o)}
-                />
-              ))}
-            </div>
+            <Options options={options} interactive={interactive} chosen={chosen} onOption={onOption} />
           ))}
         {d.hint && <span className={styles.hint}>{d.hint}</span>}
       </AssistantBubble>

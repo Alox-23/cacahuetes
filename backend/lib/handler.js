@@ -10,6 +10,7 @@ import { buildRoutes, routeInput } from './routes.js';
 import { claimGuest, guestForLogin, tripAction, tripMethods } from './trip-api.js';
 import { isMarbella } from './marbella-scope.js';
 import { llmStatus as ollamaStatus } from './llm.js';
+import { defaultAgentModel } from './ollama.js';
 import { verificationActive } from './mail.js';
 import { exchangeTicket, handleCallback, isProvider, providers, startAuthorization } from './oauth.js';
 import { issueVerification, verifyEmail } from './verification.js';
@@ -34,7 +35,8 @@ function corsHeaders(request) {
   return headers;
 }
 
-export function createHandler(database = getPool, { llmStatus = ollamaStatus } = {}) {
+/** `ollama` replaces the agent's Ollama client (tests); `llmStatus` the health probe. */
+export function createHandler(database = getPool, { llmStatus = ollamaStatus, ollama } = {}) {
   return async function handle(request, localIp) {
     const headers = corsHeaders(request);
     const action = new URL(request.url).searchParams.get('action') ?? 'health';
@@ -56,7 +58,8 @@ export function createHandler(database = getPool, { llmStatus = ollamaStatus } =
         const llm = Promise.resolve().then(llmStatus).catch(() => null);
         await database().query('SELECT 1 FROM accounts LIMIT 1');
         const { model = process.env.OLLAMA_MODEL || 'qwen2.5:7b', reachable = false } = await llm ?? {};
-        return json({ ok: true, service: 'cacahuete', city: 'Marbella', llm: { model, reachable } }, 200, headers);
+        const agentModel = ollama?.status().agentModel ?? defaultAgentModel();
+        return json({ ok: true, service: 'cacahuete', city: 'Marbella', llm: { model, agentModel, reachable } }, 200, headers);
       }
       if (action === 'catalog') {
         return json({ city: 'Marbella', starts, places: listPlaces() }, 200, headers);
@@ -111,7 +114,7 @@ export function createHandler(database = getPool, { llmStatus = ollamaStatus } =
         return new Response(null, { status: 204, headers });
       }
       if (tripMethods.has(action)) {
-        const result = await tripAction(db, action, request, account, localIp);
+        const result = await tripAction(db, action, request, account, localIp, { ollama });
         if (result === undefined) return new Response(null, { status: 204, headers });
         return json(result, action === 'createRoute' ? 201 : 200, headers);
       }
