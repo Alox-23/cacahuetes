@@ -43,7 +43,7 @@ export function SavedRouteViewMobile({ route, screen }: { route: Route; screen: 
   return (
     <>
       <div className={`${layout.body} ${layout.gap14} ${styles.body}`}>
-        <RouteMap stops={route.stops} variant="card" label={t('routeScreen.mapLabelPlain')} />
+        <RouteMap stops={screen.mapStops} variant="card" routeId={route.id} label={t('routeScreen.mapLabelPlain')} />
         <div className={layout.titleBlock}>
           <h1 className={`${layout.h1} ${layout.h1Route}`}>{route.name}</h1>
           <p className={layout.subtitle}>
@@ -96,7 +96,7 @@ export function SavedRouteViewDesktop({ route, screen }: { route: Route; screen:
   const navigate = useNavigate()
   return (
     <div className={desk.view}>
-      <RouteMap stops={route.stops} variant="wide" label={t('routeScreen.mapLabelPlain')} className={desk.map} />
+      <RouteMap stops={screen.mapStops} variant="wide" routeId={route.id} label={t('routeScreen.mapLabelPlain')} className={desk.map} />
       <div className={desk.body}>
         <div className={desk.headRow}>
           <div className={layout.titleBlock}>

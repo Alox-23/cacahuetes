@@ -1,10 +1,11 @@
 /* Ruta content (Ruta.html / DeskAsistenteRuta.html). The mobile branch is dev's RoutePage markup unchanged. */
-import { useState, type DragEvent, type ReactNode } from 'react'
+import { useMemo, useState, type DragEvent, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { Button, ChevronDownIcon, ChevronUpIcon, GripIcon, IconButton, Mascot, RouteMap, ShareIcon, Sheet, StopRow } from '../../components'
 import type { Place, Preferences, Route } from '../../contract/types'
 import { t, tDynamic } from '../../i18n'
 import { cx } from '../../lib/cx'
+import { enrichStops } from '../../lib/enrichStops'
 import { QUICK_REFINES, type QuickRefine } from '../../lib/refineKeywords'
 import { mapLabel, routeSubtitle, stopDetail } from '../../lib/routeText'
 import { activityFor } from '../../pages/routeHooks'
@@ -34,6 +35,11 @@ type DesktopProps = RouteViewProps & {
   overlay?: ReactNode
 }
 
+/** Map stops filled from their places (coordinates, photo, rating…); the stop lists keep using route.stops. */
+function useMapStops(route: Route, places: Record<string, Place>) {
+  return useMemo(() => enrichStops(route.stops, places), [route.stops, places])
+}
+
 function QuickButtons({ route, busy, onQuick, onUndo, className }: RouteViewProps & { className?: string }) {
   return (
     <div className={className} role="group" aria-label={t('route.quickTitle')}>
@@ -54,10 +60,11 @@ function QuickButtons({ route, busy, onQuick, onUndo, className }: RouteViewProp
 /** Mobile (Ruta.html): map on top, sheet with quick changes, stops and the pinned actions. */
 export function RouteViewMobile(props: RouteViewProps) {
   const { route, places, preferences, busy, onSave, onShare, mapOverlay } = props
+  const mapStops = useMapStops(route, places)
   return (
     <>
       <div className={styles.mapArea}>
-        <RouteMap stops={route.stops} variant="full" label={mapLabel(route.stops.length)} />
+        <RouteMap stops={mapStops} variant="full" routeId={route.id} label={mapLabel(route.stops.length)} />
         {mapOverlay}
       </div>
       <Sheet className={styles.sheet}>
@@ -110,6 +117,7 @@ export function RouteViewDesktop(props: DesktopProps) {
   const [dragging, setDragging] = useState<number | null>(null)
   const [announcement, setAnnouncement] = useState('')
   const count = route.stops.length
+  const mapStops = useMapStops(route, places)
 
   function move(order: number, to: number) {
     if (!onMove || to < 1 || to > count || to === order) return
@@ -128,8 +136,9 @@ export function RouteViewDesktop(props: DesktopProps) {
   return (
     <div className={desk.view}>
       <RouteMap
-        stops={route.stops}
+        stops={mapStops}
         variant="wide"
+        routeId={route.id}
         label={mapLabel(route.stops.length)}
         highlighted={highlighted}
         onHighlight={onHighlight}
