@@ -53,7 +53,7 @@
 }
 
 .wide .strip {
-  padding-inline: max(24px, calc((100% - var(--desktop-chat-wide-max)) / 2));
+  padding-inline: 24px;
 }
 
 .stripRow {
@@ -100,9 +100,9 @@
   min-height: 0;
 }
 
-/* Full width: the conversation is a centred column of at most 680 px. */
+/* Full width: the conversation uses all the free space; bubbles keep their own max widths. */
 .wide .log {
-  padding-inline: max(20px, calc((100% - var(--desktop-chat-wide-max)) / 2));
+  padding-inline: 20px;
 }
 
 .inputWrap {
@@ -115,7 +115,7 @@
 }
 
 .wide .input {
-  width: min(100%, var(--desktop-chat-wide-max));
+  width: 100%;
 }
 
 .progressTitle {

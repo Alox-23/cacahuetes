@@ -1,8 +1,6 @@
 .page {
   box-sizing: border-box;
-  max-width: 1200px;
   min-height: 100dvh;
-  margin: 0 auto;
   padding: 24px 48px 64px;
   display: flex;
   flex-direction: column;

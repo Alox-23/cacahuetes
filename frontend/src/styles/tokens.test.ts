@@ -62,9 +62,6 @@ describe('design tokens', () => {
     expect(BREAKPOINTS.tablet).toBe(tokens.desktop.breakpoint.tablet)
     expect(BREAKPOINTS.desktop).toBe(tokens.desktop.breakpoint.desktop)
     expect(BREAKPOINTS.maxContent).toBe(tokens.desktop.breakpoint.maxContent)
-    // Media queries repeat them literally.
-    const global = readFileSync(resolve(root, 'src/styles/global.css'), 'utf8')
-    expect(global).toContain(`(min-width: ${tokens.desktop.breakpoint.tablet}px)`)
   })
 
   it('chatBubble group: every value is a --chat-bubble-* variable', () => {

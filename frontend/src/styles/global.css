@@ -26,26 +26,13 @@ body {
   min-height: 100dvh;
 }
 
-/* The app column: mobile first, centered on wider screens. */
+/* The app fills the whole browser window at every width; the layout (mobile, tablet,
+   desktop) is still chosen by the breakpoints in src/lib/breakpoints.ts. */
 .app-frame {
-  width: min(100%, 430px);
+  width: 100%;
   min-height: 100dvh;
   background: var(--color-background);
   overflow-x: hidden;
-}
-
-/* Tablet (768–1023, src/lib/breakpoints.ts): still the mobile layout, wider column. */
-@media (min-width: 768px) {
-  .app-frame {
-    width: min(100%, 560px);
-  }
-}
-
-/* Desktop (>= 1024): the whole window, capped at --desktop-max-content and centred. */
-@media (min-width: 1024px) {
-  .app-frame {
-    width: min(100%, var(--desktop-max-content));
-  }
 }
 
 h1,
