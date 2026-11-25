@@ -320,7 +320,6 @@
     "detail": "{activity} · {next}"
   },
   "stop": {
-    "photo": "[FOTO DEL LUGAR]",
     "hoursPlaceholder": "Horario no disponible",
     "pricePlaceholder": "Precio no disponible",
     "meta": "Parada {order} · {time} · {visit}",
