@@ -105,6 +105,13 @@ type AppStateValue = {
   /** "Crear ruta": starts creating once (event handler, StrictMode-safe). */
   startCreation: (request: RouteRequest) => void
   /**
+   * Feature 5: the agent already created `route`; play the same four Creando steps (Peanut Run on mobile,
+   * the progress item on desktop) and finish like a creation (current route, change mode armed).
+   */
+  completeCreation: (route: Route, mode?: AssistantMode) => void
+  /** Feature 5: request and change modes run the conversational agent (API mode). */
+  conversational: boolean
+  /**
    * The request being created (feature 1/3 API kept for the mobile creating screen and its tests):
    * setting it starts the creation; the route screen clears it; Cancel leaves it as it was.
    */
@@ -126,7 +133,8 @@ const AppStateContext = createContext<AppStateValue | null>(null)
 let seq = 0
 const nextId = () => `${Date.now().toString(36)}-${++seq}`
 
-export type AssistantFactory = (deps: AssistantDeps) => MockAssistant
+/** Builds the assistant of one mode (API mode: the agent for request/change, the script for onboarding). */
+export type AssistantFactory = (deps: AssistantDeps, mode: AssistantMode) => MockAssistant
 
 type ProviderProps = {
   children: ReactNode
@@ -327,15 +335,20 @@ export function AppStateProvider({
       refineRoute: (id, action) => data.refineRoute(id, action),
       undo: (id) => data.undo(id),
       delay: assistantDelay,
+      // Feature 5: the agent changed the stored preferences.
+      preferencesChanged: async () => setPreferences(await data.getPreferences()),
     }
     const make = (mode: AssistantMode) => {
-      const a = assistantFactory(deps)
+      const a = assistantFactory(deps, mode)
       a.reset(mode)
       return a
     }
     assistants.current = { onboarding: make('onboarding'), request: make('request'), change: make('change') }
   }
   const assistantFor = (mode: AssistantMode) => (assistants.current as Record<AssistantMode, MockAssistant>)[mode]
+  const conversational = assistants.current.request.conversational === true
+  // Set below, once the creation state exists; send() reads it at call time.
+  const completeCreationRef = useRef<(route: Route, mode?: AssistantMode) => void>(() => {})
 
   const send = useCallback(
     async (mode: AssistantMode, input: SendInput, echo?: string) => {
@@ -360,12 +373,14 @@ export function AppStateProvider({
         reply = errorReply(error, sessionKind.current)
       }
       // A change reply may have edited the route through a path the provider does not see
-      // (the API's refineConversation): route views refetch either way.
-      if (mode === 'change') bump()
+      // (the API's refineConversation or agent): route views refetch either way.
+      if (mode === 'change' || reply.kind === 'change') bump()
       if (epochsRef.current[mode] !== epoch) return undefined // the mode was reset meanwhile
       busy.current[mode] = false
       setPending((p) => ({ ...p, [mode]: false }))
       append([{ id: nextId(), mode, epoch, kind: 'assistant', reply }])
+      // Feature 5: the agent created a route in this turn; hand over to the Creando steps.
+      if (reply.display?.created) completeCreationRef.current(reply.display.created, mode)
       return reply
     },
     [append, setThread, bump],
@@ -468,6 +483,24 @@ export function AppStateProvider({
     [append, data, setProgress],
   )
 
+  const completeCreation = useCallback(
+    (route: Route, mode: AssistantMode = 'request') => {
+      const running = creationRef.current
+      if (running?.status === 'running') setProgress(running.id, 'cancelled')
+      const id = nextId()
+      append([
+        { id, mode, epoch: epochsRef.current[mode], kind: 'progress', request: route.request, status: 'running', desktopOnly: true },
+      ])
+      // The route already exists: the step effect below animates the four steps, then finishes as usual.
+      const next: Creation = { id, request: route.request, step: 0, status: 'running', route }
+      creationRef.current = next
+      setCreation(next)
+      setPendingRequestState(route.request)
+    },
+    [append, setProgress],
+  )
+  completeCreationRef.current = completeCreation
+
   // Advance the four steps; finish once they are shown and the route exists.
   useEffect(() => {
     if (!creation || creation.status !== 'running') return
@@ -529,6 +562,8 @@ export function AppStateProvider({
       startReuse,
       creation,
       startCreation,
+      completeCreation,
+      conversational,
       cancelCreation,
       acknowledgeCreation,
       pendingRequest,
@@ -556,6 +591,8 @@ export function AppStateProvider({
       startReuse,
       creation,
       startCreation,
+      completeCreation,
+      conversational,
       cancelCreation,
       acknowledgeCreation,
       pendingRequest,
@@ -635,8 +672,8 @@ export function usePendingRequest() {
 }
 
 export function useCreation() {
-  const { creation, startCreation, cancelCreation, acknowledgeCreation } = useAppState()
-  return { creation, startCreation, cancelCreation, acknowledgeCreation }
+  const { creation, startCreation, completeCreation, cancelCreation, acknowledgeCreation } = useAppState()
+  return { creation, startCreation, completeCreation, cancelCreation, acknowledgeCreation }
 }
 
 /** Saved routes (Mis rutas, sidebar), refetched on every route mutation or session change. */

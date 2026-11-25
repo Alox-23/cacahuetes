@@ -142,10 +142,15 @@
     "savedPreferences": "Tus preferencias guardadas",
     "heading": "¿Qué te apetece hacer en Marbella?",
     "helper": "Dime el día, cuánto tiempo tienes y qué rincón de Marbella quieres conocer.",
+    "helperAgent": "Cuéntame tu plan con tus palabras: cuánto tiempo tienes, desde dónde sales y qué te apetece.",
     "suggestionsLabel": "Sugerencias",
     "suggestion1": "Casco antiguo y tapas en Marbella, 5 horas",
     "suggestion2": "Un día en familia por la Alameda y la Fontanilla",
     "suggestion3": "Puerto Banús y Playa del Duque a pie por la tarde",
+    "examplesLabel": "Ejemplos",
+    "example1": "Casco antiguo y tapas en Marbella, 5 horas",
+    "example2": "Un día en familia por la Alameda y la Fontanilla",
+    "example3": "Puerto Banús y Playa del Duque a pie por la tarde",
     "placeholder": "Escribe tu petición",
     "you": "Tú:",
     "newMessage": "Mensaje nuevo"
@@ -153,6 +158,7 @@
   "conversation": {
     "placeholder": "Responde o añade algo",
     "placeholderSummary": "Corrige o añade algo",
+    "placeholderAgent": "Cuéntame más o pídeme un cambio",
     "note": "El asistente solo pregunta lo que falta. Tus preferencias guardadas se aplican solas."
   },
   "request": {
@@ -297,6 +303,30 @@
     "cheaper": "He cambiado {old} por {new}, que es gratis.",
     "noCheaper": "No he encontrado una alternativa más barata para ninguna parada.",
     "noChange": "Esta vez no ha cambiado nada."
+  },
+  "agent": {
+    "greetingRoute": "Aquí tienes tu ruta. Dime qué cambio quieres, por ejemplo quitar una parada, acabar antes o añadir un café.",
+    "degraded": "Modo sin IA: he respondido con reglas sencillas.",
+    "reuse": "Quiero repetir una ruta el {date} de {from} a {to}, saliendo desde {start}.",
+    "reuseWith": "Quiero repetir una ruta el {date} de {from} a {to}, saliendo desde {start}, con {places}.",
+    "event": {
+      "created": "Ruta creada: {name}, {stops} de {from} a {to}.",
+      "assumptions": "He supuesto: {list}.",
+      "changed": "He cambiado la ruta.",
+      "undone": "He deshecho el último cambio.",
+      "change": {
+        "add_stop": "He añadido una parada.",
+        "remove_stop": "He quitado una parada.",
+        "replace_stop": "He cambiado una parada por otra.",
+        "swap_stop": "He cambiado una parada por otra.",
+        "lock_stop": "He cambiado qué paradas están fijadas.",
+        "reschedule": "He cambiado el horario.",
+        "menos_caminar": "Ahora caminas menos.",
+        "mas_comida": "He añadido más comida.",
+        "mas_barato": "He buscado opciones más baratas.",
+        "anadir_pausa": "He añadido una pausa para café."
+      }
+    }
   },
   "tabs": {
     "label": "Principal",
