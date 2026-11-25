@@ -5,7 +5,16 @@ import { fileURLToPath } from 'node:url';
 import { Readable } from 'node:stream';
 import { createHandler } from '../lib/handler.js';
 
-const handle = createHandler();
+let handle;
+if (process.env.CACAHUETE_DATA_DIR && !process.env.DATABASE_URL) {
+  const { PGlite } = await import('@electric-sql/pglite');
+  const { applySchema } = await import('../lib/schema.js');
+  const db = new PGlite(process.env.CACAHUETE_DATA_DIR);
+  await applySchema(db);
+  handle = createHandler(() => db);
+} else {
+  handle = createHandler();
+}
 const port = Number(process.env.PORT || 3000);
 
 const dist = fileURLToPath(new URL('../../frontend/dist/', import.meta.url));
