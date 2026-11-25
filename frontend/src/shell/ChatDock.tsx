@@ -175,7 +175,8 @@ export function ChatDock({ contextPath, panel }: ChatDockProps) {
         interactive={interactive}
         chosen={chosen}
         onOption={(o) => void send(itemMode, { option: o.value }, o.label)}
-        onUndo={() => void send('change', { option: 'undo' }, t('common.undo'))}
+        // Undo goes to the bubble's own conversation; a creation bubble has nothing to undo.
+        onUndo={reply.display?.createdRouteId ? undefined : () => void send(itemMode, { option: 'undo' }, t('common.undo'))}
         renderSummary={(r, live) =>
           r.request && (
             <SummaryCard
@@ -248,19 +249,24 @@ export function ChatDock({ contextPath, panel }: ChatDockProps) {
             <p className={styles.helper}>{conversational ? t('chat.helperAgent') : t('chat.helper')}</p>
           </div>
           {conversational ? (
-            <ul className={styles.suggestions} aria-label={t('chat.examplesLabel')}>
-              {EXAMPLES.map((key) => (
-                <li key={key}>
-                  <button
-                    type="button"
-                    className={styles.suggestion}
-                    onClick={() => setPrefill((p) => ({ text: t(key), id: (p?.id ?? 0) + 1 }))}
-                  >
-                    {t(key)}
-                  </button>
-                </li>
-              ))}
-            </ul>
+            <>
+              <p id="dock-examples-hint" className="sr-only">
+                {t('chat.examplesHint')}
+              </p>
+              <ul className={styles.suggestions} aria-label={t('chat.examplesLabel')} aria-describedby="dock-examples-hint">
+                {EXAMPLES.map((key) => (
+                  <li key={key}>
+                    <button
+                      type="button"
+                      className={styles.suggestion}
+                      onClick={() => setPrefill((p) => ({ text: t(key), id: (p?.id ?? 0) + 1 }))}
+                    >
+                      {t(key)}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </>
           ) : (
             <ul className={styles.suggestions} aria-label={t('chat.suggestionsLabel')}>
               {SUGGESTIONS.map((key) => (

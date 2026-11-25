@@ -66,9 +66,11 @@ export function ChangeChatPage() {
             reply={reply}
             interactive={isLast}
             chosen={chosen}
-            routeHref={`/route/${id}`}
+            // Feature 5: the agent may have moved to another route in this turn ("hazme otra ruta").
+            routeHref={`/route/${reply.display?.routeId ?? id}`}
             onOption={(o) => void send({ option: o.value }, o.label)}
-            onUndo={() => void send({ option: 'undo' }, t('common.undo'))}
+            // A creation bubble has nothing to undo: the new route is the context now.
+            onUndo={reply.display?.createdRouteId ? undefined : () => void send({ option: 'undo' }, t('common.undo'))}
           />
         )}
       />

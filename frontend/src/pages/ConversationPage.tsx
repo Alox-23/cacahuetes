@@ -29,12 +29,14 @@ export function ConversationPage() {
       <MessageList
         messages={messages}
         pending={pending}
-        after={showNote ? <p className={styles.note}>{t('conversation.note')}</p> : null}
+        after={showNote ? <p className={styles.note}>{conversational ? t('conversation.noteAgent') : t('conversation.note')}</p> : null}
         renderReply={(reply, isLast, chosen) => (
           <ReplyView
             reply={reply}
             interactive={isLast}
             chosen={chosen}
+            // Feature 5: an agent reply that created or changed a route links to it.
+            routeHref={reply.display?.routeId ? `/route/${reply.display.routeId}` : undefined}
             onOption={(o) => void send({ option: o.value }, o.label)}
             renderSummary={(r, interactive) =>
               r.request && (
