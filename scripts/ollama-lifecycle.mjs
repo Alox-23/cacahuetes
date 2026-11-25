@@ -42,6 +42,8 @@ export async function startOllamaIfNeeded({ endpoint, handle = {}, spawnImpl = s
   // group can be signalled), its own console on Windows.
   const daemon = spawnImpl('ollama', ['serve'], { detached: true, stdio: 'ignore', windowsHide: true,
     env: { ...env, OLLAMA_HOST: endpoint.host } });
+  // The pid exists as soon as spawn() returns; record it now so a Ctrl+C before 'spawn' still stops it.
+  if (daemon.pid) Object.assign(handle, { startedByUs: true, pid: daemon.pid });
   await new Promise((ok, fail) => { daemon.once('spawn', ok); daemon.once('error', fail); });
   handle.startedByUs = true;
   handle.pid = daemon.pid;

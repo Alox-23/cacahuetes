@@ -56,7 +56,10 @@ test('startOllamaIfNeeded spawns a detached daemon and keeps its pid in the hand
     spawnImpl: (...args) => {
       spawnArgs = args;
       const child = Object.assign(new EventEmitter(), { pid: 4321, unref() {} });
-      setImmediate(() => child.emit('spawn'));
+      setImmediate(() => {
+        assert.deepEqual(handle, { startedByUs: true, pid: 4321 }); // filled before 'spawn'
+        child.emit('spawn');
+      });
       return child;
     }
   });
@@ -104,6 +107,16 @@ test('external daemon, mode started: unload the model with keep_alive 0 and kill
     model, endpoint, ...fake });
   assert.equal(message, MESSAGES.unloaded);
   assert.deepEqual(fake.calls.fetch, [['http://127.0.0.1:11434/api/generate', { model, keep_alive: 0 }]]);
+  assert.deepEqual(fake.calls.kill, []);
+  assert.deepEqual(fake.calls.exec, []);
+});
+
+test('macOS menu-bar app already serving, mode started: unload only, the app keeps running', async () => {
+  const fake = fakes();
+  const message = await stopOllama({ handle: { startedByUs: false }, mode: 'started', platform: 'darwin',
+    model, endpoint, ...fake });
+  assert.equal(message, MESSAGES.unloaded);
+  assert.equal(fake.calls.fetch.length, 1);
   assert.deepEqual(fake.calls.kill, []);
   assert.deepEqual(fake.calls.exec, []);
 });
