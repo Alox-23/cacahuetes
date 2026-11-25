@@ -1,8 +1,9 @@
-import { spawn, spawnSync } from 'node:child_process';
+import { spawnSync } from 'node:child_process';
 import { createHash, randomBytes } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { setTimeout as sleep } from 'node:timers/promises';
+import { installShutdownHandlers, parseStopMode, startOllamaIfNeeded, stopOllama, stopOllamaSync }
+  from './ollama-lifecycle.mjs';
 
 const state = resolve('.cacahuete');
 mkdirSync(state, { recursive: true });
@@ -41,18 +42,16 @@ else process.env.CACAHUETE_DATA_DIR = resolve(state, 'postgres');
 const endpoint = new URL(process.env.OLLAMA_BASE_URL || 'http://127.0.0.1:11434/v1');
 process.env.OLLAMA_BASE_URL = endpoint.href;
 const model = process.env.OLLAMA_MODEL || 'qwen2.5:7b';
-async function available() {
-  try { return (await fetch(new URL('/api/tags', endpoint), { signal: AbortSignal.timeout(1500) })).ok; }
-  catch { return false; }
+let mode = parseStopMode(process.env.OLLAMA_STOP_ON_EXIT);
+if (!mode) {
+  console.warn('OLLAMA_STOP_ON_EXIT debe ser started, always o never. Se usa started.');
+  mode = 'started';
 }
-if (!await available()) {
-  process.env.OLLAMA_HOST = endpoint.host;
-  const daemon = spawn('ollama', ['serve'], { detached: true, stdio: 'ignore', windowsHide: true });
-  await new Promise((ok, fail) => { daemon.once('spawn', ok); daemon.once('error', fail); });
-  daemon.unref();
-  for (let i = 0; i < 45 && !await available(); i++) await sleep(1000);
-  if (!await available()) throw new Error(`Ollama no responde en ${endpoint.origin}`);
-}
+// Created before the handlers so a daemon started during a failed start is stopped as well.
+const ollama = { startedByUs: false };
+const stopOptions = { handle: ollama, mode, model, endpoint };
+installShutdownHandlers({ stop: () => stopOllama(stopOptions), stopSync: () => stopOllamaSync(stopOptions) });
+await startOllamaIfNeeded({ endpoint, handle: ollama });
 process.env.OLLAMA_HOST = endpoint.origin;
 if (spawnSync('ollama', ['show', model], { stdio: 'ignore' }).status !== 0) run('ollama', ['pull', model]);
 console.log(`Cargando ${model} en memoria…`);

@@ -20,7 +20,7 @@ Windows con PowerShell	.\lanzar.cmd (también admite doble clic)
 
 Haz el primer arranque con internet y con tu usuario habitual. El lanzador prepara Node.js 22, instala las dependencias, compila la web, instala Ollama si hace falta y descarga el modelo qwen2.5:7b (unos 4,7 GB solo para el modelo). En Fedora puede pedir la contraseña de sudo durante la instalación. En Windows necesita winget para instalar Ollama.
 
-Espera a que la consola muestre las direcciones de acceso. En el portátil, abre http://localhost:3000. Para los siguientes arranques usa el mismo comando. Ctrl+C detiene la web y la API. Ollama puede seguir ejecutándose.
+Espera a que la consola muestre las direcciones de acceso. En el portátil, abre http://localhost:3000. Para los siguientes arranques usa el mismo comando. Ctrl+C detiene la web, la API y el Ollama que haya arrancado el lanzador. Si Ollama ya estaba abierto, sigue en ejecución y el lanzador descarga el modelo de memoria.
 Requisitos de equipo
 El modelo se ejecuta en el portátil servidor. Para una primera prueba con qwen2.5:7b, utiliza las siguientes cifras como referencia de planificación. El mínimo exacto y el número de visitantes simultáneos dependen del equipo y de la longitud de las conversaciones.
 Recurso del servidor	Mínimo orientativo para probar	Recomendado para la demostración
@@ -53,6 +53,7 @@ Variable	Valor por defecto con el lanzador	Uso
 PORT	3000	Puerto compartido por la web y la API. Si lo cambias, ajusta también el firewall.
 OLLAMA_MODEL	qwen2.5:7b	Modelo que el lanzador comprueba y descarga si falta.
 OLLAMA_BASE_URL	http://127.0.0.1:11434/v1	Dirección de Ollama que utiliza el backend.
+OLLAMA_STOP_ON_EXIT	started	Al detener el lanzador: started detiene el Ollama que arrancó el lanzador y descarga el modelo si ya estaba abierto; always también cierra un Ollama abierto antes; never lo deja todo en ejecución.
 DATABASE_URL	Sin definir	Si se configura, el lanzador aplica las migraciones a PostgreSQL.
 
 
