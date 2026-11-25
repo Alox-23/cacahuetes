@@ -1,12 +1,16 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { EventEmitter } from 'node:events';
+import { Script } from 'node:vm';
 import {
-  MESSAGES, installShutdownHandlers, parseStopMode, startOllamaIfNeeded, stopOllama, stopOllamaSync
+  MESSAGES, ensureModels, installShutdownHandlers, modelList, parseStopMode, startOllamaIfNeeded, stopOllama,
+  stopOllamaSync, warmModels
 } from '../../scripts/ollama-lifecycle.mjs';
 
 const endpoint = new URL('http://127.0.0.1:11434/v1');
 const model = 'qwen2.5:7b';
+const agentModel = 'qwen2.5:3b';
+const models = [model, agentModel];
 
 // Records every side effect so each test can assert exactly what the shutdown did.
 function fakes({ aliveChecks = 0, execStatus = () => 0, fetchOk = true } = {}) {
@@ -23,8 +27,9 @@ function fakes({ aliveChecks = 0, execStatus = () => 0, fetchOk = true } = {}) {
       return execStatus(command, args);
     },
     async fetchImpl(url, init) {
-      calls.fetch.push([String(url), init && JSON.parse(init.body)]);
-      return { ok: fetchOk };
+      const body = init && JSON.parse(init.body);
+      calls.fetch.push([String(url), body]);
+      return { ok: typeof fetchOk === 'function' ? fetchOk(body) : fetchOk, status: 500, json: async () => ({}) };
     },
     async sleepImpl(ms) { calls.sleep.push(ms); }
   };
@@ -227,4 +232,92 @@ test('shutdown handlers listen to SIGBREAK on Windows and fall back to the sync 
   proc.emit('exit');
   proc.emit('exit');
   assert.equal(syncStops, 1);
+});
+
+test('modelList accepts the array or the single model and drops duplicates', () => {
+  assert.deepEqual(modelList({ model }), [model]);
+  assert.deepEqual(modelList({ models }), models);
+  assert.deepEqual(modelList({ models: [model, model, ''] }), [model]);
+  assert.deepEqual(modelList({ models, model: 'ignored' }), models);
+});
+
+test('ensureModels pulls both models when they are missing', () => {
+  const fake = fakes({ execStatus: (command, args) => (args[0] === 'show' ? 1 : 0) });
+  const pulled = ensureModels({ models, execImpl: fake.execImpl, log: () => {} });
+  assert.deepEqual(pulled, models);
+  assert.deepEqual(fake.calls.exec, [
+    ['ollama', 'show', model], ['ollama', 'pull', model],
+    ['ollama', 'show', agentModel], ['ollama', 'pull', agentModel]
+  ]);
+});
+
+test('ensureModels only pulls the missing model and throws when a pull fails', () => {
+  const partial = fakes({ execStatus: (command, args) => (args[0] === 'show' && args[1] === agentModel ? 1 : 0) });
+  assert.deepEqual(ensureModels({ models, execImpl: partial.execImpl, log: () => {} }), [agentModel]);
+  assert.deepEqual(partial.calls.exec, [['ollama', 'show', model], ['ollama', 'show', agentModel],
+    ['ollama', 'pull', agentModel]]);
+
+  const offline = fakes({ execStatus: () => 1 });
+  assert.throws(() => ensureModels({ models, execImpl: offline.execImpl, log: () => {} }),
+    /Falló ollama pull qwen2\.5:7b/);
+});
+
+test('warmModels loads both models for an hour, one after the other', async () => {
+  const fake = fakes();
+  const logged = [];
+  const warmed = await warmModels({ models, endpoint, fetchImpl: fake.fetchImpl, log: line => logged.push(line),
+    warn: () => assert.fail('no warning expected') });
+  assert.deepEqual(warmed, models);
+  assert.deepEqual(fake.calls.fetch, models.map(name =>
+    ['http://127.0.0.1:11434/api/generate', { model: name, stream: false, keep_alive: '1h' }]));
+  assert.equal(logged.length, 2);
+});
+
+test('warmModels warns and keeps going when one model does not load', async () => {
+  const fake = fakes({ fetchOk: body => body.model === agentModel });
+  const warnings = [];
+  const warmed = await warmModels({ models, endpoint, fetchImpl: fake.fetchImpl, log: () => {},
+    warn: (...args) => warnings.push(args.join(' ')) });
+  assert.deepEqual(warmed, [agentModel]);
+  assert.equal(fake.calls.fetch.length, 2);
+  assert.equal(warnings.length, 1);
+  assert.match(warnings[0], /qwen2\.5:7b.*HTTP 500/);
+});
+
+test('external daemon: both models are unloaded on stop', async () => {
+  const fake = fakes();
+  const message = await stopOllama({ handle: { startedByUs: false }, mode: 'started', platform: 'linux',
+    models, endpoint, ...fake });
+  assert.equal(message, MESSAGES.unloaded);
+  assert.deepEqual(fake.calls.fetch, models.map(name =>
+    ['http://127.0.0.1:11434/api/generate', { model: name, keep_alive: 0 }]));
+  assert.deepEqual(fake.calls.kill, []);
+});
+
+test('external daemon: one model that does not unload is reported, the other is still unloaded', async () => {
+  const fake = fakes({ fetchOk: body => body.model === model });
+  const message = await stopOllama({ handle: { startedByUs: false }, mode: 'started', platform: 'linux',
+    models, endpoint, ...fake });
+  assert.equal(message, MESSAGES.notUnloaded);
+  assert.equal(fake.calls.fetch.length, 2);
+});
+
+test('external daemon, mode always: both models are unloaded before the daemon is stopped', async () => {
+  const fake = fakes();
+  assert.equal(await stopOllama({ handle: {}, mode: 'always', platform: 'linux', models, endpoint, ...fake }),
+    MESSAGES.stopped);
+  assert.deepEqual(fake.calls.fetch.map(([, body]) => body.model), models);
+  assert.deepEqual(fake.calls.exec, [['pkill', '-x', 'ollama']]);
+});
+
+test('the sync exit path unloads both models in one child process', () => {
+  const fake = fakes();
+  const message = stopOllamaSync({ handle: { startedByUs: false }, mode: 'started', platform: 'linux',
+    models, endpoint, ...fake });
+  assert.equal(message, MESSAGES.unloaded);
+  assert.equal(fake.calls.exec.length, 1);
+  const [, , script] = fake.calls.exec[0];
+  for (const name of models) assert.ok(script.includes(name), `script unloads ${name}`);
+  assert.match(script, /keep_alive/);
+  assert.doesNotThrow(() => new Script(script)); // the generated code parses
 });
