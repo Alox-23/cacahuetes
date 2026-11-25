@@ -56,5 +56,7 @@ installShutdownHandlers({ stop: () => stopOllama(stopOptions), stopSync: () => s
 await startOllamaIfNeeded({ endpoint, handle: ollama });
 process.env.OLLAMA_HOST = endpoint.origin;
 ensureModels({ models });
-await warmModels({ models, endpoint });
+// Imported here, after `npm ci`: the decision prompt and tools are warmed with the agent model so Ollama caches them.
+const { decisionPrefix } = await import('../backend/lib/agent.js');
+await warmModels({ models, endpoint, prefixes: { [agentModel]: decisionPrefix() } });
 await import('../backend/scripts/dev.js');

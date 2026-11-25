@@ -15,6 +15,8 @@ export const MESSAGES = {
 };
 const UNLOAD_TIMEOUT_MS = 3000;
 const WARM_TIMEOUT_MS = 180000;
+// The context size of every agent call: a warm-up with another num_ctx would load the model again on the first turn.
+const NUM_CTX = 4096;
 const POLL_MS = 100;
 
 // `models` (array) or the older single `model`; empty names and duplicates are dropped.
@@ -75,16 +77,24 @@ export function ensureModels({ models, execImpl = runCommand, log = console.log 
   return pulled;
 }
 
-// Loads each model into memory for an hour, one after the other. A failure only warns: the chat
-// falls back to its templates. Returns the models that loaded.
-export async function warmModels({ models, endpoint, fetchImpl = fetch, log = console.log, warn = console.warn }) {
+// Loads each model into memory for an hour, one after the other, with the agent's num_ctx. `prefixes` maps a
+// model to the fixed start of its requests ({ messages, tools }, e.g. the decision system prompt): that model is
+// warmed through /api/chat with it, generating one token, so Ollama keeps the prompt prefix cached. A failure only
+// warns: the chat falls back to its templates. Returns the models that loaded.
+export async function warmModels({ models, endpoint, prefixes = {}, fetchImpl = fetch, log = console.log,
+  warn = console.warn }) {
   const warmed = [];
   for (const name of modelList({ models })) {
     log(`Cargando ${name} en memoria…`);
+    const prefix = Object.hasOwn(prefixes, name) ? prefixes[name] : null;
+    const body = prefix
+      ? { model: name, messages: prefix.messages, tools: prefix.tools, stream: false, keep_alive: '1h',
+        options: { num_ctx: NUM_CTX, num_predict: 1 } }
+      : { model: name, stream: false, keep_alive: '1h', options: { num_ctx: NUM_CTX } };
     try {
-      const response = await fetchImpl(new URL('/api/generate', endpoint), { method: 'POST',
+      const response = await fetchImpl(new URL(prefix ? '/api/chat' : '/api/generate', endpoint), { method: 'POST',
         headers: { 'Content-Type': 'application/json' }, signal: AbortSignal.timeout(WARM_TIMEOUT_MS),
-        body: JSON.stringify({ model: name, stream: false, keep_alive: '1h' }) });
+        body: JSON.stringify(body) });
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       await response.json();
       warmed.push(name);

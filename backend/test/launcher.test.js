@@ -6,6 +6,7 @@ import {
   MESSAGES, ensureModels, installShutdownHandlers, modelList, parseStopMode, startOllamaIfNeeded, stopOllama,
   stopOllamaSync, warmModels
 } from '../../scripts/ollama-lifecycle.mjs';
+import { decisionPrefix } from '../lib/agent.js';
 
 const endpoint = new URL('http://127.0.0.1:11434/v1');
 const model = 'qwen2.5:7b';
@@ -262,15 +263,34 @@ test('ensureModels only pulls the missing model and throws when a pull fails', (
     /Falló ollama pull qwen2\.5:7b/);
 });
 
-test('warmModels loads both models for an hour, one after the other', async () => {
+test('warmModels loads both models for an hour, one after the other, with the agent num_ctx', async () => {
   const fake = fakes();
   const logged = [];
   const warmed = await warmModels({ models, endpoint, fetchImpl: fake.fetchImpl, log: line => logged.push(line),
     warn: () => assert.fail('no warning expected') });
   assert.deepEqual(warmed, models);
   assert.deepEqual(fake.calls.fetch, models.map(name =>
-    ['http://127.0.0.1:11434/api/generate', { model: name, stream: false, keep_alive: '1h' }]));
+    ['http://127.0.0.1:11434/api/generate', { model: name, stream: false, keep_alive: '1h', options: { num_ctx: 4096 } }]));
   assert.equal(logged.length, 2);
+});
+
+test('warmModels sends the real decision prompt and tools to the agent model so the prefix is cached', async () => {
+  const fake = fakes();
+  const prefix = decisionPrefix();
+  const warmed = await warmModels({ models, endpoint, prefixes: { [agentModel]: prefix }, fetchImpl: fake.fetchImpl,
+    log: () => {}, warn: () => assert.fail('no warning expected') });
+  assert.deepEqual(warmed, models);
+  const [narrator, agent] = fake.calls.fetch;
+  assert.deepEqual(narrator, ['http://127.0.0.1:11434/api/generate',
+    { model, stream: false, keep_alive: '1h', options: { num_ctx: 4096 } }]);
+  assert.equal(agent[0], 'http://127.0.0.1:11434/api/chat');
+  assert.deepEqual(agent[1], { model: agentModel, messages: prefix.messages, tools: prefix.tools, stream: false,
+    keep_alive: '1h', options: { num_ctx: 4096, num_predict: 1 } });
+  // The same system prompt and tools the agent sends on every turn.
+  assert.equal(prefix.messages.length, 1);
+  assert.equal(prefix.messages[0].role, 'system');
+  assert.match(prefix.messages[0].content, /planning brain of Cacahuete[\s\S]*\nplaces:\n- /);
+  assert.deepEqual(prefix.tools.map(t => t.function.name).slice(0, 2), ['create_route', 'reschedule']);
 });
 
 test('warmModels warns and keeps going when one model does not load', async () => {
