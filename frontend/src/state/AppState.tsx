@@ -102,6 +102,12 @@ type AppStateValue = {
   creation: Creation | null
   /** "Crear ruta": starts creating once (event handler, StrictMode-safe). */
   startCreation: (request: RouteRequest) => void
+  /**
+   * The request being created (feature 1/3 API kept for the mobile creating screen and its tests):
+   * setting it starts the creation; the route screen clears it; Cancel leaves it as it was.
+   */
+  pendingRequest: RouteRequest | null
+  setPendingRequest: (request: RouteRequest | null) => void
   cancelCreation: () => void
   /** The route view is on screen: the finished creation is over. */
   acknowledgeCreation: (routeId: string) => void
@@ -147,6 +153,10 @@ const MUTATIONS = [
   'logout',
   'updateAccount',
   'deleteAccount',
+  // Feature 4: provider sign-in seeds routes like login; verification changes the session.
+  'signInWith',
+  'completeSignIn',
+  'verifyEmail',
 ] as const
 
 /** The same module (extra fields such as API helpers or capabilities kept), mutations bump the revision. */
@@ -349,6 +359,7 @@ export function AppStateProvider({
 
   // ---------- route creation ----------
   const [creation, setCreation] = useState<Creation | null>(null)
+  const [pendingRequest, setPendingRequestState] = useState<RouteRequest | null>(null)
   const [usedRequestEpoch, setUsedRequestEpoch] = useState<number | null>(null)
 
   const setProgress = useCallback(
@@ -357,9 +368,13 @@ export function AppStateProvider({
     [setThread],
   )
 
+  // Read through a ref so startCreation (and setPendingRequest) keep one identity.
+  const creationRef = useRef(creation)
+  creationRef.current = creation
+
   const startCreation = useCallback(
     (request: RouteRequest) => {
-      if (creation?.status === 'running') return
+      if (creationRef.current?.status === 'running') return
       const id = nextId()
       const epoch = epochsRef.current.request
       append([
@@ -367,6 +382,7 @@ export function AppStateProvider({
         { id, mode: 'request', epoch, kind: 'progress', request, status: 'running', desktopOnly: true },
       ])
       setCreation({ id, request, step: 0, status: 'running' })
+      setPendingRequestState(request)
       data.createRoute(request).then(
         (route) => setCreation((c) => (c && c.id === id ? { ...c, route } : c)),
         () => {
@@ -375,7 +391,7 @@ export function AppStateProvider({
         },
       )
     },
-    [creation, append, data, setProgress],
+    [append, data, setProgress],
   )
 
   // Advance the four steps; finish once they are shown and the route exists.
@@ -405,7 +421,18 @@ export function AppStateProvider({
 
   const acknowledgeCreation = useCallback((routeId: string) => {
     setCreation((c) => (c && c.status === 'done' && c.route?.id === routeId ? null : c))
+    setPendingRequestState(null)
   }, [])
+
+  const setPendingRequest = useCallback(
+    (request: RouteRequest | null) => {
+      if (!request) return setPendingRequestState(null)
+      // The same request again (an effect re-running) does not restart a creation.
+      if (creationRef.current?.request === request) return
+      startCreation(request)
+    },
+    [startCreation],
+  )
 
   const value = useMemo<AppStateValue>(
     () => ({
@@ -430,6 +457,8 @@ export function AppStateProvider({
       startCreation,
       cancelCreation,
       acknowledgeCreation,
+      pendingRequest,
+      setPendingRequest,
       usedRequestEpoch,
       routeRevision,
       showToast,
@@ -455,6 +484,8 @@ export function AppStateProvider({
       startCreation,
       cancelCreation,
       acknowledgeCreation,
+      pendingRequest,
+      setPendingRequest,
       usedRequestEpoch,
       routeRevision,
       showToast,
@@ -465,23 +496,27 @@ export function AppStateProvider({
   return (
     <AppStateContext.Provider value={value}>
       {children}
-      <CreationWatcher />
       <Toast key={toast?.id} message={toast?.message ?? null} />
     </AppStateContext.Provider>
   )
 }
 
-/** When a creation finishes, both layouts open the route (once per creation). */
-function CreationWatcher() {
+/**
+ * When a creation finishes, open the route (once per creation). Rendered by each route tree: the desktop
+ * tree always navigates; the mobile tree leaves /creating to the creating screen, which never interrupts a
+ * Peanut Run game (feature 3 game spec §5).
+ */
+export function CreationWatcher({ skipCreatingScreen }: { skipCreatingScreen: boolean }) {
   const { creation } = useAppState()
   const navigate = useNavigate()
   const { pathname } = useLocation()
   const done = useRef<string | null>(null)
   useEffect(() => {
     if (creation?.status !== 'done' || !creation.route || done.current === creation.id) return
+    if (skipCreatingScreen && pathname === '/creating') return
     done.current = creation.id
     navigate(`/route/${creation.route.id}`, { replace: pathname === '/creating' })
-  }, [creation, navigate, pathname])
+  }, [creation, navigate, pathname, skipCreatingScreen])
   return null
 }
 
@@ -517,6 +552,11 @@ export function useReuse() {
 export function useCurrentRoute() {
   const { currentRouteId, setCurrentRouteId } = useAppState()
   return { currentRouteId, setCurrentRouteId }
+}
+
+export function usePendingRequest() {
+  const { pendingRequest, setPendingRequest } = useAppState()
+  return { pendingRequest, setPendingRequest }
 }
 
 export function useCreation() {

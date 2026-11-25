@@ -182,6 +182,8 @@ describe('mock data module', () => {
       email: 'ana@example.com',
       name: 'Ana',
       settings: { remindDayBefore: true, remindToRate: true },
+      // Feature 4: a new account starts with its email unconfirmed.
+      emailVerified: false,
     })
     const list = await reopened.listRoutes()
     expect(list).toHaveLength(1)
@@ -293,7 +295,13 @@ describe('mock data module · feature 2', () => {
     await expect(data.updateAccount({ name: 'X' })).rejects.toThrow()
     await data.register('ana@ejemplo.com', '12345678')
     const next = await data.updateAccount({ name: 'Ana María', settings: { remindDayBefore: false, remindToRate: true } })
-    expect(next).toEqual({ kind: 'account', email: 'ana@ejemplo.com', name: 'Ana María', settings: { remindDayBefore: false, remindToRate: true } })
+    expect(next).toEqual({
+      kind: 'account',
+      email: 'ana@ejemplo.com',
+      name: 'Ana María',
+      settings: { remindDayBefore: false, remindToRate: true },
+      emailVerified: false,
+    })
     expect(await data.getSession()).toEqual(next)
   })
 
@@ -376,6 +384,39 @@ describe('mock data module · saved routes belong to the account', () => {
     const renamed = await data.updateAccount({ email: 'ana.m@ejemplo.com' })
     expect(renamed.email).toBe('ana.m@ejemplo.com')
     expect((await data.listRoutes()).map((r) => r.id)).toEqual([route.id])
+  })
+})
+
+describe('mock data module · feature 4', () => {
+  const demoToken = (storage: ReturnType<typeof setupAt>['storage']) =>
+    storage.read<{ token: string } | null>(STORAGE_KEYS.verifyToken, null)?.token ?? ''
+
+  it('register refuses a known email and starts unverified; the demo link verifies once', async () => {
+    const { data, storage } = setupAt()
+    const session = await data.register('ana@ejemplo.com', 'una-clave-larga')
+    expect(session.emailVerified).toBe(false)
+    await expect(data.register('ANA@ejemplo.com', 'una-clave-larga')).rejects.toMatchObject({ code: 'EMAIL_EXISTS' })
+    const first = demoToken(storage)
+    expect(first).toMatch(/^demo-[0-9a-f]{8}$/)
+    await data.resendVerification()
+    const second = demoToken(storage)
+    expect(second).not.toBe(first)
+    await expect(data.verifyEmail(first)).rejects.toMatchObject({ code: 'INVALID_TOKEN' })
+    expect(await data.verifyEmail(second)).toEqual({ email: 'ana@ejemplo.com' })
+    expect((await data.getSession()).emailVerified).toBe(true)
+    await expect(data.verifyEmail(second)).rejects.toMatchObject({ code: 'INVALID_TOKEN' })
+    await data.deleteAccount()
+    expect((await data.register('ana@ejemplo.com', 'una-clave-larga')).kind).toBe('account')
+  })
+
+  it('login and the fake providers are verified existing accounts; no callback without a backend', async () => {
+    const { data } = setupAt()
+    expect(await data.authProviders()).toEqual(['google', 'apple'])
+    expect(await data.signInWith('google')).toMatchObject({ kind: 'account', email: 'google@ejemplo.com', emailVerified: true })
+    expect(await data.listRoutes()).toHaveLength(3)
+    expect((await data.signInWith('apple')).email).toBe('apple@ejemplo.com')
+    expect((await data.login('marta@ejemplo.com', 'x')).emailVerified).toBe(true)
+    await expect(data.completeSignIn('#state=s&ticket=t')).rejects.toMatchObject({ code: 'NOT_SUPPORTED' })
   })
 })
 

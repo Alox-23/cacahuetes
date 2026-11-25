@@ -1,9 +1,9 @@
 import assert from 'node:assert/strict';
 import { createHmac } from 'node:crypto';
-import { readFile } from 'node:fs/promises';
 import { after, before, test } from 'node:test';
 import { PGlite } from '@electric-sql/pglite';
 import { createHandler } from '../lib/handler.js';
+import { applySchema } from '../lib/schema.js';
 
 const origin = 'https://marbella.example.test';
 const webhookSecret = 'whsec_cacahuete_test';
@@ -22,9 +22,9 @@ before(async () => {
   process.env.DEMO_SCENARIOS = 'true';
   process.env.PARTNER_PLACE_IDS = 'encarnacion,avenida-mar,mercado-central';
   delete process.env.VERCEL;
-  const migration = await readFile(new URL('../db/001_init.sql', import.meta.url), 'utf8');
-  await db.exec(migration);
-  await db.exec(migration);
+  // Applying the schema twice proves every migration is idempotent.
+  await applySchema(db);
+  await applySchema(db);
 });
 
 after(() => db.close());
@@ -163,6 +163,8 @@ test('el chat clasifica intereses localmente, genera la ruta y respeta el límit
 
 test('Premium se activa mediante pago firmado y recalcula con escenario de afluencia', async (t) => {
   const { account, token } = await createAccount('premium@example.test');
+  // Feature 4: Premium needs a confirmed email (verification is active locally).
+  await db.query('UPDATE accounts SET email_verified_at = now() WHERE id = $1', [account.id]);
   process.env.STRIPE_SECRET_KEY = 'sk_test_example';
   process.env.STRIPE_PRICE_ID = 'price_example';
   t.after(() => {

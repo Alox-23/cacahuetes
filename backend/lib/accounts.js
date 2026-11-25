@@ -1,6 +1,7 @@
 import { createHash, randomBytes, randomUUID, scrypt, timingSafeEqual } from 'node:crypto';
 import { promisify } from 'node:util';
-import { ApiError, badRequest } from './http.js';
+import { ApiError } from './http.js';
+import { passwordMessages, validatePassword } from './password.js';
 
 const derive = promisify(scrypt);
 const tokenHash = (value) => createHash('sha256').update(value).digest('hex');
@@ -9,17 +10,24 @@ const unusedSalt = 'cacahuete-login-timing-v1';
 function credentials(body, registering) {
   const email = typeof body.email === 'string' ? body.email.trim().toLowerCase() : '';
   if (email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    throw badRequest('Introduce un correo electrónico válido.');
+    throw new ApiError(400, 'INVALID_INPUT', 'Introduce un correo electrónico válido.',
+      { field: 'email', reason: 'EMAIL_INVALID' });
   }
   const password = body.password;
-  if (typeof password !== 'string' || password.length < (registering ? 12 : 1) || password.length > 128) {
-    throw badRequest(registering ? 'La contraseña debe tener entre 12 y 128 caracteres.' : 'Introduce la contraseña.');
+  if (registering) {
+    const reason = validatePassword(password, email);
+    if (reason) throw new ApiError(400, 'INVALID_INPUT', passwordMessages[reason], { field: 'password', reason });
+  } else if (typeof password !== 'string' || password.length < 1 || password.length > 128) {
+    throw new ApiError(400, 'INVALID_INPUT', 'Introduce la contraseña.', { field: 'password' });
   }
   return { email, password };
 }
 
 export function publicAccount(account) {
-  return { id: account.id, email: account.email, plan: account.plan, profile: account.profile };
+  return {
+    id: account.id, email: account.email, plan: account.plan, profile: account.profile,
+    emailVerified: Boolean(account.email_verified_at)
+  };
 }
 
 function sessionToken() {
@@ -41,26 +49,32 @@ export async function register(db, body) {
       INSERT INTO sessions (token_hash, account_id, expires_at)
       SELECT $4, id, now() + interval '30 days' FROM account
     )
-    SELECT id, email, plan, profile, trial_started_at FROM account
+    SELECT id, email, plan, profile, trial_started_at, email_verified_at FROM account
   `, [randomUUID(), email, passwordHash, session.hash]);
   if (!account) throw new ApiError(409, 'EMAIL_EXISTS', 'Ya existe una cuenta con este correo.');
   return { account, token: session.token };
 }
 
-export async function login(db, body) {
-  const { email, password } = credentials(body, false);
-  const { rows: [account] } = await db.query('SELECT * FROM accounts WHERE email = $1', [email]);
-  const [salt, expected] = account?.password_hash.split(':') ?? [unusedSalt, '0'.repeat(128)];
-  const actual = await derive(password, salt, 64);
-  if (!timingSafeEqual(actual, Buffer.from(expected, 'hex')) || !account) {
-    throw new ApiError(401, 'INVALID_CREDENTIALS', 'Correo o contraseña incorrectos.');
-  }
+/** Inserts a 30-day session for the account and returns its bearer token (only the hash is stored). */
+export async function createSession(db, accountId) {
   const session = sessionToken();
   await db.query(`
     INSERT INTO sessions (token_hash, account_id, expires_at)
     VALUES ($1, $2, now() + interval '30 days')
-  `, [session.hash, account.id]);
-  return { account, token: session.token };
+  `, [session.hash, accountId]);
+  return session.token;
+}
+
+export async function login(db, body) {
+  const { email, password } = credentials(body, false);
+  const { rows: [account] } = await db.query('SELECT * FROM accounts WHERE email = $1', [email]);
+  // Unknown accounts and Google/Apple-only accounts (no password) take the same scrypt path as a wrong password.
+  const [salt, expected] = account?.password_hash?.split(':') ?? [unusedSalt, '0'.repeat(128)];
+  const actual = await derive(password, salt, 64);
+  if (!timingSafeEqual(actual, Buffer.from(expected, 'hex')) || !account?.password_hash) {
+    throw new ApiError(401, 'INVALID_CREDENTIALS', 'Correo o contraseña incorrectos.');
+  }
+  return { account, token: await createSession(db, account.id) };
 }
 
 export async function authenticate(db, request, required = false) {
@@ -70,7 +84,7 @@ export async function authenticate(db, request, required = false) {
   if (!token) throw new ApiError(401, 'UNAUTHENTICATED', 'Inicia sesión para continuar.');
   const hash = tokenHash(token);
   const { rows: [account] } = await db.query(`
-    SELECT a.id, a.email, a.plan, a.profile, a.trial_started_at
+    SELECT a.id, a.email, a.plan, a.profile, a.trial_started_at, a.email_verified_at
     FROM sessions s JOIN accounts a ON a.id = s.account_id
     WHERE s.token_hash = $1 AND s.expires_at > now()
   `, [hash]);

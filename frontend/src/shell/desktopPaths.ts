@@ -1,7 +1,7 @@
 /* Desktop arrangement of the shared URL space (feature 3 §5). Pure functions, unit-testable. */
 import { matchPath } from 'react-router-dom'
 
-export type DialogKind = 'save' | 'alternatives' | 'register' | 'login' | 'rate'
+export type DialogKind = 'save' | 'alternatives' | 'register' | 'login' | 'rate' | 'verifyPending' | 'verifyEmail' | 'authCallback'
 
 export type DesktopContext = {
   hasPreferences: boolean
@@ -30,6 +30,10 @@ const KNOWN = [
   '/profile',
   '/preferences',
   '/account',
+  // Feature 4 (account security)
+  '/verify-pending',
+  '/verify-email',
+  '/auth/callback',
 ]
 
 const m = (pattern: string, pathname: string) => matchPath(pattern, pathname)
@@ -45,6 +49,8 @@ export function desktopRedirect(pathname: string, ctx: DesktopContext): { to: st
   if (change) return { to: `/route/${change.params.id}` }
   // Register, login and guest save redirect accounts on arrival only (the dialog checks it at mount, as dev's
   // GuestOnArrival does), so the navigation that follows signing in is not overtaken here.
+  // Confirma tu correo is for accounts (dev's RequireAccount, fallback /login).
+  if (pathname === '/verify-pending' && !ctx.isAccount) return { to: '/login' }
   if (pathname === '/account' && !ctx.isAccount) return { to: '/login', state: { background: '/profile', returnTo: '/account' } }
   // Saved route detail and rating are for accounts (dev's RequireAccount).
   if (m('/my-routes/:id/*', pathname) && !ctx.isAccount) return { to: '/my-routes' }
@@ -57,6 +63,9 @@ export function dialogFor(pathname: string): DialogKind | null {
   if (pathname === '/register') return 'register'
   if (pathname === '/login') return 'login'
   if (m('/my-routes/:id/rate', pathname)) return 'rate'
+  if (pathname === '/verify-pending') return 'verifyPending'
+  if (pathname === '/verify-email') return 'verifyEmail'
+  if (pathname === '/auth/callback') return 'authCallback'
   return null
 }
 
@@ -64,7 +73,9 @@ export function dialogFor(pathname: string): DialogKind | null {
 export function backgroundFor(pathname: string, stateBackground: string | undefined, hasPreferences: boolean): string {
   const kind = dialogFor(pathname)
   if (!kind) return pathname
-  if (kind === 'register' || kind === 'login') {
+  // Account dialogs (and the feature 4 steps that follow them) stay over the view that opened them;
+  // a direct load (an email link, the provider redirect) falls back to the chat, or Inicio before onboarding.
+  if (kind === 'register' || kind === 'login' || kind === 'verifyPending' || kind === 'verifyEmail' || kind === 'authCallback') {
     const bg = stateBackground && !dialogFor(stateBackground) ? stateBackground : undefined
     return bg ?? (hasPreferences ? '/chat' : '/')
   }

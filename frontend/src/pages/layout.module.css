@@ -172,3 +172,10 @@
     text-decoration: underline;
   }
 }
+
+/* Desktop dialogs (feature 3 desktop): the actions at the end of the dialog body. */
+.dialogActions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}

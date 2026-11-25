@@ -2,6 +2,7 @@
 import { useState } from 'react'
 import { Card, Chip, ConfirmSheet, ListRow, Screen } from '../components'
 import { ProfileCard } from '../features/profile/ProfileCard'
+import { UnverifiedNotice } from '../features/profile/UnverifiedNotice'
 import { budgetChip, companyLabel, interestLabel, paceLabel } from '../assistant/format'
 import type { Preferences } from '../contract/types'
 import { t } from '../i18n'
@@ -40,6 +41,8 @@ export function ProfilePage() {
       <div className={styles.titleRow}>
         <h1 className={layout.h1}>{t('profile.title')}</h1>
       </div>
+
+      <UnverifiedNotice />
 
       <ProfileCard />
 

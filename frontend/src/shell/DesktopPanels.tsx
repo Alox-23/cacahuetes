@@ -7,6 +7,7 @@ import { useSavedRouteScreen } from '../features/myRoutes/useSavedRouteScreen'
 import { AccountSettingsFields, PersonalFields } from '../features/profile/AccountForm'
 import { PreferencesForm } from '../features/profile/PreferencesForm'
 import { ProfileCard } from '../features/profile/ProfileCard'
+import { UnverifiedNotice } from '../features/profile/UnverifiedNotice'
 import settings from '../features/profile/settings.module.css'
 import { useAccountForm } from '../features/profile/useAccountForm'
 import { RouteViewDesktop } from '../features/route/RouteView'
@@ -93,6 +94,7 @@ function SettingsPanel({ tab }: { tab: 'personal' | 'preferences' | 'account' })
             </NavLink>
           ))}
         </nav>
+        <UnverifiedNotice />
         {tab === 'preferences' ? (
           <PreferencesForm key="prefs" layout="desktop" onSaved={() => undefined} />
         ) : !isAccount ? (

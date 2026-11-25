@@ -7,7 +7,10 @@ import { AuthForm, type AuthState } from '../features/account/AuthForm'
 import { RateForm } from '../features/myRoutes/RateForm'
 import { AlternativesList } from '../features/route/AlternativesList'
 import { t } from '../i18n'
+import { AuthCallbackPage } from '../pages/AuthCallbackPage'
 import { useRoute } from '../pages/routeHooks'
+import { VerifyEmailPage } from '../pages/VerifyEmailPage'
+import { VerifyPendingPage } from '../pages/VerifyPendingPage'
 import { useSession } from '../state/AppState'
 import type { DialogKind } from './desktopPaths'
 
@@ -25,6 +28,12 @@ export function DesktopDialog({ kind, background }: { kind: DialogKind; backgrou
       return <AlternativesDialog />
     case 'rate':
       return <RateDialog background={background} onClose={close} />
+    case 'verifyPending':
+      return <VerifyPendingPage desktop />
+    case 'verifyEmail':
+      return <VerifyEmailPage background={background} />
+    case 'authCallback':
+      return <AuthCallbackPage background={background} />
   }
 }
 

@@ -34,7 +34,7 @@ Documentación de [Vercel Functions](https://vercel.com/docs/functions/runtimes/
 
 ### Integración con `alex-frontend`
 
-Aplica `npm run migrate` también en instalaciones existentes para crear las tablas de rutas y preferencias. En `frontend/`, copia `.env.example` a `.env.local` y arranca Vite. Para Cloudflare Pages, define `VITE_CACAHUETE_API_URL` con la URL completa de la función en Vercel antes de compilar. Añade el origen público de Pages a `FRONTEND_ORIGINS`.
+Aplica `npm run migrate` también en instalaciones existentes para crear las tablas de rutas y preferencias. El script aplica en orden todos los archivos `db/*.sql` y se puede repetir sin efectos. En `frontend/`, copia `.env.example` a `.env.local` y arranca Vite. Para Cloudflare Pages, define `VITE_CACAHUETE_API_URL` con la URL completa de la función en Vercel antes de compilar. Añade el origen público de Pages a `FRONTEND_ORIGINS`.
 
 El adaptador HTTP implementa `frontend/src/contract/types.ts`. El chat conserva el cuestionario, las opciones y el resumen que el visitante confirma. Las peticiones de texto pasan por el intérprete de Cacahuete y las rutas se crean al confirmar. El único destino es Marbella. El chat propone puntos de salida del catálogo y acepta sus nombres o alias. Los horarios parten de ese lugar. La API devuelve HTTP 400 si la ciudad, la salida o un imprescindible quedan fuera del catálogo. Las rutas antiguas de otras ciudades se conservan en la base y quedan fuera de las consultas. Los tiempos de desplazamiento son estimaciones.
 
@@ -60,16 +60,33 @@ URL base `/api/cacahuete?action=<acción>`. Envía `Content-Type: application/js
 | --- | --- | --- |
 | GET | `health` | Confirma que la API llega a la base con el esquema aplicado. |
 | GET | `catalog` | Devuelve ciudad, puntos de partida y lugares con coordenadas e ID. |
-| GET | `status` | Devuelve `account` y `quota`. Un invitado tiene `account: null`. |
-| POST | `register` | `{ email, password }`. Devuelve `account`, `token` y `quota`. |
+| GET | `status` | Devuelve `account`, `quota` y `auth: { providers, mail }`. Un invitado tiene `account: null`. `account.emailVerified` indica si el correo está confirmado. |
+| POST | `register` | `{ email, password }`. Devuelve `account`, `token` y `quota` y envía el enlace de confirmación. Una contraseña no válida devuelve 400 `INVALID_INPUT` con `field` y `reason` (`PASSWORD_TOO_SHORT`, `PASSWORD_TOO_LONG`, `PASSWORD_TOO_SIMPLE`, `PASSWORD_CONTAINS_EMAIL`, `PASSWORD_COMMON`, `EMAIL_INVALID`). |
 | POST | `login` | `{ email, password }`. Devuelve la misma estructura. |
 | POST | `logout` | Revoca la sesión en la base. Devuelve 204. |
 | PUT | `profile` | `{ profile }` reemplaza el perfil guardado. Requiere cuenta. |
 | POST | `chat` | Entrada principal de Cacahuete. Recibe texto u opciones y devuelve una pregunta o la ruta. |
 | POST | `onboarding` | Devuelve `question`, `profile`, `complete`, `accepted`, `interpretation` y `quota`. |
 | POST | `route` | `{ profile?, avoidStops?, scenario? }`. Devuelve `route`, `alternatives` y `quota`. |
-| POST | `checkout` | Una cuenta gratuita iniciada obtiene `{ checkoutUrl }` si Stripe está configurado. |
+| POST | `checkout` | Una cuenta gratuita iniciada obtiene `{ checkoutUrl }` si Stripe está configurado. Con la verificación activa, exige el correo confirmado (403 `EMAIL_NOT_VERIFIED`). |
+| POST | `verifyEmail` | `{ token }` del enlace del correo. Devuelve `{ email, verified: true }`; 400 `INVALID_TOKEN` o 410 `TOKEN_EXPIRED`. |
+| POST | `resendVerification` | Requiere cuenta. Envía un enlace nuevo (anula los anteriores) y devuelve 204. Máximo 3 cada 10 minutos; 409 `ALREADY_VERIFIED`; 503 `MAIL_UNAVAILABLE` si la verificación no está activa (Vercel sin correo). |
+| POST | `oauthStart` | `{ provider: "google" \| "apple" }`. Devuelve `{ url, state }`; el navegador guarda `state` y abre `url`. 503 `PROVIDER_UNAVAILABLE` si faltan las claves. |
+| GET, POST | `oauthCallback` | Vuelta desde Google (GET) o Apple (`form_post`). Redirige siempre a `${APP_URL}/auth/callback#state=…&ticket=…` o `#state=…&error=…`. |
+| POST | `oauthExchange` | `{ ticket }` (un uso, 120 s). Devuelve `account`, `token` y `quota` como `login` y reclama el invitado de `X-Guest-Token`. |
 | POST | `stripe-webhook` | Stripe confirma el pago y activa Premium. |
+
+### Correo y acceso con Google/Apple
+
+Las reglas de contraseña son las mismas en el formulario y en la API: entre 12 y 128 caracteres, al menos 4 distintos, sin contener el correo y fuera de la lista `lib/common-passwords.json`, que el frontend copia en `frontend/src/lib/common-passwords.json`. Una prueba comprueba que ambos archivos son idénticos.
+
+- **Confirmación del correo.** Al registrarse se envía un enlace `${APP_URL}/verify-email?token=…` que caduca en 24 horas y sirve una sola vez. El envío usa la API REST de [Resend](https://resend.com/docs/api-reference/emails/send-email) con `RESEND_API_KEY` y `MAIL_FROM` (un remitente de un dominio verificado en Resend). Sin esas variables, el enlace se escribe en la consola del servidor: así funciona en local sin cuenta. Si el correo falla, el registro sigue adelante y la persona puede pedir otro enlace desde la app.
+- **Verificación suave.** Una cuenta sin confirmar puede crear, guardar y valorar rutas; la app le recuerda que confirme el correo. Solo `checkout` (Premium) exige el correo confirmado. La verificación está activa con correo real configurado o fuera de Vercel (`status.auth.mail`).
+- **Google y Apple.** El flujo OAuth/OpenID Connect termina en esta API: los secretos nunca llegan al navegador. Registra como URI de redirección `${PUBLIC_API_URL}?action=oauthCallback` (por ejemplo `https://TU_API.vercel.app/api/cacahuete?action=oauthCallback`). Sin `PUBLIC_API_URL` se usa el origen y la ruta de la propia petición, que cambia en cada Preview de Vercel. `APP_URL` es la web a la que se vuelve (por defecto, el primer origen de `FRONTEND_ORIGINS`).
+  - Google: crea un cliente OAuth «Aplicación web» en Google Cloud Console, añade la URI de redirección y copia `GOOGLE_CLIENT_ID` y `GOOGLE_CLIENT_SECRET`. Se piden `openid email` con PKCE y solo se aceptan correos que Google marca como verificados.
+  - Apple: necesita HTTPS y un dominio verificado. Crea un App ID con «Sign in with Apple», un Services ID (`APPLE_CLIENT_ID`) con el dominio y la URI de redirección, y una clave de «Sign in with Apple» (`APPLE_KEY_ID`, archivo `.p8` en `APPLE_PRIVATE_KEY`; se admiten saltos de línea escritos como `\n`). `APPLE_TEAM_ID` es el identificador del equipo. Apple vuelve con un `POST` desde `https://appleid.apple.com`; es la única acción que acepta un origen fuera de `FRONTEND_ORIGINS`.
+  - Una identidad nueva cuyo correo ya tiene cuenta se vincula a ella y la marca como confirmada. Si esa cuenta aún no estaba confirmada, se anulan su contraseña y sus sesiones, porque nadie había demostrado ser el dueño del correo. Las cuentas creadas con Google o Apple no tienen contraseña: `login` responde como ante una contraseña incorrecta.
+  - Los botones del frontend solo aparecen para los proveedores configurados (`status.auth.providers`).
 
 ### Chat de Cacahuete
 

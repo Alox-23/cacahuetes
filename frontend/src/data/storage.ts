@@ -21,6 +21,10 @@ export const STORAGE_KEYS = {
   currentRoute: 'rt.currentRoute',
   /** Feature 3: the conversation (last 200 items), restored as read-only history. */
   thread: 'rt.thread',
+  /** Feature 4: emails registered in this browser (register refuses them again). */
+  accounts: 'rt.accounts',
+  /** Feature 4: the demo verification link `{ token, email }` (one at a time). */
+  verifyToken: 'rt.verifyToken',
 } as const
 
 /** In-memory backend: used in tests and when localStorage is unavailable. */

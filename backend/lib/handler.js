@@ -1,19 +1,24 @@
-import { authenticate, login, publicAccount, register, saveProfile } from './accounts.js';
+import { authenticate, createSession, login, publicAccount, register, saveProfile } from './accounts.js';
 import { startCheckout, stripeWebhook } from './billing.js';
 import { listPlaces, starts } from './catalog.js';
 import { chatInput, chatTurn } from './chat.js';
 import { getPool } from './db.js';
-import { ApiError, configuredOrigins, json, readJson } from './http.js';
+import { ApiError, badRequest, configuredOrigins, json, readJson } from './http.js';
 import { takeTurn, validateProfile, validateTurn } from './onboarding.js';
 import { authorizeAgent, rateLimit, trialInfo, visitorNetwork } from './quota.js';
 import { buildRoutes, routeInput } from './routes.js';
 import { claimGuest, guestForLogin, tripAction, tripMethods } from './trip-api.js';
 import { isMarbella } from './marbella-scope.js';
+import { verificationActive } from './mail.js';
+import { exchangeTicket, handleCallback, isProvider, providers, startAuthorization } from './oauth.js';
+import { issueVerification, verifyEmail } from './verification.js';
 
 const methods = new Map([
   ['health', 'GET'], ['catalog', 'GET'], ['status', 'GET'], ['register', 'POST'], ['login', 'POST'],
   ['logout', 'POST'], ['profile', 'PUT'], ['chat', 'POST'], ['onboarding', 'POST'], ['route', 'POST'],
-  ['checkout', 'POST'], ['stripe-webhook', 'POST'], ...tripMethods
+  ['checkout', 'POST'], ['stripe-webhook', 'POST'], ['verifyEmail', 'POST'], ['resendVerification', 'POST'],
+  ['oauthStart', 'POST'], ['oauthCallback', ['GET', 'POST']], ['oauthExchange', 'POST'],
+  ...tripMethods
 ]);
 
 function corsHeaders(request) {
@@ -33,14 +38,16 @@ export function createHandler(database = getPool) {
     const headers = corsHeaders(request);
     const action = new URL(request.url).searchParams.get('action') ?? 'health';
     try {
-      if (request.headers.has('origin') && !headers.has('Access-Control-Allow-Origin')) {
+      // The provider redirect is a top-level navigation (Google GET, Apple cross-site form_post), not CORS.
+      if (action !== 'oauthCallback' && request.headers.has('origin') && !headers.has('Access-Control-Allow-Origin')) {
         throw new ApiError(403, 'ORIGIN_NOT_ALLOWED', 'Este origen web no está autorizado.');
       }
       const method = methods.get(action);
       if (!method) throw new ApiError(404, 'UNKNOWN_ACTION', 'La acción no existe.');
       if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers });
-      if (request.method !== method) {
-        headers.set('Allow', `${method}, OPTIONS`);
+      const allowed = [method].flat();
+      if (!allowed.includes(request.method)) {
+        headers.set('Allow', `${allowed.join(', ')}, OPTIONS`);
         throw new ApiError(405, 'METHOD_NOT_ALLOWED', 'Método HTTP no permitido.');
       }
       if (action === 'health') {
@@ -53,6 +60,22 @@ export function createHandler(database = getPool) {
 
       const db = database();
       if (action === 'stripe-webhook') return json(await stripeWebhook(db, request), 200, headers);
+      if (action === 'oauthCallback') return handleCallback(db, request);
+      if (action === 'oauthStart') {
+        await rateLimit(db, `oauthStart:${visitorNetwork(request, localIp)}`, 20, 300);
+        const { provider } = await readJson(request);
+        if (!isProvider(provider)) throw badRequest('Este método de acceso no existe.');
+        return json(await startAuthorization(db, provider, request), 200, headers);
+      }
+      if (action === 'oauthExchange') {
+        await rateLimit(db, `oauthExchange:${visitorNetwork(request, localIp)}`, 20, 300);
+        const { ticket } = await readJson(request);
+        const guest = guestForLogin(request);
+        const { account } = await exchangeTicket(db, ticket);
+        const token = await createSession(db, account.id);
+        if (guest) await claimGuest(db, guest, account.id);
+        return json({ account: publicAccount(account), token, quota: trialInfo(account) }, 200, headers);
+      }
       if (action === 'register' || action === 'login') {
         const body = await readJson(request);
         const network = visitorNetwork(request, localIp);
@@ -60,10 +83,29 @@ export function createHandler(database = getPool) {
         const guest = guestForLogin(request);
         const auth = action === 'register' ? await register(db, body) : await login(db, body);
         if (guest) await claimGuest(db, guest, auth.account.id);
+        if (action === 'register' && verificationActive()) {
+          // A mail outage must not block sign-up: the user can resend from the app.
+          await issueVerification(db, auth.account)
+            .catch((error) => console.error('Verification mail failed:', error.code ?? error.name));
+        }
         return json({ account: publicAccount(auth.account), token: auth.token, quota: trialInfo(auth.account) },
           action === 'register' ? 201 : 200, headers);
       }
-      const account = await authenticate(db, request, ['logout', 'profile', 'checkout'].includes(action));
+      if (action === 'verifyEmail') {
+        await rateLimit(db, `verifyEmail:${visitorNetwork(request, localIp)}`, 20, 300);
+        const { token } = await readJson(request);
+        return json(await verifyEmail(db, token), 200, headers);
+      }
+      const account = await authenticate(db, request,
+        ['logout', 'profile', 'checkout', 'resendVerification'].includes(action));
+      if (action === 'resendVerification') {
+        if (account.email_verified_at) throw new ApiError(409, 'ALREADY_VERIFIED', 'Tu correo ya está confirmado.');
+        // Without real mail on Vercel nothing would be delivered and the link would end up in the logs.
+        if (!verificationActive()) throw new ApiError(503, 'MAIL_UNAVAILABLE', 'El correo todavía no está disponible.');
+        await rateLimit(db, `resendVerification:${account.id}`, 3, 600);
+        await issueVerification(db, account);
+        return new Response(null, { status: 204, headers });
+      }
       if (tripMethods.has(action)) {
         const result = await tripAction(db, action, request, account, localIp);
         if (result === undefined) return new Response(null, { status: 204, headers });
@@ -81,6 +123,9 @@ export function createHandler(database = getPool) {
       }
       if (action === 'checkout') {
         await rateLimit(db, `checkout:${account.id}`, 5);
+        if (verificationActive() && !account.email_verified_at) {
+          throw new ApiError(403, 'EMAIL_NOT_VERIFIED', 'Confirma tu correo antes de pasar a Premium.');
+        }
         return json(await startCheckout(db, account), 200, headers);
       }
       const network = account ? null : visitorNetwork(request, localIp);
@@ -90,8 +135,11 @@ export function createHandler(database = getPool) {
           ({ rows: [guestTrial] } = await db.query(
             'SELECT started_at AS trial_started_at FROM guest_trials WHERE network_key = $1', [network]));
         }
-        return json({ account: account ? publicAccount(account) : null, quota: trialInfo(account, account ?? guestTrial) },
-          200, headers);
+        return json({
+          account: account ? publicAccount(account) : null,
+          quota: trialInfo(account, account ?? guestTrial),
+          auth: { providers: providers(), mail: verificationActive() }
+        }, 200, headers);
       }
 
       const body = await readJson(request);

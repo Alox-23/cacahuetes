@@ -68,14 +68,18 @@ describe('feature 2 smoke tests', () => {
     expect(location()).toBe('/register')
     expect(screen.getByLabelText('Correo electrónico')).toHaveAttribute('aria-invalid', 'true')
     expect(screen.getByText('Escribe un correo válido, por ejemplo nombre@correo.com.')).toBeInTheDocument()
-    expect(screen.getByText('La contraseña debe tener al menos 8 caracteres.')).toBeInTheDocument()
+    expect(screen.getByText('La contraseña debe tener al menos 12 caracteres.')).toBeInTheDocument()
     expect(screen.getByText('Acepta los términos para crear la cuenta.')).toBeInTheDocument()
 
     await user.type(screen.getByLabelText('Correo electrónico'), 'ejemplo.com')
-    await user.type(screen.getByLabelText('Contraseña'), '-larga')
+    await user.type(screen.getByLabelText('Contraseña'), '-y-bien-larga')
     await user.click(screen.getByLabelText('Acepto los términos y la política de privacidad'))
     await user.click(submit)
 
+    // Feature 4: the route is saved, then Confirma tu correo shows once; "Continuar" goes on to it.
+    await waitFor(() => expect(location()).toBe('/verify-pending'))
+    expect(await screen.findByText('Te hemos enviado un enlace a ana@ejemplo.com. Ábrelo para confirmar tu cuenta.')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Continuar' }))
     await waitFor(() => expect(location()).toBe(`/my-routes/${route.id}`))
     expect(await screen.findByRole('heading', { name: 'Marbella en 5 horas' })).toBeInTheDocument()
     expect(await ctx.data.getSession()).toMatchObject({ kind: 'account', email: 'ana@ejemplo.com', name: 'Ana' })

@@ -6,6 +6,7 @@
  */
 import { isMarbella, localStart } from '../../../backend/lib/marbella-scope.js'
 import type {
+  AuthProvider,
   DataModule,
   Place,
   Preferences,
@@ -33,11 +34,24 @@ import {
   type CityCatalog,
 } from './catalog'
 import { DEFAULT_ACCOUNT_SETTINGS, DEFAULT_PREFERENCES } from './defaults'
+import { ApiClientError } from './errors'
 import { exampleRoutes } from './seeds'
 import type { DataCapabilities } from './capabilities'
 import { STORAGE_KEYS, createStorage, type JsonStorage } from './storage'
 
 type RouteStore = Record<string, Route[]>
+type DemoVerification = { token: string; email: string }
+
+/** Fake provider accounts of the demo's "Continuar con Google/Apple" (an existing account each). */
+const DEMO_PROVIDER_EMAILS: Record<AuthProvider, string> = {
+  google: 'google@ejemplo.com',
+  apple: 'apple@ejemplo.com',
+}
+
+function demoToken(): string {
+  const bytes = globalThis.crypto.getRandomValues(new Uint8Array(4))
+  return 'demo-' + Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('')
+}
 
 /** Error codes (not UI copy) thrown by the mock; screens never trigger them. */
 export const DATA_ERRORS = {
@@ -355,6 +369,27 @@ export function createDataModule(
     return route
   }
 
+  const readAccounts = () => storage.read<string[]>(STORAGE_KEYS.accounts, [])
+  const writeAccounts = (emails: string[]) => storage.write(STORAGE_KEYS.accounts, emails)
+
+  /** New demo verification link for `email` (replaces the previous one), printed in dev. */
+  function issueDemoLink(email: string) {
+    const link: DemoVerification = { token: demoToken(), email }
+    storage.write(STORAGE_KEYS.verifyToken, link)
+    if (import.meta.env.DEV && import.meta.env.MODE !== 'test') {
+      console.info(`[demo] Enlace de verificación: /verify-email?token=${link.token}`)
+    }
+  }
+
+  /** An "existing account": verified, and it comes with three example saved routes. */
+  async function login(email: string): Promise<Session> {
+    await tick()
+    const session: Session = { ...accountSession(email), emailVerified: true }
+    storage.write(STORAGE_KEYS.session, session)
+    seedExamples(session.email ?? '')
+    return session
+  }
+
   function seedExamples(email: string) {
     if (savedRoutesOf(email).some(isLocalRoute)) return
     const ratings = readRatings()
@@ -391,19 +426,18 @@ export function createDataModule(
 
     async register(email) {
       await tick()
-      const session = accountSession(email)
+      const accounts = readAccounts()
+      if (accounts.includes(email.toLowerCase())) {
+        throw new ApiClientError(t('auth.errorEmailExists'), 'EMAIL_EXISTS', 409)
+      }
+      writeAccounts([...accounts, email.toLowerCase()])
+      const session: Session = { ...accountSession(email), emailVerified: false }
       storage.write(STORAGE_KEYS.session, session)
+      issueDemoLink(email)
       return session
     },
 
-    async login(email) {
-      await tick()
-      const session = accountSession(email)
-      storage.write(STORAGE_KEYS.session, session)
-      // An "existing account": it comes with three example saved routes.
-      seedExamples(session.email ?? '')
-      return session
-    },
+    login: (email) => login(email),
 
     async logout() {
       await tick()
@@ -507,18 +541,56 @@ export function createDataModule(
         const owners = readOwners()
         for (const [rid, owner] of Object.entries(owners)) if (owner === session.email) owners[rid] = next.email ?? ''
         storage.write(STORAGE_KEYS.owners, owners)
+        const old = session.email?.toLowerCase()
+        writeAccounts(readAccounts().map((e) => (e === old ? (next.email ?? '').toLowerCase() : e)))
       }
       return next
     },
 
     async deleteAccount() {
       await tick()
+      // The email can be registered again once its account is gone.
+      const gone = readSession().email?.toLowerCase()
+      writeAccounts(readAccounts().filter((e) => e !== gone))
       // Preferences stay: the four onboarding questions are asked only once.
       storage.remove(STORAGE_KEYS.session)
       storage.remove(STORAGE_KEYS.routes)
       storage.remove(STORAGE_KEYS.ratings)
       storage.remove(STORAGE_KEYS.owners)
       storage.remove(STORAGE_KEYS.currentRoute)
+      storage.remove(STORAGE_KEYS.verifyToken)
+    },
+
+    // Feature 4: simulated verification and the fake Google/Apple sign-in.
+    async verifyEmail(token) {
+      await tick()
+      const link = storage.read<DemoVerification | null>(STORAGE_KEYS.verifyToken, null)
+      if (!link || link.token !== token) throw new ApiClientError(t('verify.invalidTitle'), 'INVALID_TOKEN', 400)
+      storage.remove(STORAGE_KEYS.verifyToken)
+      const session = readSession()
+      if (session.kind === 'account' && session.email === link.email) {
+        storage.write(STORAGE_KEYS.session, { ...session, emailVerified: true } satisfies Session)
+      }
+      return { email: link.email }
+    },
+
+    async resendVerification() {
+      await tick()
+      const session = readSession()
+      if (session.kind !== 'account' || !session.email) throw new Error(DATA_ERRORS.notAnAccount)
+      issueDemoLink(session.email)
+    },
+
+    async authProviders() {
+      await tick()
+      return ['google', 'apple']
+    },
+
+    signInWith: (provider) => login(DEMO_PROVIDER_EMAILS[provider]),
+
+    async completeSignIn() {
+      await tick()
+      throw new ApiClientError(t('oauth.errorText'), 'NOT_SUPPORTED', 400)
     },
 
     async getPlace(id) {

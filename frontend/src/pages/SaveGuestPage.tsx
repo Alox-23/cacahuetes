@@ -7,7 +7,7 @@ import { stopsCount } from '../lib/routeText'
 import { useBack } from '../lib/useBack'
 import layout from './layout.module.css'
 import { useRoute } from './routeHooks'
-import type { AuthState } from './auth/AuthForm'
+import type { AuthState } from './auth/afterSignIn'
 
 export function SaveGuestPage() {
   const { id = '' } = useParams()
