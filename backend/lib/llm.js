@@ -7,12 +7,12 @@ const sentences = new Intl.Segmenter('es', { granularity: 'sentence' });
 const maxDelay = 2_147_483_647;
 
 // Reads a positive whole number from the environment; anything missing or invalid keeps the default.
-function envNumber(name, fallback) {
+export function envNumber(name, fallback) {
   const value = Number(process.env[name]);
   return Number.isInteger(value) && value > 0 && value <= maxDelay ? value : fallback;
 }
 
-function ollamaBase() {
+export function ollamaBase() {
   return (process.env.OLLAMA_BASE_URL || 'http://localhost:11434/v1').replace(/\/+$/, '');
 }
 
