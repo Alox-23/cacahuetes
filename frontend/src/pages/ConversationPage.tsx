@@ -1,9 +1,10 @@
 import { Navigate, useNavigate } from 'react-router-dom'
 import { AssistantHeader, ChatInput, Screen, SummaryCard } from '../components'
 import { t } from '../i18n'
-import { useChat, useCreation, usePreferences } from '../state/AppState'
+import { useAppState, useChat, useCreation, usePreferences } from '../state/AppState'
 import { MessageList } from './chat/MessageList'
 import { ReplyView } from './chat/ReplyView'
+import { useCreatedHandover } from './chat/useCreatedHandover'
 import styles from './chat/chat.module.css'
 
 export function ConversationPage() {
@@ -11,6 +12,9 @@ export function ConversationPage() {
   const { preferences } = usePreferences()
   const { startCreation } = useCreation()
   const { messages, pending, send } = useChat('request')
+  const { conversational } = useAppState()
+  // Feature 5: a reply that created a route opens the Creando screen (no SummaryCard in API mode).
+  useCreatedHandover(messages)
 
   // Empty and not waiting for a first reply (Reutilizar greets with the summary).
   if (messages.length === 0 && !pending) return <Navigate to="/chat" replace />
@@ -52,7 +56,13 @@ export function ConversationPage() {
         )}
       />
       <ChatInput
-        placeholder={hasSummary ? t('conversation.placeholderSummary') : t('conversation.placeholder')}
+        placeholder={
+          conversational
+            ? t('conversation.placeholderAgent')
+            : hasSummary
+              ? t('conversation.placeholderSummary')
+              : t('conversation.placeholder')
+        }
         disabled={pending}
         onSend={(text) => void send({ text })}
       />
