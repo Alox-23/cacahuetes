@@ -1,5 +1,7 @@
 # Feature 3 · Peanut Run while the route is being created
 
+> **Superseded** by [`feature-5-animacion-de-espera.md`](feature-5-animacion-de-espera.md) (2026-11-25): the game was removed and replaced by a non-interactive animation. Kept for history.
+
 Date: 2026-11-24 · Branch: `alex-frontend` · Source: branch `peanut-run-game` (commit `f021912`, folder `peanut-run/`) · Builds on: features 1 and 2
 
 ## 1. Goal

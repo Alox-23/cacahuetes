@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { AssistantBubble, ChatInput, Chip, ChevronDownIcon, ChevronRightIcon, Mascot, QuickReply, SummaryCard } from '../components'
+import { AssistantBubble, ChaseAnimation, ChatInput, Chip, ChevronDownIcon, ChevronRightIcon, Mascot, QuickReply, SummaryCard } from '../components'
 import { describeSelection, formatDateLong, preferenceChips } from '../assistant/format'
 import type { AssistantMode, RichReply } from '../assistant/types'
 import { DEFAULT_PREFERENCES } from '../data/defaults'
@@ -204,6 +204,8 @@ export function ChatDock({ contextPath, panel }: ChatDockProps) {
             <span>{t('desktop.creationCancelled')}</span>
           ) : (
             <>
+              {/* Only while it is being created: a finished progress bubble in the history stays still. */}
+              {status === 'running' && <ChaseAnimation className={styles.progressChase} />}
               <CreationSteps step={status === 'done' ? 4 : (live?.step ?? 0)} compact />
               {status === 'running' && <span className={chatStyles.hint}>{t('desktop.creatingHint')}</span>}
             </>

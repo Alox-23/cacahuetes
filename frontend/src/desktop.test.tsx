@@ -68,6 +68,9 @@ describe('desktop smoke tests (layout forced to desktop)', () => {
     await user.click(screen.getByRole('button', { name: 'Crear ruta' }))
 
     expect(await screen.findByText('Estoy creando tu ruta')).toBeInTheDocument()
+    // The waiting animation runs inside the progress bubble: decorative, nothing to interact with.
+    const chase = screen.getByText('Estoy creando tu ruta').parentElement?.querySelector('svg[viewBox="0 0 320 120"][aria-hidden="true"][focusable="false"]')
+    expect(chase).not.toBeNull()
     expect(currentPath()).toBe('/creating')
     expect(panel()).not.toBeInTheDocument()
 

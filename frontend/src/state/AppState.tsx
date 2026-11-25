@@ -578,8 +578,8 @@ export function AppStateProvider({
 
 /**
  * When a creation finishes, open the route (once per creation). Rendered by each route tree: the desktop
- * tree always navigates; the mobile tree leaves /creating to the creating screen, which never interrupts a
- * Peanut Run game (feature 3 game spec §5).
+ * tree always navigates; the mobile tree leaves /creating to the creating screen, which opens the route itself
+ * (feature 5 spec §3).
  */
 export function CreationWatcher({ skipCreatingScreen }: { skipCreatingScreen: boolean }) {
   const { creation } = useAppState()
