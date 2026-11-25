@@ -1,8 +1,9 @@
 /* Ruta guardada behaviour shared by the mobile page and the desktop panel (dev's SavedRoutePage logic). */
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import type { Route } from '../../contract/types'
 import { t } from '../../i18n'
+import { enrichStops } from '../../lib/enrichStops'
 import { shareRoute, shareToastKey } from '../../lib/share'
 import { useRoute, useStopPlaces } from '../../pages/routeHooks'
 import { useData, useReuse, useToast } from '../../state/AppState'
@@ -14,6 +15,8 @@ export function useSavedRouteScreen(id: string) {
   const startReuse = useReuse()
   const { state, route, setRoute } = useRoute(id)
   const places = useStopPlaces(route)
+  // Stops filled from their places for the map; the stop list keeps using route.stops.
+  const mapStops = useMemo(() => (route ? enrichStops(route.stops, places) : []), [route, places])
   const [confirming, setConfirming] = useState(false)
   const [busy, setBusy] = useState(false)
 
@@ -47,6 +50,7 @@ export function useSavedRouteScreen(id: string) {
     state,
     route,
     places,
+    mapStops,
     busy,
     confirming,
     setConfirming,
