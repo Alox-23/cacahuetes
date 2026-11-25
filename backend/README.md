@@ -12,6 +12,7 @@ npm --prefix frontend ci
 $env:VITE_CACAHUETE_API_URL = '/api/cacahuete'
 npm --prefix frontend run build
 ollama pull qwen2.5:7b
+ollama pull qwen2.5:3b
 Copy-Item backend/.env.example backend/.env
 ```
 
@@ -23,7 +24,7 @@ ollama list
 npm --prefix backend run dev
 ```
 
-Ollama debe estar abierto en el portátil. Si no está en la bandeja del sistema, ejecuta `ollama serve` en otra terminal. El modelo elegido es Qwen2.5 7B cuantizado, con soporte de español y una descarga de 4,7 GB. El consumo de RAM y la latencia dependen del contexto y del equipo. Antes de abrir al público, calienta el modelo con `ollama run qwen2.5:7b "Saluda en español"` y comprueba una duda sobre una parada con el portátil desconectado de internet. [Ficha del modelo](https://ollama.com/library/qwen2.5:7b)
+Ollama debe estar abierto en el portátil. Si no está en la bandeja del sistema, ejecuta `ollama serve` en otra terminal. Se usan dos modelos cuantizados con soporte de español. Qwen2.5 3B (`OLLAMA_AGENT_MODEL`, descarga de 1,9 GB) decide qué acción del planificador ejecuta cada turno del chat y Qwen2.5 7B (`OLLAMA_MODEL`, descarga de 4,7 GB) redacta la respuesta. El planificador calcula siempre las paradas, los horarios y los precios. El consumo de RAM y la latencia dependen del contexto y del equipo. Antes de abrir al público, calienta los dos modelos con `ollama run qwen2.5:7b "Saluda en español"` y `ollama run qwen2.5:3b "Saluda en español"`, y comprueba con el portátil desconectado de internet que el chat crea una ruta y quita una parada. [Ficha de Qwen2.5 7B](https://ollama.com/library/qwen2.5:7b) · [Ficha de Qwen2.5 3B](https://ollama.com/library/qwen2.5:3b)
 
 Node escucha en `0.0.0.0` y usa `PORT=3000` por defecto. En PowerShell **como administrador**, para una red del evento con perfil privado:
 
@@ -33,17 +34,19 @@ New-NetFirewallRule -DisplayName "Cacahuete intranet" -Direction Inbound -Action
 
 Desde un móvil conectado a la misma red abre la URL que aparece junto al adaptador Wi-Fi o Ethernet. Comprueba también `/api/cacahuete?action=health`. Si cambias `PORT`, ajusta la regla del firewall a ese puerto. La red debe permitir conexiones entre sus clientes. Solo Node necesita ser accesible desde los móviles.
 
-El chat llama a `OLLAMA_BASE_URL` (por defecto `http://localhost:11434/v1`) con `OLLAMA_MODEL=qwen2.5:7b`. Admite 500 caracteres por mensaje y 20 peticiones al agente por minuto e IP. Si Ollama no responde a tiempo, usa la plantilla. Los límites se ajustan en `backend/.env` con números enteros positivos; un valor vacío o no válido mantiene el valor por defecto:
+El chat llama a `OLLAMA_BASE_URL` (por defecto `http://localhost:11434/v1`) con `OLLAMA_MODEL=qwen2.5:7b` para narrar y `OLLAMA_AGENT_MODEL=qwen2.5:3b` para decidir. La acción `agent` usa la API nativa `POST /api/chat` de Ollama en esa misma dirección, sin el `/v1` final. Admite 500 caracteres por mensaje y 20 peticiones al agente por minuto e IP. Si Ollama no responde a tiempo, usa la plantilla. Los límites se ajustan en `backend/.env` con números enteros positivos; un valor vacío o no válido mantiene el valor por defecto:
 
 | Variable | Por defecto | Qué controla |
 | --- | --- | --- |
-| `OLLAMA_TIMEOUT_MS` | `20000` | Tiempo máximo de cada generación |
+| `OLLAMA_AGENT_MODEL` | `qwen2.5:3b` | Modelo que elige la acción del planificador en cada turno de `agent`. Su texto nunca se muestra al visitante |
+| `OLLAMA_AGENT_TIMEOUT_MS` | `15000` | Tiempo máximo de cada llamada de decisión |
+| `OLLAMA_TIMEOUT_MS` | `20000` | Tiempo máximo de cada generación del narrador |
 | `OLLAMA_QUEUE_MS` | `30000` | Espera máxima en la cola cuando todas las plazas están ocupadas |
-| `OLLAMA_CONCURRENCY` | `2` | Generaciones simultáneas |
+| `OLLAMA_CONCURRENCY` | `2` | Generaciones simultáneas. La cola y las plazas son comunes a los dos modelos |
 
-**Portátil solo con CPU:** usa `OLLAMA_MODEL=qwen2.5:3b` y `OLLAMA_TIMEOUT_MS=45000` (antes, `ollama pull qwen2.5:3b`). El modelo 7B necesita una GPU o un Mac con Apple Silicon para responder en menos de 20 s.
+**Portátil solo con CPU:** el modelo 7B necesita una GPU o un Mac con Apple Silicon para responder en menos de 20 s. Si la narración tarda demasiado, usa `OLLAMA_MODEL=qwen2.5:3b` y `OLLAMA_TIMEOUT_MS=45000`; así un único modelo decide y narra. Si es la decisión la que agota el tiempo, prueba `OLLAMA_AGENT_MODEL=qwen2.5:1.5b`. El lanzador descarga los modelos que falten; en la instalación manual, ejecuta antes `ollama pull` con el modelo elegido. `node backend/scripts/agent-smoke.mjs` ejecuta tres conversaciones contra el Ollama real e imprime la latencia de cada llamada; cada turno debe quedar por debajo de 45 s.
 
-Cada vez que se usa la plantilla, la consola del servidor muestra `Cacahuete narrator fallback: <motivo>`, sin el mensaje ni la respuesta. Los motivos son `unreachable` (Ollama no responde), `timeout`, `http <estado>`, `length` (respuesta cortada), `empty`, `too-long` (más de seis frases), `invalid` (respuesta no JSON) y `queue` (espera agotada). `/api/cacahuete?action=health` incluye `llm: { model, reachable }`: `reachable` indica si Ollama contesta a `/api/tags` (se comprueba como mucho cada 30 s, con 1,5 s de límite) y nunca hace fallar la comprobación. Para comprobar el plan B, detén Ollama y vuelve a pedir una ruta. Las pruebas se ejecutan con `npm --prefix backend test`.
+Cada vez que se usa la plantilla, la consola del servidor muestra `Cacahuete narrator fallback: <motivo>`, sin el mensaje ni la respuesta. Los motivos son `unreachable` (Ollama no responde), `timeout`, `http <estado>`, `length` (respuesta cortada), `empty`, `too-long` (más de seis frases), `invalid` (respuesta no JSON) y `queue` (espera agotada). La acción `agent` registra del mismo modo `Cacahuete agent fallback: <etapa> <motivo>`, también sin prompts ni texto del visitante. `/api/cacahuete?action=health` incluye `llm: { model, agentModel, reachable }`: `reachable` indica si Ollama contesta a `/api/tags` (se comprueba como mucho cada 30 s, con 1,5 s de límite) y nunca hace fallar la comprobación. Para comprobar el plan B, detén Ollama y vuelve a pedir una ruta: la respuesta llega con `source: "rules"`. Las pruebas se ejecutan con `npm --prefix backend test`.
 
 **Truco de desarrollo:** la prueba gratuita de invitado (3 horas) va asociada a la IP, así que en tu propio equipo se agota y el chat responde `AGENT_TIME_EXPIRED`. Para reiniciarla, ejecuta `DELETE FROM guest_trials;` en la base de datos local.
 
@@ -53,7 +56,7 @@ El mapa completo usa Leaflet para situar las paradas y unirlas sobre sus coorden
 
 ## Contrato para el frontend
 
-El adaptador HTTP implementa `frontend/src/contract/types.ts`. El chat conserva el cuestionario, las opciones y el resumen que el visitante confirma. Las peticiones de texto pasan por el intérprete de Cacahuete y las rutas se crean al confirmar. El único destino es Marbella. El chat propone puntos de salida del catálogo y acepta sus nombres o alias. Los horarios parten de ese lugar. La API devuelve HTTP 400 si la ciudad, la salida o un imprescindible quedan fuera del catálogo. Las rutas antiguas de otras ciudades se conservan en la base y quedan fuera de las consultas. Los tiempos de desplazamiento son estimaciones.
+El adaptador HTTP implementa `frontend/src/contract/types.ts`. El chat conserva el cuestionario, las opciones y el resumen que el visitante confirma. Las peticiones de texto pasan por el intérprete de Cacahuete y las rutas se crean al confirmar. El único destino es Marbella. El chat propone puntos de salida del catálogo y acepta sus nombres o alias. Los horarios parten de ese lugar. La API devuelve HTTP 400 si la ciudad, la salida o un imprescindible quedan fuera del catálogo. Las rutas antiguas de otras ciudades se conservan en la base y quedan fuera de las consultas. Los tiempos de desplazamiento son estimaciones. Con la API configurada, el cuestionario se limita al perfil: después, el chat usa la acción `agent` y la ruta se crea sin resumen previo.
 
 | Acción | Método | Entrada y resultado |
 | --- | --- | --- |
@@ -66,8 +69,51 @@ El adaptador HTTP implementa `frontend/src/contract/types.ts`. El chat conserva 
 | `saveRoute`, `deleteRoute` | POST, DELETE | Guardar exige sesión y devuelve la ruta. Eliminar devuelve 204. |
 | `rateRoute` | PUT | Recibe `id` en la URL y `{stars, stops, comment?}` como cuerpo. Devuelve 204. |
 | `getPlace`, `getAlternatives` | GET | La primera recibe el `id` del lugar. La segunda recibe el `id` de la ruta y el `order` de la parada. |
+| `agent` | POST | Un turno de conversación libre: el modelo decide qué acción del planificador ejecutar y el narrador la explica. Ver [Agente conversacional](#agente-conversacional). |
 
 El adaptador usa `status`, `login`, `register` y `logout` para la sesión. Cada navegador genera una credencial aleatoria de invitado y la envía en `X-Guest-Token`. Al entrar o registrarse se transfieren sus borradores a la cuenta. Las preferencias de una cuenta existente prevalecen sobre las del invitado. La cuota de invitado continúa asociada a la red. Una edición concurrente que pierda la carrera devuelve HTTP 409 y permite volver a cargar la ruta.
+
+### Agente conversacional
+
+Desde la feature 5, una vez creado el perfil, el visitante conversa libremente. En cada turno de `POST /api/cacahuete?action=agent`, el modelo de decisión (`OLLAMA_AGENT_MODEL`) elige qué herramienta del planificador llamar: crear la ruta, cambiar su franja horaria, añadir, quitar, sustituir o fijar una parada, aplicar un cambio rápido, deshacer, actualizar preferencias o solo contestar. El backend la ejecuta con el planificador determinista y el narrador (`OLLAMA_MODEL`) explica lo que ha pasado. El modelo nunca escribe paradas, horarios ni precios. `interpretRequest`, `routeQuestion`, `refineConversation` y `chat` siguen disponibles por compatibilidad.
+
+Cuerpo de la petición:
+
+```ts
+{ text: string;                 // de 1 a 500 caracteres, sin espacios en los extremos
+  routeId?: string;             // uuid de la ruta de la que trata el chat (la actual); sin él, no hay ruta
+  client?: { today?: string; now?: string } }   // 'AAAA-MM-DD', 'HH:MM'; si faltan o no son válidos, se usa el reloj del servidor
+```
+
+Respuesta `200`:
+
+```ts
+{ text: string;                 // lo que dice Cacahuete (6 frases como máximo)
+  suggestions: string[];        // de 0 a 3 respuestas cortas que el visitante puede tocar
+  route?: Route;                // si la ruta se creó o cambió en este turno (Route completo del contrato)
+  routeId?: string;             // la ruta actual tras el turno (nueva o la misma)
+  events: AgentEvent[];         // lo que ha pasado, en orden
+  source: 'agent' | 'rules';    // quién decidió
+  quota: Quota }
+```
+
+```ts
+type AgentEvent =
+  | { type: 'route_created'; routeId: string; assumptions: string[] }
+  | { type: 'route_changed'; routeId: string; change: string }       // 'add_stop' | 'remove_stop' | 'replace_stop' | 'lock_stop' | 'reschedule' | 'menos_caminar' | ...
+  | { type: 'undone'; routeId: string }
+  | { type: 'preferences_updated'; fields: string[] }
+  | { type: 'rejected'; reason: string }                            // una negativa del planificador, en español
+  | { type: 'answered' }                                            // sin herramienta: el modelo solo ha conversado
+```
+
+La ruta se crea sin paso de confirmación. Si el visitante no indica fecha, hora, duración o salida, se usan hoy, la hora actual redondeada al siguiente cuarto de hora, 3 horas y la plaza de los Naranjos; cada valor supuesto aparece en `assumptions` y el narrador lo menciona. Los nombres de lugar se resuelven en el servidor contra el `id`, el nombre y los alias del catálogo, más la pausa `marbella-cafe`. Cada turno hace como máximo dos rondas de decisión con tres herramientas por ronda. Las sugerencias las propone el narrador; si faltan o no son válidas, se usan las de `lib/agent-texts.js` según el estado.
+
+Errores: 400 `INVALID_INPUT` (texto vacío o de más de 500 caracteres), 400 `UNSUPPORTED_CITY` (otro destino; se responde sin llamar al modelo), 404 `ROUTE_NOT_FOUND` (`routeId` de otro propietario), 403 `AGENT_TIME_EXPIRED` y 429 `RATE_LIMITED`. Cada turno consume un uso del agente, ejecute lo que ejecute. Si otra pestaña cambió la ruta entretanto no hay error: el agente trabaja siempre sobre el itinerario actual de la fila y lo devuelve.
+
+**Modo degradado (`source: "rules"`).** Si la llamada de decisión falla (Ollama no responde, tiempo agotado, cola llena, error HTTP o llamada a herramienta ilegible), el turno se resuelve con reglas en el servidor. «Deshacer» deshace el último cambio. Con una ruta en marcha se aplican los cambios rápidos que reconocen las expresiones del planificador, dos como máximo. Sin ruta, o si el texto indica una duración, una salida o un interés, se crea una ruta con los valores predeterminados. En otro caso se devuelve `rejected` con «No he entendido qué quieres cambiar.» y las sugerencias por defecto. El texto sale de las plantillas de `lib/agent-texts.js`, aunque el narrador se intenta igualmente si es lo único que ha fallado. Si solo falla la narración (tiempo agotado, JSON no válido o más de seis frases), el texto también sale de las plantillas, pero `source` sigue siendo `"agent"` porque la decisión fue del modelo. Con `source: "rules"`, el frontend muestra el aviso «modo sin IA».
+
+**Memoria de la conversación.** La migración `db/003_agent.sql` crea la tabla `agent_turns(id, owner_key, route_id, role, content, created_at)`, con `role` igual a `user` o `assistant` y el índice `agent_turns_owner_idx` sobre `(owner_key, id DESC)`. `owner_key` se calcula igual que en `travel_routes`: el id de la cuenta o `guest:` seguido del sha256 de `X-Guest-Token`. El modelo de decisión recibe los 10 últimos turnos y, tras cada inserción, se conservan solo los 20 más recientes del propietario. Las llamadas a herramientas se guardan como una línea compacta (`[acción] create_route → Marbella en 3 horas (3 paradas)`), no como JSON. Al entrar o registrarse, los turnos del invitado pasan a la cuenta junto con sus rutas y preferencias.
 
 ### API original de Marbella
 
