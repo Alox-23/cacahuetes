@@ -9,7 +9,7 @@
   "scripts": {
     "dev": "node --env-file-if-exists=.env scripts/dev.js",
     "migrate": "node --env-file-if-exists=.env scripts/migrate.js",
-    "test": "node --test",
+    "test": "node --experimental-strip-types --test",
     "train:chat": "node scripts/train-interests.js"
   },
   "dependencies": {

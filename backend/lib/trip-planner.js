@@ -19,8 +19,24 @@ const catalog = {
   }]
 };
 function asPlace(p) {
-  return { id: p.id, name: p.name, categories: p.categories, why: p.why,
-    ...(p.lat !== undefined ? { lat: p.lat, lon: p.lon } : {}) };
+  return {
+    id: p.id,
+    name: p.name,
+    categories: p.categories,
+    why: p.why,
+    photo: p.photo ? `/places/${p.id}.jpg` : undefined,
+    hours: p.hours,
+    price: p.price,
+    rating: p.rating,
+    reviewsCount: p.reviewsCount,
+    address: p.address,
+    googleMapsUrl: p.googleMapsUrl || `https://maps.google.com/?q=${encodeURIComponent(p.name + ' Marbella')}`,
+    ...(p.lat !== undefined ? { lat: p.lat, lon: p.lon } : {}),
+    ...(p.area ? { area: p.area } : {}),
+    ...(p.partner ? { partner: true, partnerPerk: p.partnerPerk } : {}),
+    ...(p.popularity ? { popularity: p.popularity } : {}),
+    ...(p.pickupInfo ? { pickupInfo: p.pickupInfo } : {})
+  };
 }
 export function lookupPlace(id) {
   const place = catalog.places.find(p => p.id === id);
@@ -28,7 +44,27 @@ export function lookupPlace(id) {
   return asPlace(place);
 }
 function stopFor(p) {
-  return { order: 0, placeId: p.id, name: p.name, arrive: '', visitMinutes: p.visitMinutes, locked: false };
+  return {
+    order: 0,
+    placeId: p.id,
+    name: p.name,
+    arrive: '',
+    visitMinutes: p.visitMinutes,
+    locked: false,
+    lat: p.lat,
+    lon: p.lon,
+    area: p.area,
+    photo: p.photo ? `/places/${p.id}.jpg` : undefined,
+    hours: p.hours,
+    price: p.price,
+    rating: p.rating,
+    reviewsCount: p.reviewsCount,
+    address: p.address,
+    googleMapsUrl: p.googleMapsUrl || `https://maps.google.com/?q=${encodeURIComponent(p.name + ' Marbella')}`,
+    ...(p.partner ? { partner: true, partnerPerk: p.partnerPerk } : {}),
+    ...(p.popularity ? { popularity: p.popularity } : {}),
+    ...(p.pickupInfo ? { pickupInfo: p.pickupInfo } : {})
+  };
 }
 function matchesLabel(p, label) {
   const key = normalize(label);

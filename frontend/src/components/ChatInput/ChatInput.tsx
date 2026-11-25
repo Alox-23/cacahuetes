@@ -70,6 +70,7 @@ export const ChatInput = forwardRef<HTMLTextAreaElement, ChatInputProps>(functio
           else if (forwardedRef) forwardedRef.current = el
         }}
         rows={1}
+        maxLength={500}
         className={styles.input}
         placeholder={placeholder}
         value={value}

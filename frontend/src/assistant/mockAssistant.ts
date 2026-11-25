@@ -337,7 +337,12 @@ export function createAssistant(deps: AssistantDeps): MockAssistant {
     options: [{ label: t('request.opt_city_marbella'), value: 'city:Marbella' }] })
 
   async function request(input: { text?: string; option?: string }): Promise<RichReply> {
+    const clarification = (message: string): RichReply => ({
+      kind: 'question', text: message,
+      options: summaryShown ? [{ label: t('request.viewDraft'), value: 'show-summary' }] : [],
+    })
     if (input.option) {
+      if (input.option === 'show-summary') return askNext([])
       if (input.option.startsWith('city:')) {
         return input.option === 'city:Marbella' ? askNext([]) : localScopeReply()
       }
@@ -348,16 +353,28 @@ export function createAssistant(deps: AssistantDeps): MockAssistant {
     const text = (input.text ?? '').trim()
     if (!text) return askNext([])
     if (asksForAnotherCity(text)) return localScopeReply()
+    const words = normalize(text)
+    if (/\bca[bv]are(?:ts?|s)?\b/.test(words) && !/\b(?:no quiero|sin|evitar)\b/.test(words)) return clarification(t('request.noCabaret'))
+    if (summaryShown &&
+        /^(?:(?:aun|todavia) )?(?:(?:me )?faltan? (?:cosas|algo|detalles)|echo de menos algo)$/.test(words)) {
+      return clarification(t('request.missingDetail'))
+    }
     const nearby = localStart(text)
-    if (awaitingOtherStart || (asked === 'start' && nearby)) {
-      if (!nearby) return { kind: 'question', text: t('request.askOther'), options: slotOptions('start') }
+    const choosingStart = awaitingOtherStart || asked === 'start'
+    if (choosingStart && /\b(no (?:lo )?se|ni idea|no estoy segur[oa]|no conozco marbella)\b/.test(normalize(text))) {
+      return { kind: 'question', text: t('request.suggestStart'), options: slotOptions('start') }
+    }
+    const asking = /[¿?]|^(?:cuéntame|háblame|dime)\s/i.test(text)
+    if (choosingStart && nearby && !asking) {
       awaitingOtherStart = false
       draft.start = { label: nearby }
       return askNext([])
     }
     const parsed = parseRequest(text, now())
+    let lead: string[] = []
     if (deps.interpretRequest) {
       const hints = await deps.interpretRequest(text)
+      if (hints.message) lead = [hints.message]
       parsed.overrides = { ...hints.overrides, ...parsed.overrides }
       if (hints.durationMinutes) {
         const from = parsed.startHour ?? parsed.timeWindow?.from ?? draft.timeWindow?.from ?? DEFAULT_START_HOUR
@@ -372,6 +389,8 @@ export function createAssistant(deps: AssistantDeps): MockAssistant {
       if (!point) delete draft.start
     }
     if (!parsed.recognized) {
+      if (summaryShown) return clarification(lead[0] ?? t('request.missingDetail'))
+      if (lead.length) return askNext(lead)
       // While asking for the start point, any free text is taken as the address.
       if (asked === 'start') {
         return { kind: 'question', text: t('request.askOther'), options: slotOptions('start') }
@@ -380,7 +399,7 @@ export function createAssistant(deps: AssistantDeps): MockAssistant {
       return askNext(knowsSomething || summaryShown ? [t('request.notUnderstood')] : [])
     }
     mergeParsed(draft, parsed)
-    return askNext([])
+    return askNext(lead)
   }
 
   async function change(input: { text?: string; option?: string }): Promise<RichReply> {
@@ -403,7 +422,10 @@ export function createAssistant(deps: AssistantDeps): MockAssistant {
     const actions: QuickRefine[] = input.option?.startsWith('quick:')
       ? [input.option.slice('quick:'.length) as QuickRefine]
       : parseRefineText(input.text ?? '')
-    if (actions.length === 0) return greeting(t('change.notUnderstood'))
+    if (actions.length === 0) {
+      const reply = input.text && deps.routeQuestion ? await deps.routeQuestion(routeId, input.text) : null
+      return greeting(reply?.message ?? t('change.notUnderstood'))
+    }
 
     const bullets: string[] = []
     let route = await deps.getRoute(routeId)

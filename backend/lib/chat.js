@@ -1,3 +1,4 @@
+import { narrate } from './llm.js';
 import { asksForAnotherCity } from './marbella-scope.js';
 import { badRequest } from './http.js';
 import { interests, places } from './catalog.js';
@@ -25,8 +26,8 @@ export function chatInput(body, savedProfile = {}) {
   const options = routeOptions(body);
   const message = body.message;
   const hasChoice = Object.hasOwn(body, 'answer') || Object.hasOwn(body, 'questionId');
-  if (message !== undefined && (typeof message !== 'string' || !message.trim() || message.length > 700 || hasChoice)) {
-    throw badRequest('Envía un mensaje de hasta 700 caracteres o selecciona una opción.');
+  if (message !== undefined && (typeof message !== 'string' || !message.trim() || message.length > 500 || hasChoice)) {
+    throw badRequest('Envía un mensaje de hasta 500 caracteres o selecciona una opción.');
   }
   if (message && asksForAnotherCity(message)) throw badRequest('Cacahuete prepara rutas exclusivamente por Marbella.');
   if (!hasChoice) return { profile, options, message: message?.trim() };
@@ -190,4 +191,12 @@ export function chatTurn({ profile, options, message, choice }, premium) {
       ? `He mantenido tus preferencias. ${routes.route.summary}`
       : routes.route.summary
   };
+}
+
+export async function chatReply(turn, premium, generate = narrate) {
+  const result = chatTurn(turn, premium);
+  if (!turn.message && result.question) return result;
+  const preferences = { ...result.appliedDefaults, ...result.profile };
+  const message = await generate(turn.message, preferences, result.route, result.question?.label);
+  return message ? { ...result, message } : result;
 }

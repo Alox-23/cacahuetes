@@ -23,7 +23,15 @@
       "plaza de los naranjos",
       "casco antiguo"
     ],
-    "kind": "sight"
+    "kind": "sight",
+    "popularity": 98,
+    "rating": 4.7,
+    "reviewsCount": 6840,
+    "hours": "Abierto 24 horas (espacio público)",
+    "price": "Acceso gratuito",
+    "address": "Plaza de los Naranjos, s/n, 29601 Marbella, Málaga",
+    "photo": "/places/naranjos.jpg",
+    "googleMapsUrl": "https://maps.google.com/?q=Plaza+de+los+Naranjos+Marbella"
   },
   {
     "id": "encarnacion",
@@ -47,7 +55,15 @@
       "encarnación",
       "iglesia de la encarnación"
     ],
-    "kind": "sight"
+    "kind": "sight",
+    "popularity": 88,
+    "rating": 4.6,
+    "reviewsCount": 1420,
+    "hours": "Lun - Sáb: 08:30 - 20:30 · Dom: 09:00 - 21:00",
+    "price": "Entrada libre y gratuita",
+    "address": "Plaza de la Iglesia, 1, 29601 Marbella, Málaga",
+    "photo": "/places/encarnacion.jpg",
+    "googleMapsUrl": "https://maps.google.com/?q=Iglesia+de+la+Encarnacion+Marbella"
   },
   {
     "id": "grabado",
@@ -71,7 +87,15 @@
       "museo del grabado",
       "hospital bazán"
     ],
-    "kind": "sight"
+    "kind": "sight",
+    "popularity": 87,
+    "rating": 4.5,
+    "reviewsCount": 540,
+    "hours": "Mar - Sáb: 10:00 - 19:00 · Dom: 10:00 - 14:00 (Lunes cerrado)",
+    "price": "3,00 € (general) · 1,50 € (estudiantes y jubilados)",
+    "address": "Calle Hospital Bazán, s/n, 29601 Marbella, Málaga",
+    "photo": "/places/grabado.jpg",
+    "googleMapsUrl": "https://maps.google.com/?q=Museo+del+Grabado+Espanol+Contemporaneo+Marbella"
   },
   {
     "id": "muralla",
@@ -95,7 +119,15 @@
       "muralla",
       "castillo de marbella"
     ],
-    "kind": "sight"
+    "kind": "sight",
+    "popularity": 91,
+    "rating": 4.4,
+    "reviewsCount": 890,
+    "hours": "Abierto 24 horas (visible desde calle)",
+    "price": "Acceso gratuito",
+    "address": "Calle Portada, 29601 Marbella, Málaga",
+    "photo": "https://images.unsplash.com/photo-1568605117036-5fe5e7bab0b7?auto=format&fit=crop&w=800&q=80",
+    "googleMapsUrl": "https://maps.google.com/?q=Muralla+Castillo+Marbella"
   },
   {
     "id": "trinidad",
@@ -119,7 +151,15 @@
       "santo cristo",
       "plaza del santo cristo"
     ],
-    "kind": "sight"
+    "kind": "sight",
+    "popularity": 80,
+    "rating": 4.5,
+    "reviewsCount": 380,
+    "hours": "Abierto 24 horas",
+    "price": "Acceso gratuito",
+    "address": "Plaza Santo Cristo, 29601 Marbella, Málaga",
+    "photo": "https://images.unsplash.com/photo-1513694203232-719a280e022f?auto=format&fit=crop&w=800&q=80",
+    "googleMapsUrl": "https://maps.google.com/?q=Plaza+Santo+Cristo+Marbella"
   },
   {
     "id": "mercado-central",
@@ -144,7 +184,15 @@
       "mercado central",
       "tapas"
     ],
-    "kind": "food"
+    "kind": "food",
+    "popularity": 88,
+    "rating": 4.4,
+    "reviewsCount": 1650,
+    "hours": "Lun - Sáb: 08:00 - 15:00 (Domingos cerrado)",
+    "price": "Acceso libre · Raciones 4 € - 10 €",
+    "address": "Calle Francisca Párraga, 29601 Marbella, Málaga",
+    "photo": "https://images.unsplash.com/photo-1533900298318-6b8da08a523e?auto=format&fit=crop&w=800&q=80",
+    "googleMapsUrl": "https://maps.google.com/?q=Mercado+Municipal+de+Marbella"
   },
   {
     "id": "alameda",
@@ -167,7 +215,15 @@
       "alameda",
       "la alameda"
     ],
-    "kind": "sight"
+    "kind": "sight",
+    "popularity": 90,
+    "rating": 4.6,
+    "reviewsCount": 4210,
+    "hours": "Abierto 24 horas",
+    "price": "Acceso gratuito",
+    "address": "Avenida Ramón y Cajal, s/n, 29601 Marbella, Málaga",
+    "photo": "https://images.unsplash.com/photo-1519331379826-f10be5486c6f?auto=format&fit=crop&w=800&q=80",
+    "googleMapsUrl": "https://maps.google.com/?q=Parque+de+la+Alameda+Marbella"
   },
   {
     "id": "avenida-mar",
@@ -190,7 +246,15 @@
       "avenida del mar",
       "esculturas de la avenida del mar"
     ],
-    "kind": "sight"
+    "kind": "sight",
+    "popularity": 93,
+    "rating": 4.7,
+    "reviewsCount": 5120,
+    "hours": "Abierto 24 horas (paseo peatonal)",
+    "price": "Acceso gratuito",
+    "address": "Avenida del Mar, s/n, 29602 Marbella, Málaga",
+    "photo": "https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?auto=format&fit=crop&w=800&q=80",
+    "googleMapsUrl": "https://maps.google.com/?q=Avenida+del+Mar+Marbella"
   },
   {
     "id": "constitucion",
@@ -212,7 +276,15 @@
     "aliases": [
       "parque de la constitución"
     ],
-    "kind": "sight"
+    "kind": "sight",
+    "popularity": 84,
+    "rating": 4.5,
+    "reviewsCount": 1980,
+    "hours": "Todos los días: 08:00 - 22:00",
+    "price": "Acceso gratuito",
+    "address": "Calle Camilo José Cela, s/n, 29602 Marbella, Málaga",
+    "photo": "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=800&q=80",
+    "googleMapsUrl": "https://maps.google.com/?q=Parque+de+la+Constitucion+Marbella"
   },
   {
     "id": "marina",
@@ -237,7 +309,15 @@
       "puerto deportivo",
       "puerto deportivo de marbella"
     ],
-    "kind": "food"
+    "kind": "food",
+    "popularity": 89,
+    "rating": 4.6,
+    "reviewsCount": 3890,
+    "hours": "Abierto 24 horas · Terrazas: 11:00 - 02:00",
+    "price": "Paseo libre · Terrazas desde 3,00 €",
+    "address": "Calle Virgen del Carmen, s/n, 29602 Marbella, Málaga",
+    "photo": "https://images.unsplash.com/photo-1512453979798-5ea266f8880c?auto=format&fit=crop&w=800&q=80",
+    "googleMapsUrl": "https://maps.google.com/?q=Puerto+Deportivo+de+Marbella"
   },
   {
     "id": "fontanilla",
@@ -260,7 +340,15 @@
       "fontanilla",
       "la fontanilla"
     ],
-    "kind": "sight"
+    "kind": "sight",
+    "popularity": 86,
+    "rating": 4.5,
+    "reviewsCount": 2750,
+    "hours": "Abierto 24 horas",
+    "price": "Playa pública gratuita",
+    "address": "Paseo Marítimo, 29602 Marbella, Málaga",
+    "photo": "https://images.unsplash.com/photo-1506953823976-52e1fdc0149a?auto=format&fit=crop&w=800&q=80",
+    "googleMapsUrl": "https://maps.google.com/?q=Playa+de+la+Fontanilla+Marbella"
   },
   {
     "id": "bajadilla",
@@ -283,7 +371,15 @@
       "bajadilla",
       "la bajadilla"
     ],
-    "kind": "sight"
+    "kind": "sight",
+    "popularity": 82,
+    "rating": 4.3,
+    "reviewsCount": 1120,
+    "hours": "Abierto 24 horas",
+    "price": "Acceso gratuito",
+    "address": "Calle Severo Ochoa, 29603 Marbella, Málaga",
+    "photo": "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=800&q=80",
+    "googleMapsUrl": "https://maps.google.com/?q=Playa+de+la+Bajadilla+Marbella"
   },
   {
     "id": "banus",
@@ -308,7 +404,15 @@
       "puerto banús",
       "banús"
     ],
-    "kind": "sight"
+    "kind": "sight",
+    "popularity": 97,
+    "rating": 4.7,
+    "reviewsCount": 14200,
+    "hours": "Abierto 24 horas · Tiendas: 11:00 - 21:00",
+    "price": "Paseo gratuito",
+    "address": "Muelle de Ribera, 29660 Puerto Banús, Marbella, Málaga",
+    "photo": "https://images.unsplash.com/photo-1540555700478-4be289fbecef?auto=format&fit=crop&w=800&q=80",
+    "googleMapsUrl": "https://maps.google.com/?q=Puerto+Banus+Marbella"
   },
   {
     "id": "playa-rio-verde",
@@ -331,7 +435,15 @@
       "río verde",
       "playa río verde"
     ],
-    "kind": "sight"
+    "kind": "sight",
+    "popularity": 85,
+    "rating": 4.5,
+    "reviewsCount": 1840,
+    "hours": "Abierto 24 horas",
+    "price": "Acceso gratuito",
+    "address": "Calle Río Verde, 29660 Puerto Banús, Marbella, Málaga",
+    "photo": "https://images.unsplash.com/photo-1510414842594-a61c69b5ae57?auto=format&fit=crop&w=800&q=80",
+    "googleMapsUrl": "https://maps.google.com/?q=Playa+Rio+Verde+Marbella"
   },
   {
     "id": "playa-duque",
@@ -353,6 +465,178 @@
     "aliases": [
       "playa del duque"
     ],
-    "kind": "sight"
+    "kind": "sight",
+    "popularity": 86,
+    "rating": 4.5,
+    "reviewsCount": 1610,
+    "hours": "Abierto 24 horas",
+    "price": "Acceso gratuito",
+    "address": "Avenida Playas del Duque, 29660 Marbella, Málaga",
+    "photo": "https://images.unsplash.com/photo-1473496169904-658ba7c44d8a?auto=format&fit=crop&w=800&q=80",
+    "googleMapsUrl": "https://maps.google.com/?q=Playa+del+Duque+Marbella"
+  },
+  {
+    "id": "taberna-pintxo",
+    "name": "Taberna del Pintxo Marbella",
+    "area": "Casco antiguo",
+    "lat": 36.5102,
+    "lon": -4.887,
+    "tags": [
+      "gastronomia"
+    ],
+    "visitMinutes": 30,
+    "budget": "medio",
+    "stairs": false,
+    "description": "Negocio afiliado gastronómico en pleno centro. Gran barra de pintxos recién salidos de cocina y excelentes vinos andaluces.",
+    "categories": [
+      "gastronomia"
+    ],
+    "aliases": [
+      "taberna del pintxo",
+      "pintxos",
+      "tapas casco antiguo"
+    ],
+    "kind": "food",
+    "popularity": 95,
+    "rating": 4.6,
+    "reviewsCount": 2340,
+    "hours": "Todos los días: 12:30 - 00:00",
+    "price": "Tapas y pintxos desde 2,50 € · Ticket medio 18 €",
+    "address": "Avenida Miguel Cano, 7, 29601 Marbella, Málaga",
+    "photo": "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=800&q=80",
+    "googleMapsUrl": "https://maps.google.com/?q=La+Taberna+del+Pintxo+Marbella",
+    "partner": true,
+    "partnerPerk": "10% de descuento en barra y copa de vino de bienvenida con tu ruta"
+  },
+  {
+    "id": "cafe-alameda",
+    "name": "Cafetería Parque Alameda",
+    "area": "Centro",
+    "lat": 36.5088,
+    "lon": -4.8875,
+    "tags": [
+      "gastronomia"
+    ],
+    "visitMinutes": 20,
+    "budget": "bajo",
+    "stairs": false,
+    "description": "Cafetería afiliada con terraza sombreada frente al parque. Repostería artesana, cafés especiales y zumos naturales.",
+    "categories": [
+      "gastronomia"
+    ],
+    "aliases": [
+      "café alameda",
+      "café",
+      "pausa café"
+    ],
+    "kind": "food",
+    "popularity": 89,
+    "rating": 4.5,
+    "reviewsCount": 780,
+    "hours": "Lun - Dom: 08:00 - 22:00",
+    "price": "Café 1,80 € · Desayunos completos 4,50 €",
+    "address": "Paseo de la Alameda, 2, 29601 Marbella, Málaga",
+    "photo": "https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?auto=format&fit=crop&w=800&q=80",
+    "googleMapsUrl": "https://maps.google.com/?q=Cafeteria+Alameda+Marbella",
+    "partner": true,
+    "partnerPerk": "Degustación de dulce típico local de cortesía con tu consumición"
+  },
+  {
+    "id": "puente-romano",
+    "name": "Puente Romano de Marbella",
+    "area": "Milla de Oro",
+    "lat": 36.4998,
+    "lon": -4.9205,
+    "tags": [
+      "historia",
+      "arquitectura"
+    ],
+    "visitMinutes": 15,
+    "budget": "gratis",
+    "stairs": false,
+    "description": "Puente de origen romano del siglo I d.C. que formaba parte de la antigua Vía Augusta. Un vestigio milenario en el corazón de la Milla de Oro.",
+    "categories": [
+      "historia",
+      "arquitectura"
+    ],
+    "aliases": [
+      "puente romano",
+      "puente de la milla de oro"
+    ],
+    "kind": "sight",
+    "popularity": 91,
+    "rating": 4.6,
+    "reviewsCount": 1180,
+    "hours": "Abierto 24 horas",
+    "price": "Acceso gratuito",
+    "address": "Bulevar Príncipe Alfonso von Hohenlohe, 29602 Marbella, Málaga",
+    "photo": "https://images.unsplash.com/photo-1513694203232-719a280e022f?auto=format&fit=crop&w=800&q=80",
+    "googleMapsUrl": "https://maps.google.com/?q=Puente+Romano+Marbella"
+  },
+  {
+    "id": "paseo-milla-oro",
+    "name": "Paseo Marítimo Milla de Oro",
+    "area": "Milla de Oro",
+    "lat": 36.4955,
+    "lon": -4.9315,
+    "tags": [
+      "naturaleza",
+      "familia"
+    ],
+    "visitMinutes": 20,
+    "budget": "gratis",
+    "stairs": false,
+    "description": "Espectacular senda costera pavimentada de madera y carril bici que conecta Marbella con Puerto Banús con vistas panorámicas al Estrecho y Gibraltar.",
+    "categories": [
+      "naturaleza"
+    ],
+    "aliases": [
+      "paseo milla de oro",
+      "milla de oro",
+      "paseo litoral"
+    ],
+    "kind": "sight",
+    "popularity": 92,
+    "rating": 4.8,
+    "reviewsCount": 3410,
+    "hours": "Abierto 24 horas",
+    "price": "Acceso gratuito",
+    "address": "Paseo Marítimo Milla de Oro, 29602 Marbella, Málaga",
+    "photo": "https://images.unsplash.com/photo-1473496169904-658ba7c44d8a?auto=format&fit=crop&w=800&q=80",
+    "googleMapsUrl": "https://maps.google.com/?q=Paseo+Maritimo+Milla+de+Oro+Marbella"
+  },
+  {
+    "id": "banus-lounge",
+    "name": "Banús Marina Lounge & Tapas",
+    "area": "Puerto Banús",
+    "lat": 36.488,
+    "lon": -4.951,
+    "tags": [
+      "compras",
+      "gastronomia"
+    ],
+    "visitMinutes": 30,
+    "budget": "medio",
+    "stairs": false,
+    "description": "Restaurante afiliado en primera línea de atraque. Cocina mediterránea de autor, cócteles y vistas directas a los yates.",
+    "categories": [
+      "gastronomia"
+    ],
+    "aliases": [
+      "banus lounge",
+      "tapas puerto banus",
+      "marina lounge"
+    ],
+    "kind": "food",
+    "popularity": 93,
+    "rating": 4.6,
+    "reviewsCount": 1820,
+    "hours": "Todos los días: 12:00 - 02:00",
+    "price": "Tapas desde 4,50 € · Menú degustación 35 €",
+    "address": "Muelle de Levante, local 4, 29660 Puerto Banús, Málaga",
+    "photo": "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=800&q=80",
+    "googleMapsUrl": "https://maps.google.com/?q=Puerto+Banus+Marina+Lounge",
+    "partner": true,
+    "partnerPerk": "Copa de cava de bienvenida y mesa prioritaria en terraza"
   }
 ]
