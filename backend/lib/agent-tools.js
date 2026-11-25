@@ -11,8 +11,26 @@ import {
   historyUpdate, insertRoute, readRoute, undoUpdate, updateRoute, writePreferences
 } from './trip-store.js';
 
-/** A refused tool call: its message (Spanish) goes back to the model and, if never fixed, to the visitor. */
-export class ToolError extends Error {}
+/**
+ * A refused tool call. `forModel` goes back to the decision model and may quote its own arguments and the closest
+ * catalog names; `forVisitor` becomes the `rejected` reason when the model never fixes the call, so it is a fixed
+ * Spanish text (or one built from catalog data only), never model input.
+ */
+export class ToolError extends Error {
+  constructor(forModel, forVisitor = forModel) {
+    super(forModel);
+    this.reason = forVisitor;
+  }
+}
+
+// Fixed visitor texts for refusals whose model message quotes the model's own arguments.
+export const VISITOR = {
+  generic: 'No he podido hacer ese cambio.',
+  place: 'No conozco ese lugar en Marbella.',
+  time: 'Esa fecha u hora no es válida.',
+  past: 'Esa fecha u hora ya ha pasado.',
+  conflict: 'La ruta ha cambiado en otra pantalla mientras tanto; vuelve a pedírmelo.'
+};
 
 export const INTERESTS = ['arquitectura', 'gastronomia', 'museos', 'naturaleza', 'historia', 'compras', 'vida_nocturna', 'arte_urbano'];
 const PACES = ['relajado', 'equilibrado', 'intenso'];
@@ -27,7 +45,7 @@ export const DEFAULT_MINUTES = 180;
 
 // Small models often send null or "" for an argument they do not use: both mean "absent".
 const absent = value => value === undefined || value === null || value === '';
-const bad = field => new ToolError(`Revisa el argumento ${field}.`);
+const bad = field => new ToolError(`Revisa el argumento ${field}.`, VISITOR.generic);
 
 function text(value, field, max = 120) {
   if (absent(value)) return undefined;
@@ -36,24 +54,26 @@ function text(value, field, max = 120) {
 }
 function choice(value, field, allowed) {
   if (absent(value)) return undefined;
-  if (!allowed.includes(value)) throw new ToolError(`${field} debe ser uno de: ${allowed.join(', ')}.`);
+  if (!allowed.includes(value)) throw new ToolError(`${field} debe ser uno de: ${allowed.join(', ')}.`, VISITOR.generic);
   return value;
 }
 function integer(value, field, min, max) {
   if (absent(value)) return undefined;
   const number = typeof value === 'string' && /^\d+$/.test(value.trim()) ? Number(value) : value;
-  if (!Number.isInteger(number) || number < min || number > max) throw new ToolError(`${field} debe ser un número entero entre ${min} y ${max}.`);
+  if (!Number.isInteger(number) || number < min || number > max) {
+    throw new ToolError(`${field} debe ser un número entero entre ${min} y ${max}.`, VISITOR.generic);
+  }
   return number;
 }
 function date(value, field) {
   if (absent(value)) return undefined;
-  if (!validDate(value)) throw new ToolError(`${field} debe ser una fecha AAAA-MM-DD.`);
+  if (!validDate(value)) throw new ToolError(`${field} debe ser una fecha AAAA-MM-DD.`, VISITOR.time);
   return value;
 }
 function time(value, field) {
   if (absent(value)) return undefined;
   const padded = typeof value === 'string' && /^\d:\d\d$/.test(value) ? '0' + value : value;
-  if (!validTime(padded)) throw new ToolError(`${field} debe ser una hora HH:MM.`);
+  if (!validTime(padded)) throw new ToolError(`${field} debe ser una hora HH:MM.`, VISITOR.time);
   return padded;
 }
 function list(value, field, max) {
@@ -93,9 +113,11 @@ export function matchStop(label, route) {
 }
 function place(value, field) {
   const label = text(value, field);
-  if (!label) throw new ToolError(`Falta ${field}.`);
+  if (!label) throw new ToolError(`Falta ${field}.`, VISITOR.generic);
   const found = resolvePlace(label);
-  if (!found) throw new ToolError(`No conozco «${label}» en Marbella. Lugares parecidos: ${closestPlaces(label).join(', ')}.`);
+  if (!found) {
+    throw new ToolError(`No conozco «${label}» en Marbella. Lugares parecidos: ${closestPlaces(label).join(', ')}.`, VISITOR.place);
+  }
   return found;
 }
 
@@ -144,9 +166,12 @@ async function changeRoute(ctx, mutate) {
       ctx.route = updated;
       return { before: row.itinerary, after: updated.itinerary, changed: true };
     }
-    if (attempt === 1) throw new ApiError(409, 'ROUTE_CHANGED', 'La ruta ha cambiado. Vuelve a abrirla.');
+    if (attempt === 1) throw conflict();
   }
 }
+// A second ROUTE_CHANGED inside one turn is a refusal, not a 409, so the turn (and its memory) still completes.
+const conflict = () => new ToolError('La ruta ha cambiado en otra pantalla mientras tanto; vuelve a leerla antes de cambiarla.',
+  VISITOR.conflict);
 const changed = (ctx, change, result, summary) => ({
   summary, ...(result.changed ? { event: { type: 'route_changed', routeId: ctx.routeId, change } } : {})
 });
@@ -155,6 +180,14 @@ const changed = (ctx, change, result, summary) => ({
 
 /** "HH:MM" rounded up to the next quarter hour. */
 export const nextQuarter = now => clock(Math.ceil((minutes(now) + 1) / 15) * 15);
+const LAST_MINUTE = 23 * 60 + 59;
+
+// No route in the past: a date before the visitor's today, or a start earlier than now for today.
+function notInThePast(day, from, ctx) {
+  const { today, now } = ctx.client;
+  if (day < today) throw new ToolError(`date ${day} es anterior a hoy (${today}).`, VISITOR.past);
+  if (day === today && from && from < now) throw new ToolError(`from ${from} es anterior a la hora actual (${now}).`, VISITOR.past);
+}
 
 function timeWindow(args, ctx, assumptions) {
   const duration = args.durationMinutes ?? DEFAULT_MINUTES;
@@ -166,19 +199,19 @@ function timeWindow(args, ctx, assumptions) {
   };
   let from = args.from;
   let to = args.to;
-  if (from && !to) {
-    to = minutes(from) + duration;
-    if (durationAssumed) assumptions.push('3 horas');
-  } else if (!from && to) {
+  if (!from && to) {
     from = args.durationMinutes ? minutes(to) - duration : null;
     from = from !== null && from >= 0 ? clock(from) : defaultFrom();
-  } else if (!from) {
-    from = defaultFrom();
+  } else if (!to) {
+    from ??= defaultFrom();
     to = minutes(from) + duration;
-    if (durationAssumed) assumptions.push('3 horas');
+    // A window cut at midnight is not the duration the visitor asked for (or was told): say where it ends.
+    if (to > LAST_MINUTE) assumptions.push('hasta las 23:59');
+    else if (durationAssumed) assumptions.push('3 horas');
+    to = clock(Math.min(to, LAST_MINUTE));
   }
-  if (typeof to === 'number') to = clock(Math.min(to, 23 * 60 + 59));
   if (minutes(from) >= 24 * 60 || from >= to) throw new ToolError('No queda tiempo para esa ruta en ese día. Pide otro día u otra hora.');
+  notInThePast(args.date, from, ctx);
   return { from, to };
 }
 
@@ -196,8 +229,7 @@ export const tools = {
       start: str('Starting place name from starts or places; default Plaza de los Naranjos.'),
       mustInclude: { type: 'array', items: { type: 'string' }, description: 'Place names the visitor asked for.' },
       interests: { type: 'array', items: { type: 'string', enum: INTERESTS } },
-      pace: { type: 'string', enum: PACES }, budget: { type: 'string', enum: BUDGETS }, company: { type: 'string', enum: COMPANIES },
-      assumptions: { type: 'array', items: { type: 'string' }, description: 'Every default you used, in Spanish.' }
+      pace: { type: 'string', enum: PACES }, budget: { type: 'string', enum: BUDGETS }, company: { type: 'string', enum: COMPANIES }
     },
     validate(raw) {
       const args = {
@@ -210,19 +242,23 @@ export const tools = {
       if (args.start) {
         const label = localStart(args.start) ?? resolvePlace(args.start)?.name;
         if (!label || !localStart(label)) {
-          throw new ToolError(`No conozco «${args.start}» como punto de salida. Lugares parecidos: ${closestPlaces(args.start).join(', ')}.`);
+          throw new ToolError(`No conozco «${args.start}» como punto de salida. Lugares parecidos: ${closestPlaces(args.start).join(', ')}.`,
+            VISITOR.place);
         }
         args.start = label;
       }
       args.mustInclude = (list(raw.mustInclude, 'mustInclude', 5) ?? []).map(label => {
         const p = place(label, 'mustInclude');
-        if (p.kind === 'pause') throw new ToolError('Una pausa no es una parada imprescindible; usa quick_change anadir_pausa.');
+        if (p.kind === 'pause') {
+          throw new ToolError('Una pausa no es una parada imprescindible; usa quick_change anadir_pausa.',
+            'Una pausa no puede ser una parada imprescindible; pídemela como pausa para café.');
+        }
         return p.name;
       });
       return args;
     },
     async execute(args, ctx) {
-      // The event lists the defaults the server applied; the model's own assumptions are not trusted as facts.
+      // The event lists the defaults the server applied (the model is never asked for them).
       const assumptions = [];
       const day = args.date ?? ctx.client.today;
       if (!args.date) assumptions.push('hoy');
@@ -244,7 +280,8 @@ export const tools = {
     }
   },
   reschedule: {
-    description: 'Change the date or time window of the current route (stops that no longer fit are dropped from the end).',
+    description: 'Change the date, start time, end time or duration of the current route (stops that no longer fit are ' +
+      'dropped from the end). It cannot change the starting place.',
     parameters: {
       date: str('YYYY-MM-DD.'), from: str('New start HH:MM.'), to: str('New end HH:MM.'),
       durationMinutes: { type: 'integer', description: '20 to 480.' }
@@ -258,13 +295,15 @@ export const tools = {
     async execute(args, ctx) {
       const result = await changeRoute(ctx, (route, row) => {
         const old = route.request.timeWindow;
+        // A new date or start time must not be in the past; moving the end of a route already under way is fine.
+        if (args.date || args.from) notInThePast(args.date ?? route.request.date, args.from ?? old.from, ctx);
         const length = args.durationMinutes ?? minutes(old.to) - minutes(old.from);
         let { from, to } = args;
-        if (from && !to) to = clock(Math.min(minutes(from) + length, 23 * 60 + 59));
+        if (from && !to) to = clock(Math.min(minutes(from) + length, LAST_MINUTE));
         else if (!from && to) from = args.durationMinutes ? clock(Math.max(0, minutes(to) - length)) : old.from;
         else if (!from && !to) {
           from = old.from;
-          to = clock(Math.min(minutes(from) + length, 23 * 60 + 59));
+          to = clock(Math.min(minutes(from) + length, LAST_MINUTE));
         }
         return refineTrip(route, { type: 'reschedule', date: args.date, timeWindow: { from, to } }, row.preferences);
       });
@@ -332,7 +371,7 @@ export const tools = {
     required: ['value'],
     validate(raw) {
       const value = choice(raw.value, 'value', QUICK);
-      if (!value) throw new ToolError(`value debe ser uno de: ${QUICK.join(', ')}.`);
+      if (!value) throw new ToolError(`value debe ser uno de: ${QUICK.join(', ')}.`, VISITOR.generic);
       return { value };
     },
     async execute(args, ctx) {
@@ -356,7 +395,7 @@ export const tools = {
         if (updated) {
           ctx.route = updated;
           undone++;
-        } else if (++attempt > 1) throw new ApiError(409, 'ROUTE_CHANGED', 'La ruta ha cambiado. Vuelve a abrirla.');
+        } else if (++attempt > 1) throw conflict();
       }
       if (!undone) throw new ToolError('No hay ningún cambio que deshacer.');
       return { summary: `Deshecho: ${stateLine(ctx.route.itinerary)}`, event: { type: 'undone', routeId: ctx.routeId } };
@@ -374,8 +413,8 @@ export const tools = {
         interests: interests(raw.interests), pace: choice(raw.pace, 'pace', PACES), budget: choice(raw.budget, 'budget', BUDGETS),
         company: choice(raw.company, 'company', COMPANIES), transport: list(raw.transport, 'transport', 4)
       }).filter(([, value]) => value !== undefined && !(Array.isArray(value) && !value.length)));
-      if (partial.transport?.some(mode => !TRANSPORTS.includes(mode))) throw new ToolError(`transport admite: ${TRANSPORTS.join(', ')}.`);
-      if (!Object.keys(partial).length) throw new ToolError('Indica qué preferencia cambia.');
+      if (partial.transport?.some(mode => !TRANSPORTS.includes(mode))) throw new ToolError(`transport admite: ${TRANSPORTS.join(', ')}.`, VISITOR.generic);
+      if (!Object.keys(partial).length) throw new ToolError('Indica qué preferencia cambia.', VISITOR.generic);
       return partial;
     },
     async execute(partial, ctx) {
@@ -397,18 +436,32 @@ export const toolSchemas = Object.entries(tools).map(([name, tool]) => ({
 }));
 
 /**
- * Runs one tool call. Refusals (unknown tool, invalid arguments, planner 400s) come back as { ok: false, error };
- * anything else (database, conflicts) propagates.
+ * Runs one tool call. Refusals (unknown tool, invalid arguments, planner 400s, a repeated revision conflict) come
+ * back as { ok: false, error, reason }: `error` for the decision model, `reason` safe to show the visitor. Planner
+ * 400 messages only quote catalog names, so they serve as both. Anything else (database) propagates.
  */
 export async function runTool(call, ctx) {
   const tool = Object.hasOwn(tools, call.name) ? tools[call.name] : null;
-  if (!tool) return { ok: false, error: `La herramienta ${String(call.name).slice(0, 40)} no existe.` };
+  if (!tool) return { ok: false, error: `La herramienta ${String(call.name).slice(0, 40)} no existe.`, reason: VISITOR.generic };
   try {
     const raw = call.arguments && typeof call.arguments === 'object' && !Array.isArray(call.arguments) ? call.arguments : {};
     const result = await tool.execute(tool.validate(raw, ctx), ctx);
     return { ok: true, summary: result.summary, ...(result.event ? { event: result.event } : {}) };
   } catch (error) {
-    if (error instanceof ToolError || (error instanceof ApiError && error.status === 400)) return { ok: false, error: error.message };
+    if (error instanceof ToolError) return { ok: false, error: error.message, reason: error.reason };
+    if (error instanceof ApiError && error.status === 400) return { ok: false, error: error.message, reason: error.message };
     throw error;
   }
+}
+
+/**
+ * What a call acts on, to tell a correction from a different request: the resolved place, the quick change, or ''
+ * for tools without one; null when the target itself is unknown (any later success of that tool then fixes it).
+ */
+const placeTools = new Set(['add_stop', 'remove_stop', 'replace_stop', 'lock_stop']);
+export function callTarget(call) {
+  const args = call.arguments && typeof call.arguments === 'object' ? call.arguments : {};
+  if (placeTools.has(call.name)) return typeof args.place === 'string' ? resolvePlace(args.place)?.id ?? null : null;
+  if (call.name === 'quick_change') return QUICK.includes(args.value) ? args.value : null;
+  return '';
 }

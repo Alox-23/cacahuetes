@@ -39,7 +39,7 @@ test('decide usa /api/chat nativo con herramientas, keep_alive y opciones del mo
   assert.equal(body.model, 'qwen2.5:3b');
   assert.equal(body.stream, false);
   assert.equal(body.keep_alive, '1h');
-  assert.deepEqual(body.options, { num_ctx: 4096, temperature: 0.1 });
+  assert.deepEqual(body.options, { num_ctx: 4096, temperature: 0.1, num_predict: 192 });
   assert.deepEqual(body.tools, tools);
   assert.deepEqual(client.status(), { model: 'qwen2.5:7b', agentModel: 'qwen2.5:3b' });
 });
@@ -102,4 +102,34 @@ test('un único limitador para los dos modelos: la cola caduca sin llamar a Olla
   await new Promise(setImmediate);
   releases[1]();
   assert.deepEqual((await second).toolCalls, []);
+});
+
+test('el plazo del turno limita el tiempo de cada llamada y la espera en la cola', async () => {
+  let fetches = 0;
+  const slow = createOllamaClient({ agentTimeoutMs: 60_000, timeoutMs: 60_000, fetchImpl: (url, init) => {
+    fetches++;
+    return hang(url, init);
+  } });
+  const started = Date.now();
+  const late = await warnings(() => assert.rejects(slow.decide([], tools, { deadline: Date.now() + 30 }),
+    error => error.reason === 'timeout'));
+  assert.ok(Date.now() - started < 5000);
+  assert.deepEqual(late, [['Cacahuete agent fallback:', 'decide timeout']]);
+  // A deadline already gone: no request at all.
+  const gone = await warnings(() => assert.rejects(slow.narrate([], {}, { deadline: Date.now() - 1 }),
+    error => error.reason === 'timeout'));
+  assert.deepEqual(gone, [['Cacahuete agent fallback:', 'narrate timeout']]);
+  assert.equal(fetches, 1);
+
+  const releases = [];
+  const busy = createOllamaClient({ concurrency: 1, queueMs: 60_000,
+    fetchImpl: () => new Promise(resolve => releases.push(() => resolve(reply({ content: '{"text":"Hola"}' })))) });
+  const first = busy.narrate([], {});
+  const waited = Date.now();
+  const queued = await warnings(() => assert.rejects(busy.decide([], tools, { deadline: Date.now() + 30 }),
+    error => error.reason === 'queue'));
+  assert.ok(Date.now() - waited < 5000);
+  assert.deepEqual(queued, [['Cacahuete agent fallback:', 'decide queue']]);
+  releases[0]();
+  await first;
 });

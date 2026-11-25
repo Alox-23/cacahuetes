@@ -57,6 +57,6 @@ export function describe(events, route) {
 
 /** Default chips by state when the narrator gave none. */
 export function suggestionsFor(events, route) {
-  if (route) return ['Menos caminar', 'Añade una pausa para café', 'Guardar la ruta'];
+  if (route) return ['Menos caminar', 'Añade una pausa para café', 'Acabar media hora antes'];
   return ['Tengo 3 horas y me gusta la historia', 'Una ruta de tapas por el casco antiguo', 'Un paseo por la playa esta tarde'];
 }

@@ -213,7 +213,9 @@ test('Premium se activa mediante pago firmado y recalcula con escenario de aflue
 });
 
 test('agent: turno conversacional con un Ollama simulado, rutas ajenas, cuota y health', async () => {
+  let fetches = 0;
   const ollama = createOllamaClient({ agentModel: 'qwen2.5:3b', fetchImpl: async (url, init) => {
+    fetches++;
     const body = JSON.parse(init.body);
     const last = body.messages.at(-1);
     const message = { role: 'assistant', content: '' };
@@ -257,6 +259,8 @@ test('agent: turno conversacional con un Ollama simulado, rutas ajenas, cuota y 
   assert.equal(malaga.status, 400);
   assert.equal((await malaga.json()).error.code, 'UNSUPPORTED_CITY');
 
+  // A refused quota (429, 403) never reaches the model.
+  const modelCalls = fetches;
   const network = createHmac('sha256', process.env.QUOTA_SECRET).update('192.0.2.41').digest('hex');
   await db.query('INSERT INTO rate_limits(subject, bucket, hits) VALUES ($1, floor(extract(epoch FROM now()) / 60)::bigint, 20)',
     [`agent:${network}`]);
@@ -269,6 +273,7 @@ test('agent: turno conversacional con un Ollama simulado, rutas ajenas, cuota y 
   const expired = await ask({ text: 'Quiero una ruta' });
   assert.equal(expired.status, 403);
   assert.equal((await expired.json()).error.code, 'AGENT_TIME_EXPIRED');
+  assert.equal(fetches, modelCalls);
 
   const health = await (await agentHandle(new Request(`${base}?action=health`, { headers: { origin } }), '127.0.0.1')).json();
   assert.equal(health.llm.agentModel, 'qwen2.5:3b');

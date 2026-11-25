@@ -19,12 +19,13 @@ export function logFallback(stage, reason) {
   console.warn('Cacahuete agent fallback:', `${stage} ${reason}`);
 }
 
-// Same semantics as the narrator's queue: `concurrency` calls at once, the rest wait up to `wait` ms.
+// Same semantics as the narrator's queue: `concurrency` calls at once, the rest wait up to `wait` ms (or less,
+// `maxWait`, when the turn's deadline is closer).
 function createLimiter(concurrency, wait) {
   let active = 0;
   const queue = new Set();
   return {
-    acquire() {
+    acquire(maxWait = Infinity) {
       if (active < concurrency()) {
         active++;
         return Promise.resolve(true);
@@ -37,7 +38,7 @@ function createLimiter(concurrency, wait) {
         const timer = setTimeout(() => {
           queue.delete(admit);
           resolve(false);
-        }, wait());
+        }, Math.max(0, Math.min(wait(), maxWait)));
         queue.add(admit);
       });
     },
@@ -83,14 +84,17 @@ export function createOllamaClient({
   const limiter = createLimiter(() => concurrency ?? envNumber('OLLAMA_CONCURRENCY', 2),
     () => queueMs ?? envNumber('OLLAMA_QUEUE_MS', 30_000));
 
-  async function chat(stage, body, timeout) {
+  // `deadline` (epoch ms, optional) caps both the queue wait and the call's own timeout.
+  async function chat(stage, body, timeout, deadline = Infinity) {
     const fail = reason => {
       logFallback(stage, reason);
       return new OllamaFailure(stage, reason);
     };
-    if (!await limiter.acquire()) throw fail('queue');
+    const left = () => deadline - Date.now();
+    if (left() <= 0) throw fail('timeout');
+    if (!await limiter.acquire(left())) throw fail('queue');
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), timeout);
+    const timer = setTimeout(() => controller.abort(), Math.max(0, Math.min(timeout, left())));
     let step = 'fetch';
     try {
       const response = await fetchImpl(base() + '/api/chat', {
@@ -118,12 +122,15 @@ export function createOllamaClient({
   }
 
   return {
-    /** One decision round: the visible text (discarded by the agent) and the tool calls, in order. */
-    async decide(messages, tools) {
+    /**
+     * One decision round: the visible text (discarded by the agent) and the tool calls, in order. A few tool calls
+     * fit in 192 tokens; a longer answer is cut (done_reason 'length') and counts as a failure.
+     */
+    async decide(messages, tools, { deadline } = {}) {
       const message = await chat('decide', {
         model: agentModel ?? defaultAgentModel(), messages, tools,
-        options: { num_ctx: 4096, temperature: 0.1 }
-      }, agentTimeoutMs ?? envNumber('OLLAMA_AGENT_TIMEOUT_MS', 15_000));
+        options: { num_ctx: 4096, temperature: 0.1, num_predict: 192 }
+      }, agentTimeoutMs ?? envNumber('OLLAMA_AGENT_TIMEOUT_MS', 15_000), deadline);
       const content = typeof message.content === 'string' ? message.content : '';
       let toolCalls;
       try {
@@ -137,11 +144,11 @@ export function createOllamaClient({
       return { content, toolCalls };
     },
     /** The narrator's reply, constrained by a JSON schema; returns the parsed object. */
-    async narrate(messages, schema) {
+    async narrate(messages, schema, { deadline } = {}) {
       const message = await chat('narrate', {
         model: model ?? defaultModel(), messages, format: schema,
         options: { num_ctx: 4096, temperature: 0.3, num_predict: 320 }
-      }, timeoutMs ?? envNumber('OLLAMA_TIMEOUT_MS', 20_000));
+      }, timeoutMs ?? envNumber('OLLAMA_TIMEOUT_MS', 20_000), deadline);
       try {
         return JSON.parse(message.content);
       } catch {
