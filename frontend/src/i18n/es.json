@@ -148,6 +148,7 @@
     "suggestion2": "Un día en familia por la Alameda y la Fontanilla",
     "suggestion3": "Puerto Banús y Playa del Duque a pie por la tarde",
     "examplesLabel": "Ejemplos",
+    "examplesHint": "Al pulsar un ejemplo se copia en el cuadro de texto para que lo edites.",
     "example1": "Casco antiguo y tapas en Marbella, 5 horas",
     "example2": "Un día en familia por la Alameda y la Fontanilla",
     "example3": "Puerto Banús y Playa del Duque a pie por la tarde",
@@ -159,7 +160,8 @@
     "placeholder": "Responde o añade algo",
     "placeholderSummary": "Corrige o añade algo",
     "placeholderAgent": "Cuéntame más o pídeme un cambio",
-    "note": "El asistente solo pregunta lo que falta. Tus preferencias guardadas se aplican solas."
+    "note": "El asistente solo pregunta lo que falta. Tus preferencias guardadas se aplican solas.",
+    "noteAgent": "Cacahuete decide los cambios con lo que le cuentas; puedes corregirle en la siguiente frase."
   },
   "request": {
     "generic": "Vamos a preparar tu paseo por Marbella.",
@@ -307,10 +309,20 @@
   "agent": {
     "greetingRoute": "Aquí tienes tu ruta. Dime qué cambio quieres, por ejemplo quitar una parada, acabar antes o añadir un café.",
     "degraded": "Modo sin IA: he respondido con reglas sencillas.",
-    "reuse": "Quiero repetir una ruta el {date} de {from} a {to}, saliendo desde {start}.",
-    "reuseWith": "Quiero repetir una ruta el {date} de {from} a {to}, saliendo desde {start}, con {places}.",
+    "routeGone": "Esa ruta ya no está disponible. Pídeme otra cuando quieras.",
+    "reuse": "Quiero repetir una ruta el {date} ({iso}) de {from} a {to}, saliendo desde {start}.",
+    "reuseWith": "Quiero repetir una ruta el {date} ({iso}) de {from} a {to}, saliendo desde {start}, con {places}.",
+    "reusePrefs": {
+      "lead": "Para esta ruta: {list}.",
+      "interests": "intereses {list}",
+      "pace": "ritmo {pace}",
+      "budget": "presupuesto {budget}",
+      "company": "voy {company}",
+      "transport": "me muevo {list}"
+    },
     "event": {
       "created": "Ruta creada: {name}, {stops} de {from} a {to}.",
+      "createdShort": "He creado una ruta nueva.",
       "assumptions": "He supuesto: {list}.",
       "changed": "He cambiado la ruta.",
       "undone": "He deshecho el último cambio.",
@@ -318,11 +330,10 @@
         "add_stop": "He añadido una parada.",
         "remove_stop": "He quitado una parada.",
         "replace_stop": "He cambiado una parada por otra.",
-        "swap_stop": "He cambiado una parada por otra.",
-        "lock_stop": "He cambiado qué paradas están fijadas.",
+        "lock_stop": "He fijado o liberado una parada.",
         "reschedule": "He cambiado el horario.",
-        "menos_caminar": "Ahora caminas menos.",
-        "mas_comida": "He añadido más comida.",
+        "menos_caminar": "He acortado los paseos a pie.",
+        "mas_comida": "He añadido más paradas de comida.",
         "mas_barato": "He buscado opciones más baratas.",
         "anadir_pausa": "He añadido una pausa para café."
       }

@@ -12,7 +12,7 @@ import {
 } from 'react'
 import { useInRouterContext, useLocation, useNavigate } from 'react-router-dom'
 import { createAssistant, type MockAssistant } from '../assistant/mockAssistant'
-import type { AssistantDeps, AssistantMode, RichReply } from '../assistant/types'
+import type { AssistantDeps, AssistantMode, AssistantTurn, RichReply } from '../assistant/types'
 import { Toast } from '../components/Toast/Toast'
 import type { DataModule, Preferences, Route, RouteRequest, Session } from '../contract/types'
 import { isApiError } from '../data/errors'
@@ -36,7 +36,14 @@ export type { ThreadItem } from './thread'
 
 type SendInput = { text?: string; option?: string }
 
-type StartOpts = { key?: string; route?: Route; request?: RouteRequest; greet?: boolean }
+type StartOpts = {
+  key?: string
+  route?: Route
+  request?: RouteRequest
+  greet?: boolean
+  /** Feature 5: chips the change greeting offers (those of the turn that created the route). */
+  suggestions?: string[]
+}
 
 type EnsureOpts = {
   key: string
@@ -73,6 +80,14 @@ export type Creation = {
   route?: Route
   /** The route view has been shown: the creation is over. */
   seen?: boolean
+  /** Which conversation asked for it: the request chat, or a change chat ("hazme otra ruta", feature 5). */
+  origin: 'request' | 'change'
+  /** Feature 5: the agent already created the route; the steps only play it back, so it cannot be cancelled. */
+  existing?: boolean
+  /** Feature 5 (mobile): the chat already opened /creating for it (Back must not push it again). */
+  handedOver?: boolean
+  /** Feature 5: the chips of the turn that created the route, carried into the change greeting. */
+  suggestions?: string[]
 }
 
 type AppStateValue = {
@@ -108,7 +123,9 @@ type AppStateValue = {
    * Feature 5: the agent already created `route`; play the same four Creando steps (Peanut Run on mobile,
    * the progress item on desktop) and finish like a creation (current route, change mode armed).
    */
-  completeCreation: (route: Route, mode?: AssistantMode) => void
+  completeCreation: (route: Route, mode?: AssistantMode, suggestions?: string[]) => void
+  /** Feature 5 (mobile): the chat has opened /creating for this creation. */
+  markHandedOver: (creationId: string) => void
   /** Feature 5: request and change modes run the conversational agent (API mode). */
   conversational: boolean
   /**
@@ -165,7 +182,7 @@ function waitText(seconds: number): string {
 }
 
 /** What the chat says when the assistant fails: the API's quota and rate errors get their own reply. */
-export function errorReply(error: unknown, sessionKind: Session['kind']): RichReply {
+export function errorReply(error: unknown, sessionKind: Session['kind'], mode: AssistantMode = 'request'): RichReply {
   if (isApiError(error, 'AGENT_TIME_EXPIRED')) {
     const quota = error.details.quota as { plan?: unknown } | undefined
     const plan = typeof quota?.plan === 'string' ? quota.plan : sessionKind
@@ -186,7 +203,11 @@ export function errorReply(error: unknown, sessionKind: Session['kind']): RichRe
     }
   }
   // Feature 5: the agent refuses other cities before any model call (no slot flow, so no city option).
-  if (isApiError(error, 'UNSUPPORTED_CITY')) return { kind: 'question', text: t('request.localOnly') }
+  if (isApiError(error, 'UNSUPPORTED_CITY')) {
+    return { kind: 'question', text: mode === 'change' ? t('request.localChange') : t('request.localOnly') }
+  }
+  // Feature 5: the route of the conversation was deleted or is not this visitor's (the agent forgot it).
+  if (isApiError(error, 'ROUTE_NOT_FOUND')) return { kind: 'question', text: t('agent.routeGone') }
   if (isApiError(error, 'RATE_LIMITED')) {
     const raw = Number(error.details.retryAfterSeconds)
     const seconds = Number.isFinite(raw) && raw > 0 ? Math.ceil(raw) : 60
@@ -350,7 +371,7 @@ export function AppStateProvider({
   const assistantFor = (mode: AssistantMode) => (assistants.current as Record<AssistantMode, MockAssistant>)[mode]
   const conversational = assistants.current.request.conversational === true
   // Set below, once the creation state exists; send() reads it at call time.
-  const completeCreationRef = useRef<(route: Route, mode?: AssistantMode) => void>(() => {})
+  const completeCreationRef = useRef<(route: Route, mode?: AssistantMode, suggestions?: string[]) => void>(() => {})
 
   const send = useCallback(
     async (mode: AssistantMode, input: SendInput, echo?: string) => {
@@ -368,12 +389,14 @@ export function AppStateProvider({
         ...(userText ? [{ id: nextId(), mode, epoch, kind: 'user' as const, text: userText }] : []),
       ])
       setPending((p) => ({ ...p, [mode]: true }))
-      let reply: RichReply
+      let turn: AssistantTurn
       try {
-        reply = await assistantFor(mode).sendMessage(input)
+        turn = await assistantFor(mode).sendMessage(input)
       } catch (error) {
-        reply = errorReply(error, sessionKind.current)
+        turn = errorReply(error, sessionKind.current, mode)
       }
+      // The thread (persisted, capped) keeps only the created route's id, never the route itself.
+      const { createdRoute, ...reply } = turn
       // A change reply may have edited the route through a path the provider does not see
       // (the API's refineConversation or agent): route views refetch either way.
       if (mode === 'change' || reply.kind === 'change') bump()
@@ -382,7 +405,7 @@ export function AppStateProvider({
       setPending((p) => ({ ...p, [mode]: false }))
       append([{ id: nextId(), mode, epoch, kind: 'assistant', reply }])
       // Feature 5: the agent created a route in this turn; hand over to the Creando steps.
-      if (reply.display?.created) completeCreationRef.current(reply.display.created, mode)
+      if (createdRoute) completeCreationRef.current(createdRoute, mode, reply.options?.map((o) => o.label))
       return reply
     },
     [append, setThread, bump],
@@ -396,7 +419,7 @@ export function AppStateProvider({
       busy.current[mode] = false
       setPending((p) => ({ ...p, [mode]: false }))
       keys.current[mode] = opts.key
-      assistantFor(mode).reset(mode, { route: opts.route, request: opts.request })
+      assistantFor(mode).reset(mode, { route: opts.route, request: opts.request, suggestions: opts.suggestions })
       if (opts.greet) void send(mode, {})
     },
     [send],
@@ -472,7 +495,7 @@ export function AppStateProvider({
         { id: nextId(), mode: 'request', epoch, kind: 'user', text: t('summary.create'), desktopOnly: true },
         { id, mode: 'request', epoch, kind: 'progress', request, status: 'running', desktopOnly: true },
       ])
-      setCreation({ id, request, step: 0, status: 'running' })
+      setCreation({ id, request, step: 0, status: 'running', origin: 'request' })
       setPendingRequestState(request)
       data.createRoute(request).then(
         (route) => setCreation((c) => (c && c.id === id ? { ...c, route } : c)),
@@ -486,22 +509,37 @@ export function AppStateProvider({
   )
 
   const completeCreation = useCallback(
-    (route: Route, mode: AssistantMode = 'request') => {
+    (route: Route, mode: AssistantMode = 'request', suggestions?: string[]) => {
       const running = creationRef.current
       if (running?.status === 'running') setProgress(running.id, 'cancelled')
       const id = nextId()
       append([
         { id, mode, epoch: epochsRef.current[mode], kind: 'progress', request: route.request, status: 'running', desktopOnly: true },
       ])
-      // The route already exists: the step effect below animates the four steps, then finishes as usual.
-      const next: Creation = { id, request: route.request, step: 0, status: 'running', route }
+      // The route already exists (a reload mid-animation must find it): the step effect below animates the
+      // four steps, then finishes as usual.
+      setCurrentRouteId(route.id)
+      const next: Creation = {
+        id,
+        request: route.request,
+        step: 0,
+        status: 'running',
+        route,
+        origin: mode === 'change' ? 'change' : 'request',
+        existing: true,
+        ...(suggestions && suggestions.length > 0 ? { suggestions } : {}),
+      }
       creationRef.current = next
       setCreation(next)
       setPendingRequestState(route.request)
     },
-    [append, setProgress],
+    [append, setProgress, setCurrentRouteId],
   )
   completeCreationRef.current = completeCreation
+
+  const markHandedOver = useCallback((creationId: string) => {
+    setCreation((c) => (c && c.id === creationId && !c.handedOver ? { ...c, handedOver: true } : c))
+  }, [])
 
   // Advance the four steps; finish once they are shown and the route exists.
   useEffect(() => {
@@ -514,10 +552,12 @@ export function AppStateProvider({
     if (!route) return
     setCreation({ ...creation, status: 'done' })
     setProgress(creation.id, 'done', route.id)
-    setUsedRequestEpoch(epochsRef.current.request)
+    // Only a creation asked for in the request chat uses that request up (desktop starts a fresh one after it).
+    if (creation.origin === 'request') setUsedRequestEpoch(epochsRef.current.request)
     setCurrentRouteId(route.id)
-    // The route is the context now: change mode is armed for it without its greeting.
-    startChat('change', { key: route.id, route })
+    // The route is the context now: change mode is armed for it without its greeting (which, after an
+    // agent creation, offers that turn's chips again).
+    startChat('change', { key: route.id, route, suggestions: creation.suggestions })
     addNotice('change', [t('desktop.routeCreated', { count: route.stops.length, from: route.request.timeWindow.from, to: routeEnd(route) })], {
       desktopOnly: true,
     })
@@ -565,6 +605,7 @@ export function AppStateProvider({
       creation,
       startCreation,
       completeCreation,
+      markHandedOver,
       conversational,
       cancelCreation,
       acknowledgeCreation,
@@ -594,6 +635,7 @@ export function AppStateProvider({
       creation,
       startCreation,
       completeCreation,
+      markHandedOver,
       conversational,
       cancelCreation,
       acknowledgeCreation,
@@ -674,8 +716,8 @@ export function usePendingRequest() {
 }
 
 export function useCreation() {
-  const { creation, startCreation, completeCreation, cancelCreation, acknowledgeCreation } = useAppState()
-  return { creation, startCreation, completeCreation, cancelCreation, acknowledgeCreation }
+  const { creation, startCreation, completeCreation, markHandedOver, cancelCreation, acknowledgeCreation } = useAppState()
+  return { creation, startCreation, completeCreation, markHandedOver, cancelCreation, acknowledgeCreation }
 }
 
 /** Saved routes (Mis rutas, sidebar), refetched on every route mutation or session change. */

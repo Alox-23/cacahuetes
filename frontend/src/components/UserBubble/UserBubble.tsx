@@ -6,7 +6,7 @@ import styles from './UserBubble.module.css'
 /** User message. A visually hidden "Tú:" names the author without relying on colour. */
 export function UserBubble({ children, className }: { children: ReactNode; className?: string }) {
   return (
-    <div className={cx(styles.bubble, className)}>
+    <div className={cx(styles.bubble, className)} data-testid="user-bubble">
       <span className="sr-only">{t('chat.you')} </span>
       {children}
     </div>

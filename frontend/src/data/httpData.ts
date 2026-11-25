@@ -165,7 +165,7 @@ export function createHttpDataModule(
       }
       for (const id of touched) forgetRating(id)
       return {
-        text: reply.text,
+        text: reply.text ?? '',
         suggestions: Array.isArray(reply.suggestions) ? reply.suggestions : [],
         ...(reply.route ? { route: withFavorite(reply.route) } : {}),
         ...(reply.routeId ? { routeId: reply.routeId } : {}),

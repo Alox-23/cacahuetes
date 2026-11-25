@@ -122,7 +122,8 @@ function CreatingRun({ creation, onCancel }: { creation: Creation; onCancel: () 
             </Card>
           )}
         </div>
-        {!ready && (
+        {/* Feature 5: a route the agent already created cannot be cancelled; the steps only play it back. */}
+        {!ready && !creation.existing && (
           <Button variant="text" className={styles.cancel} onClick={onCancel}>
             {t('common.cancel')}
           </Button>

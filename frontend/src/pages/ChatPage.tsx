@@ -53,19 +53,24 @@ export function ChatPage() {
             <p className={styles.helper}>{conversational ? t('chat.helperAgent') : t('chat.helper')}</p>
           </div>
           {conversational ? (
-            <ul className={styles.suggestions} aria-label={t('chat.examplesLabel')}>
-              {EXAMPLES.map((key) => (
-                <li key={key}>
-                  <button
-                    type="button"
-                    className={styles.suggestion}
-                    onClick={() => setPrefill((p) => ({ text: t(key), id: (p?.id ?? 0) + 1 }))}
-                  >
-                    {t(key)}
-                  </button>
-                </li>
-              ))}
-            </ul>
+            <>
+              <p id="chat-examples-hint" className="sr-only">
+                {t('chat.examplesHint')}
+              </p>
+              <ul className={styles.suggestions} aria-label={t('chat.examplesLabel')} aria-describedby="chat-examples-hint">
+                {EXAMPLES.map((key) => (
+                  <li key={key}>
+                    <button
+                      type="button"
+                      className={styles.suggestion}
+                      onClick={() => setPrefill((p) => ({ text: t(key), id: (p?.id ?? 0) + 1 }))}
+                    >
+                      {t(key)}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </>
           ) : (
             <ul className={styles.suggestions} aria-label={t('chat.suggestionsLabel')}>
               {SUGGESTIONS.map((key) => (
