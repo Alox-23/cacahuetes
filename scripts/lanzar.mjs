@@ -2,8 +2,8 @@ import { spawnSync } from 'node:child_process';
 import { createHash, randomBytes } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { installShutdownHandlers, parseStopMode, startOllamaIfNeeded, stopOllama, stopOllamaSync }
-  from './ollama-lifecycle.mjs';
+import { ensureModels, installShutdownHandlers, modelList, parseStopMode, startOllamaIfNeeded, stopOllama,
+  stopOllamaSync, warmModels } from './ollama-lifecycle.mjs';
 
 const state = resolve('.cacahuete');
 mkdirSync(state, { recursive: true });
@@ -41,7 +41,9 @@ else process.env.CACAHUETE_DATA_DIR = resolve(state, 'postgres');
 
 const endpoint = new URL(process.env.OLLAMA_BASE_URL || 'http://127.0.0.1:11434/v1');
 process.env.OLLAMA_BASE_URL = endpoint.href;
-const model = process.env.OLLAMA_MODEL || 'qwen2.5:7b';
+const model = process.env.OLLAMA_MODEL || 'qwen2.5:7b'; // narrates
+const agentModel = process.env.OLLAMA_AGENT_MODEL || 'qwen2.5:3b'; // decides which planner action to run
+const models = modelList({ models: [model, agentModel] });
 let mode = parseStopMode(process.env.OLLAMA_STOP_ON_EXIT);
 if (!mode) {
   console.warn('OLLAMA_STOP_ON_EXIT debe ser started, always o never. Se usa started.');
@@ -49,17 +51,10 @@ if (!mode) {
 }
 // Created before the handlers so a daemon started during a failed start is stopped as well.
 const ollama = { startedByUs: false };
-const stopOptions = { handle: ollama, mode, model, endpoint };
+const stopOptions = { handle: ollama, mode, models, endpoint };
 installShutdownHandlers({ stop: () => stopOllama(stopOptions), stopSync: () => stopOllamaSync(stopOptions) });
 await startOllamaIfNeeded({ endpoint, handle: ollama });
 process.env.OLLAMA_HOST = endpoint.origin;
-if (spawnSync('ollama', ['show', model], { stdio: 'ignore' }).status !== 0) run('ollama', ['pull', model]);
-console.log(`Cargando ${model} en memoria…`);
-try {
-  const warm = await fetch(new URL('/api/generate', endpoint), { method: 'POST',
-    headers: { 'Content-Type': 'application/json' }, signal: AbortSignal.timeout(180000),
-    body: JSON.stringify({ model, stream: false, keep_alive: '1h' }) });
-  if (!warm.ok) throw new Error(`HTTP ${warm.status}`);
-  await warm.json();
-} catch (error) { console.warn('Ollama aún no está listo. El chat dispone de plantillas.', error.message); }
+ensureModels({ models });
+await warmModels({ models, endpoint });
 await import('../backend/scripts/dev.js');
