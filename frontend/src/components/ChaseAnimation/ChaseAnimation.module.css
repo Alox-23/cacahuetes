@@ -1,0 +1,50 @@
+/* One 1 s loop (two strides, the gap breathes once). Only transform is animated. */
+.chase {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: 160px;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* Colours: each figure sets its fill and outline; the classes below are the exceptions. */
+.squirrel { fill: var(--color-mascot-outline); stroke: var(--color-primary); }
+.peanut { fill: var(--color-mascot-shell); stroke: var(--color-mascot-outline); }
+.ground { stroke: var(--color-border-input); }
+.tail, .mouth { fill: none; }
+.tailFur { stroke: var(--color-assistant-label); }
+.tailTip { stroke: var(--color-border-input); opacity: 0.55; }
+.nearLeg { stroke: var(--color-mascot-outline); }
+.belly { fill: var(--color-segmented-track); stroke: none; }
+.paw { fill: var(--color-primary); stroke: none; }
+.dark { fill: var(--color-primary-hover); stroke: none; }
+.light { fill: var(--color-surface); }
+.face { fill: var(--color-mascot-face); stroke: none; }
+.mouth { stroke: var(--color-mascot-face); }
+
+.dust { fill: var(--color-border-input); stroke: none; opacity: 0.75; }
+
+.ground { animation: scroll 0.25s linear infinite; }
+.gap { animation: gap 1s ease-in-out infinite; }
+.squirrel { animation: bob 0.5s -0.14s ease-in-out infinite; }
+.peanut { animation: hop 0.5s ease-in-out infinite; }
+.tail { animation: sway 0.5s ease-in-out infinite; }
+.legA, .legB { animation: stride 0.5s ease-in-out infinite; }
+.legB { animation-delay: -0.25s; }
+.dust { animation: dust 0.5s linear infinite; }
+
+@keyframes scroll { to { transform: translateX(-18px); } }
+@keyframes gap { 50% { transform: translateX(10px); } }
+@keyframes bob { 50% { transform: translateY(-5px) rotate(-3deg); } }
+@keyframes hop { 50% { transform: translateY(-1.4px); } }
+@keyframes sway { 50% { transform: rotate(-9deg); } }
+@keyframes stride { 0%, 100% { transform: rotate(35deg); } 50% { transform: rotate(-35deg); } }
+@keyframes dust {
+  0% { transform: translate(0, 0) scale(0.2); }
+  30% { transform: translate(-9px, -4px) scale(1); }
+  100% { transform: translate(-32px, -13px) scale(0); }
+}
+
+/* Still figures have no dust. */
+@media (prefers-reduced-motion: reduce) { .dust { display: none; } }

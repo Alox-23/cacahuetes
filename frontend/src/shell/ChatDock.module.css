@@ -122,6 +122,12 @@
   font-weight: 600;
 }
 
+/* The waiting animation inside the progress bubble: the bubble shrinks to its content, so give it a width. */
+.progressChase {
+  width: min(100%, 360px);
+  min-width: 260px;
+}
+
 .intro {
   display: flex;
   flex-direction: column;

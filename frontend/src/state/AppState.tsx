@@ -120,7 +120,7 @@ type AppStateValue = {
   /** "Crear ruta": starts creating once (event handler, StrictMode-safe). */
   startCreation: (request: RouteRequest) => void
   /**
-   * Feature 5: the agent already created `route`; play the same four Creando steps (Peanut Run on mobile,
+   * Feature 5: the agent already created `route`; play the same four Creando steps (the chase animation on mobile,
    * the progress item on desktop) and finish like a creation (current route, change mode armed).
    */
   completeCreation: (route: Route, mode?: AssistantMode, suggestions?: string[]) => void
@@ -659,8 +659,8 @@ export function AppStateProvider({
 
 /**
  * When a creation finishes, open the route (once per creation). Rendered by each route tree: the desktop
- * tree always navigates; the mobile tree leaves /creating to the creating screen, which never interrupts a
- * Peanut Run game (feature 3 game spec §5).
+ * tree always navigates; the mobile tree leaves /creating to the creating screen, which opens the route itself
+ * (feature 5 spec §3).
  */
 export function CreationWatcher({ skipCreatingScreen }: { skipCreatingScreen: boolean }) {
   const { creation } = useAppState()

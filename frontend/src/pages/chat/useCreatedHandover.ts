@@ -4,7 +4,7 @@ import { useCreation, type ThreadItem } from '../../state/AppState'
 
 /**
  * Feature 5 §5.3 (mobile): when the latest reply says the agent created a route, open the Creando screen
- * (Peanut Run) while the provider plays the four steps; it then opens the route as after "Crear ruta".
+ * (chase animation) while the provider plays the four steps; it then opens the route as after "Crear ruta".
  * Once per creation, and only while it is running and not yet handed over: coming back to the chat later,
  * or with the browser's Back during the steps, does not push /creating again.
  */

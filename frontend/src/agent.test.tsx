@@ -162,8 +162,8 @@ describe('agent assistant in the app (API mode, mobile)', () => {
 
     await user.click(screen.getByRole('button', { name: 'Tengo 3 horas' }))
     expect(agent).toHaveBeenLastCalledWith({ text: 'Tengo 3 horas' })
-    // Conversation → Creando (Peanut Run, the four steps) → the route. The Creando screen can be gone before
-    // a query sees it (short steps, no game started), so the visited paths are the evidence.
+    // Conversation → Creando (chase animation, the four steps) → the route. The Creando screen can be gone before
+    // a query sees it (short steps), so the visited paths are the evidence.
     await waitFor(() => expect(location()).toBe(`/route/${created?.id}`), { timeout: 6000 })
     expect(visited.slice(-3)).toEqual(['/chat/conversation', '/creating', `/route/${created?.id}`])
     // The provider never creates the route itself: the agent already did.

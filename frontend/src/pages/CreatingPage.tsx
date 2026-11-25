@@ -1,13 +1,12 @@
 /*
- * Creando la ruta (mobile, Cargando.html + feature 3 game): Peanut Run while the route is created. The creation
- * itself runs in the provider (desktop feature §4.4), so the desktop chat shows the same progress; this screen
- * owns the navigation on mobile so a run is never interrupted.
+ * Creando la ruta (mobile, Cargando.html + feature 5): the steps and a decorative chase animation while the
+ * route is created. The creation itself runs in the provider (desktop feature §4.4), so the desktop chat shows
+ * the same progress; this screen owns the navigation on mobile and opens the route as soon as it is ready.
  */
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useEffect, useRef } from 'react'
 import { Navigate, useNavigate } from 'react-router-dom'
-import { Button, Card, CheckIcon, Mascot, PendingIcon, Screen, SpinnerIcon } from '../components'
+import { Button, Card, ChaseAnimation, CheckIcon, Mascot, PendingIcon, Screen, SpinnerIcon } from '../components'
 import { requestSubtitle } from '../assistant/format'
-import { PeanutRunGame, type PeanutRunHandle, type PeanutRunState } from '../game/PeanutRunGame'
 import { t } from '../i18n'
 import { cx } from '../lib/cx'
 import { CREATION_STEPS, STEP_MS as PROVIDER_STEP_MS, useCreation, useCurrentRoute, type Creation } from '../state/AppState'
@@ -38,41 +37,26 @@ export function CreatingPage() {
 function CreatingRun({ creation, onCancel }: { creation: Creation; onCancel: () => void }) {
   const navigate = useNavigate()
   const { setCurrentRouteId } = useCurrentRoute()
-  const [gameState, setGameState] = useState<PeanutRunState>('ready')
-  const game = useRef<PeanutRunHandle>(null)
   const { request } = creation
   const active = Math.min(creation.step, CREATION_STEPS)
   const failed = creation.status === 'failed'
   const route = creation.status === 'done' ? (creation.route ?? null) : null
-  const ready = route !== null
 
-  const goToRoute = useCallback(() => {
+  useEffect(() => {
     if (!route) return
     setCurrentRouteId(route.id)
     navigate(`/route/${route.id}`, { replace: true })
   }, [route, navigate, setCurrentRouteId])
 
-  // Never interrupt a run: only auto-navigate when the game was never started.
-  // The live engine state is read too, because the polled one can lag a tap by up to 250 ms.
-  const untouched = gameState === 'ready' && (game.current?.getState().state ?? 'ready') === 'ready'
-  useEffect(() => {
-    if (ready && untouched) goToRoute()
-  }, [ready, untouched, goToRoute])
-
-  const onExit = useCallback(() => {
-    if (ready) goToRoute()
-  }, [ready, goToRoute])
-
-  const showBanner = ready && !untouched
   const shortStep = Math.min(active, STEPS.length - 1)
 
   return (
     <Screen className={styles.page}>
       <div className={styles.center}>
         <div className={styles.titleRow}>
-          <Mascot size={56} className={cx(styles.mascot, !ready && styles.pulse)} />
+          <Mascot size={56} className={cx(styles.mascot, !route && styles.pulse)} />
           <div className={styles.titles}>
-            <h1 className={styles.title}>{ready ? t('creating.titleReady') : t('creating.title')}</h1>
+            <h1 className={styles.title}>{t('creating.title')}</h1>
             <p className={styles.subtitle}>{requestSubtitle(request)}</p>
           </div>
         </div>
@@ -105,25 +89,11 @@ function CreatingRun({ creation, onCancel }: { creation: Creation; onCancel: () 
             </p>
           </Card>
         )}
-        <section className={styles.game} aria-labelledby="creating-game-label">
-          <h2 id="creating-game-label" className={styles.gameLabel}>
-            {t('creating.gameLabel')}
-          </h2>
-          <PeanutRunGame ref={game} onStateChange={setGameState} onExit={onExit} />
-          <p className={styles.hint}>{t('creating.gameHint')}</p>
-        </section>
+        <ChaseAnimation className={styles.chase} />
       </div>
       <div className={styles.footer}>
-        <div role="status">
-          {showBanner && (
-            <Card padding="12px 12px 12px 20px" className={styles.banner}>
-              <span className={styles.bannerText}>{t('creating.readyBanner')}</span>
-              <Button onClick={goToRoute}>{t('creating.viewRoute')}</Button>
-            </Card>
-          )}
-        </div>
         {/* Feature 5: a route the agent already created cannot be cancelled; the steps only play it back. */}
-        {!ready && !creation.existing && (
+        {!route && !creation.existing && (
           <Button variant="text" className={styles.cancel} onClick={onCancel}>
             {t('common.cancel')}
           </Button>
