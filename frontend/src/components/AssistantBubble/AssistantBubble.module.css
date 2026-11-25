@@ -1,0 +1,27 @@
+/* Spec 4: wide bubbles that overlap the user's side; measurements from tokens. */
+.bubble {
+  align-self: flex-start;
+  max-width: var(--chat-bubble-assistant-max-width);
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: var(--chat-bubble-padding-assistant);
+  border-radius: var(--chat-bubble-radius) var(--chat-bubble-radius) var(--chat-bubble-radius) var(--chat-bubble-tail-corner-radius);
+  background: var(--color-surface);
+  border: var(--chat-bubble-assistant-border);
+  box-shadow: var(--chat-bubble-shadow);
+  color: var(--color-text);
+  font-size: var(--font-size-body);
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--font-size-label);
+  font-weight: 600;
+  color: var(--color-assistant-label);
+}

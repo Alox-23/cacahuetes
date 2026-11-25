@@ -1,0 +1,12 @@
+.options {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.desktop {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}

@@ -1,0 +1,11 @@
+.sheet {
+  position: relative;
+  flex-grow: 1;
+  min-height: 0;
+  margin-top: -20px;
+  display: flex;
+  flex-direction: column;
+  background: var(--color-surface);
+  border-radius: var(--radius-sheet) var(--radius-sheet) 0 0;
+  box-shadow: var(--shadow-sheet);
+}

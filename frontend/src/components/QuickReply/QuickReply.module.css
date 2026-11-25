@@ -1,0 +1,36 @@
+.reply {
+  display: inline-flex;
+  align-items: center;
+  height: var(--size-touch-target);
+  padding: 0 16px;
+  border-radius: var(--radius-pill);
+  border: 1.5px solid var(--color-primary);
+  background: var(--color-surface);
+  color: var(--color-primary);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.selected {
+  background: var(--color-selected);
+  border: 2px solid var(--color-primary);
+  padding: 0 15.5px;
+}
+
+.reply:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.selected:disabled {
+  opacity: 0.8;
+}
+
+@media (hover: hover) {
+  .reply:hover:not(:disabled) {
+    border-color: var(--color-primary-hover);
+    color: var(--color-primary-hover);
+  }
+}

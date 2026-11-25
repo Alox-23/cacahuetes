@@ -1,0 +1,62 @@
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.title {
+  font-family: var(--font-heading);
+  font-weight: 700;
+  font-size: 20px;
+  line-height: 1.2;
+}
+
+.group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.groupHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.groupTitle {
+  font-size: var(--font-size-label);
+  font-weight: 600;
+  color: var(--color-text-muted);
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.change {
+  display: flex;
+  align-items: center;
+  min-height: var(--size-touch-target);
+  padding: 0 0 0 12px;
+  border: 0;
+  background: transparent;
+  color: var(--color-primary);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.muted {
+  font-size: var(--font-size-label);
+  color: var(--color-text-muted);
+}
+
+@media (hover: hover) {
+  .change:hover {
+    color: var(--color-primary-hover);
+  }
+}

@@ -1,0 +1,97 @@
+/*
+ * Design tokens. Values MUST equal docs/design/tokens.json
+ * (guarded by src/styles/tokens.test.ts). Components use only these variables.
+ */
+:root {
+  /* color */
+  --color-background: #FEF3E2;
+  --color-surface: #FFFFFF;
+  --color-primary: #4A2F1B;
+  --color-primary-hover: #2A1A0E;
+  --color-on-primary: #FFFFFF;
+  --color-text: #4A2F1B;
+  --color-text-muted: #6B5847;
+  --color-selected: #F4AE52;
+  --color-accent: #D4621A;
+  --color-border: #EBD9BF;
+  --color-border-input: #A68A6D;
+  --color-divider: #F3E6D2;
+  --color-segmented-track: #F3E0C4;
+  --color-map-land: #EFE2CC;
+  --color-map-water: #F6DDB6;
+  --color-danger: #B42318;
+  --color-mascot-shell: #E9C48A;
+  --color-mascot-outline: #8A5A2B;
+  --color-assistant-label: #7A4E22;
+
+  /* font */
+  --font-heading: 'Space Grotesk', system-ui, sans-serif;
+  --font-body: 'Inter', system-ui, sans-serif;
+  --font-size-h1: 28px;
+  --font-size-h1-large: 36px;
+  --font-size-body: 15px;
+  --font-size-button: 17px;
+  --font-size-label: 13px;
+  --font-size-tab: 12px;
+
+  /* radius */
+  --radius-button: 16px;
+  --radius-card: 20px;
+  --radius-input: 14px;
+  --radius-pill: 22px;
+  --radius-sheet: 24px;
+  --radius-bubble: 20px;
+
+  /* space */
+  --space-screen-padding: 24px;
+  --space-gap: 20px;
+  --space-bottom-padding: 28px;
+
+  /* size */
+  --size-screen-width: 390px;
+  --size-screen-height: 844px;
+  --size-touch-target: 44px;
+  --size-button-height: 56px;
+  --size-tab-bar-height: 72px;
+
+  /*
+   * desktop (tokens.json "desktop"). Breakpoints cannot be CSS variables inside
+   * media queries: they live in src/lib/breakpoints.ts (tablet 768, desktop 1024)
+   * and are written literally in @media rules.
+   */
+  --desktop-sidebar-width: 240px;
+  --desktop-chat-min: 400px;
+  --desktop-chat-max: 480px;
+  --desktop-chat-wide-max: 680px;
+  --desktop-reading-max: 720px;
+  --desktop-dialog-width: 440px;
+  --desktop-chat-header-height: 72px;
+  --desktop-max-content: 1440px;
+
+  /* chatBubble (tokens.json "chatBubble", spec 4) */
+  --chat-bubble-assistant-max-width: min(100%, 520px);
+  --chat-bubble-user-max-width: min(80%, 460px);
+  --chat-bubble-radius: 22px;
+  --chat-bubble-tail-corner-radius: 6px;
+  --chat-bubble-gap: 10px;
+  --chat-bubble-padding-assistant: 14px 18px;
+  --chat-bubble-padding-user: 12px 18px;
+  --chat-bubble-shadow: 0 1px 3px rgba(74,47,27,0.18);
+  --chat-bubble-assistant-border: 2px solid #E9C48A;
+
+  /*
+   * Values used by the design HTML files that tokens.json does not name.
+   * Kept here (and only here) so component CSS never needs a raw hex value.
+   */
+  --color-frame: #E7DCCB;          /* page background outside the app column */
+  --color-mascot-face: #3B2412;    /* mascot eyes and mouth */
+  --color-segmented-text: #5A4636; /* unselected segment label */
+  --color-photo-placeholder: #E6D3B5; /* "[FOTO DEL LUGAR]" block (Lugar.html) */
+  --color-star-off: #9A8672;       /* empty star outline (Valorar.html) */
+  --color-backdrop: rgba(42, 26, 14, 0.45); /* confirm sheet overlay (primary-hover at 45%) */
+  --shadow-floating: 0 1px 4px rgba(21, 34, 38, 0.18); /* floating back button over the map */
+  --shadow-sheet: 0 -2px 10px rgba(21, 34, 38, 0.08);  /* white sheet over the map */
+  --shadow-toast: 0 4px 16px rgba(21, 34, 38, 0.16);
+  --shadow-dialog: 0 12px 40px rgba(42, 26, 14, 0.25); /* desktop dialogs and slide-over */
+  --color-row-hover: #FBEAD0;      /* hovered rows and list items (between background and track) */
+}

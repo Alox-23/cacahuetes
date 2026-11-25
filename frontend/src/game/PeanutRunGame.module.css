@@ -1,0 +1,126 @@
+/*
+ * Slot sizing, plus scoped overrides for narrow and short slots. The vendored CSS
+ * (src/game/peanut-run/peanut-run.css) is never edited.
+ *
+ * Fit (spec §11): the slot grows with the free space of its flex column
+ * (128-420 px) and the game root fills it instead of keeping 800:300; the
+ * engine keeps the art's proportions and paints extra sky and earth.
+ *
+ * Below 560 px of game width the engine's buttons are ~24 px: they get 44 px
+ * and the mute button a 44 px hit area. When the slot is also short (at most
+ * 200 px, e.g. 128 px on a small phone) the stacked dialog overflows, so it is
+ * laid out in two columns. The root is a size container so its height can be
+ * queried.
+ */
+.slot {
+  width: 100%;
+  flex: 1 1 0;
+  min-height: 128px;
+  max-height: 420px;
+  display: flex;
+}
+
+.slot :global(.peanut-run) {
+  aspect-ratio: auto;
+  height: 100%;
+  max-width: none;
+  container-type: size;
+}
+
+@container (max-width: 560px) and (max-height: 200px) {
+  /* Leave the sound button's corner free: centre the dialog in the area right of it. */
+  .slot :global(.peanut-run__backdrop) {
+    padding-left: 36px;
+  }
+
+  .slot :global(.peanut-run__dialog) {
+    display: grid;
+    grid-template-columns: auto auto;
+    grid-template-areas:
+      'heading heading'
+      'stats question'
+      'stats buttons'
+      'high high';
+    align-items: center;
+    column-gap: 10px;
+    min-width: 0;
+    max-width: 100%;
+    max-height: 100%;
+    padding: 6px 10px 8px;
+    border-radius: 14px;
+    font-size: 11px;
+    overflow: visible;
+  }
+
+  .slot :global(.peanut-run__heading) {
+    grid-area: heading;
+    margin: 0 0 4px;
+  }
+
+  .slot :global(.peanut-run__stats) {
+    grid-area: stats;
+  }
+
+  /* Narrower chips and buttons so the dialog fits a 320 px phone's slot. */
+  .slot :global(.peanut-run__stat) {
+    min-width: 4.2em;
+    padding-inline: 0.4em;
+  }
+
+  .slot :global(.peanut-run__new-high) {
+    grid-area: high;
+    margin: 4px 0 0;
+  }
+
+  .slot :global(.peanut-run__question) {
+    grid-area: question;
+    margin: 0 0 4px;
+  }
+
+  .slot :global(.peanut-run__buttons) {
+    grid-area: buttons;
+    margin: 0;
+  }
+
+  /* 44 × 44 px instead of 52 px wide (more specific than the narrow-slot rule below). */
+  .slot :global(.peanut-run__buttons .peanut-run__button) {
+    min-width: var(--size-touch-target);
+  }
+
+  .slot :global(.peanut-run__endcard) {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 6px 16px 8px;
+    font-size: 11px;
+  }
+
+  .slot :global(.peanut-run__endcard .peanut-run__heading) {
+    margin-bottom: 2px;
+  }
+
+  .slot :global(.peanut-run__button--small) {
+    margin-top: 4px;
+  }
+}
+
+/* Any narrow slot, short or tall: the dialog buttons and the sound button are ~24-26 px there. */
+@container (max-width: 560px) {
+  .slot :global(.peanut-run__button) {
+    min-height: var(--size-touch-target);
+    min-width: 52px;
+    padding: 0 12px;
+  }
+
+  /* 44 px hit area around the 26 px sound button, kept inside the game's clipped box. */
+  .slot :global(.peanut-run__mute) {
+    top: 10px;
+    left: 10px;
+  }
+
+  .slot :global(.peanut-run__mute)::after {
+    content: '';
+    position: absolute;
+    inset: -10px; /* from the padding box: 24 + 2 × 10 = 44 px */
+  }
+}

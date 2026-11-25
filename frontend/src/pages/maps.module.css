@@ -1,0 +1,28 @@
+.example {
+  display: block;
+  width: 100%;
+  height: 150px;
+  background: var(--color-map-land);
+}
+
+.water {
+  fill: var(--color-map-water);
+}
+
+.streets {
+  fill: none;
+  stroke: var(--color-surface);
+}
+
+.routeDotted {
+  fill: none;
+  stroke: var(--color-accent);
+}
+
+.start {
+  fill: var(--color-primary);
+}
+
+.stop {
+  fill: var(--color-accent);
+}

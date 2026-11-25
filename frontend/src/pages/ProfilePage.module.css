@@ -1,0 +1,10 @@
+.page {
+  gap: var(--space-gap);
+  padding: 16px var(--space-screen-padding) 24px;
+}
+
+.titleRow {
+  display: flex;
+  align-items: center;
+  min-height: var(--size-touch-target);
+}

@@ -1,0 +1,82 @@
+.oauth {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.oauthButton {
+  height: 52px;
+  border-radius: var(--radius-input);
+  border: 1px solid var(--color-border-input);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-family: inherit;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.oauthButton:disabled {
+  opacity: 0.45;
+}
+
+.divider {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: var(--font-size-label);
+  color: var(--color-text-muted);
+}
+
+.line {
+  flex-grow: 1;
+  height: 1px;
+  background: var(--color-border);
+}
+
+.forgot {
+  font-size: 14px;
+}
+
+.footer {
+  gap: 18px;
+  padding-top: 18px;
+}
+
+/* Desktop dialog (DeskCrearCuenta.html): one column, submit at the end of the block. */
+.desktopForm {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* Feature 4: "Mostrar"/"Ocultar" inside the password field. */
+.reveal {
+  min-width: var(--size-touch-target);
+  min-height: var(--size-touch-target);
+  padding: 0 12px;
+  border: 0;
+  background: transparent;
+  color: var(--color-primary);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+/* Feature 4: errors that belong to no field (wrong credentials, rate limit, network). */
+.formError {
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--color-danger);
+}
+
+@media (hover: hover) {
+  .oauthButton:hover {
+    border-color: var(--color-primary);
+  }
+
+  .reveal:hover {
+    color: var(--color-primary-hover);
+  }
+}

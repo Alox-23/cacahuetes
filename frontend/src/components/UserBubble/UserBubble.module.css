@@ -1,0 +1,14 @@
+.bubble {
+  align-self: flex-end;
+  max-width: var(--chat-bubble-user-max-width);
+  box-sizing: border-box;
+  padding: var(--chat-bubble-padding-user);
+  border-radius: var(--chat-bubble-radius) var(--chat-bubble-radius) var(--chat-bubble-tail-corner-radius) var(--chat-bubble-radius);
+  box-shadow: var(--chat-bubble-shadow);
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+  font-size: var(--font-size-body);
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}

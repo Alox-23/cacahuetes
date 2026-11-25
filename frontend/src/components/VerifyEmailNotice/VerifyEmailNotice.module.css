@@ -1,0 +1,32 @@
+.notice {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+}
+
+.text {
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--color-text);
+}
+
+.action {
+  min-height: var(--size-touch-target);
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--color-primary);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.action:hover {
+  color: var(--color-primary-hover);
+}
+
+.action:disabled {
+  opacity: 0.45;
+}
