@@ -3,6 +3,7 @@ import { createHmac } from 'node:crypto';
 import { after, before, test } from 'node:test';
 import { PGlite } from '@electric-sql/pglite';
 import { createHandler } from '../lib/handler.js';
+import { createOllamaClient } from '../lib/ollama.js';
 import { applySchema } from '../lib/schema.js';
 
 const origin = 'https://marbella.example.test';
@@ -209,4 +210,68 @@ test('Premium se activa mediante pago firmado y recalcula con escenario de aflue
   assert.ok(route.stops.every((stop) => stop.crowd !== 'alta' && stop.id !== 'muralla' && stop.id !== 'grabado'));
   assert.ok(route.stops.filter((stop) => stop.sponsored).length <= 1);
   assert.ok(alternatives.length > 0);
+});
+
+test('agent: turno conversacional con un Ollama simulado, rutas ajenas, cuota y health', async () => {
+  const ollama = createOllamaClient({ agentModel: 'qwen2.5:3b', fetchImpl: async (url, init) => {
+    const body = JSON.parse(init.body);
+    const last = body.messages.at(-1);
+    const message = { role: 'assistant', content: '' };
+    if (body.format) message.content = JSON.stringify({ text: 'Aquí tienes tu ruta.', suggestions: ['Menos caminar'] });
+    else if (last.role === 'user' && /ruta/.test(last.content)) {
+      message.tool_calls = [{ function: { name: 'create_route', arguments: { durationMinutes: 120 } } }];
+    }
+    return Response.json({ message, done_reason: 'stop' });
+  } });
+  const agentHandle = createHandler(() => db, { ollama });
+  const guest = (n) => n.toString(16).padStart(64, 'a');
+  const ask = (body, { ip = '192.0.2.40', token = guest(1) } = {}) => agentHandle(new Request(`${base}?action=agent`, {
+    method: 'POST', body: JSON.stringify(body),
+    headers: { origin, 'content-type': 'application/json', 'x-guest-token': token }
+  }), ip);
+
+  const response = await ask({ text: 'Quiero una ruta de dos horas', client: { today: '2026-12-10', now: '09:58' } });
+  assert.equal(response.status, 200);
+  const reply = await response.json();
+  assert.equal(reply.source, 'agent');
+  assert.equal(reply.text, 'Aquí tienes tu ruta.');
+  assert.deepEqual(reply.suggestions, ['Menos caminar']);
+  assert.equal(reply.events[0].type, 'route_created');
+  assert.equal(reply.routeId, reply.route.id);
+  assert.deepEqual(reply.route.request.timeWindow, { from: '10:00', to: '12:00' });
+  assert.equal(reply.route.request.date, '2026-12-10');
+  assert.equal(reply.quota.plan, 'guest');
+
+  const followUp = await (await ask({ text: '¿Qué tal?', routeId: reply.routeId })).json();
+  assert.deepEqual(followUp.events, [{ type: 'answered' }]);
+  assert.equal(followUp.routeId, reply.routeId);
+  assert.equal(followUp.route, undefined);
+
+  const foreign = await ask({ text: '¿Qué tal?', routeId: reply.routeId }, { token: guest(2) });
+  assert.equal(foreign.status, 404);
+  assert.equal((await foreign.json()).error.code, 'ROUTE_NOT_FOUND');
+  assert.equal((await ask({ text: 'Hola', routeId: 'no-es-un-uuid' })).status, 404);
+  assert.equal((await ask({ text: '' })).status, 400);
+  assert.equal((await ask({ text: 'a'.repeat(501) })).status, 400);
+  const malaga = await ask({ text: 'Mejor una ruta por Málaga' });
+  assert.equal(malaga.status, 400);
+  assert.equal((await malaga.json()).error.code, 'UNSUPPORTED_CITY');
+
+  const network = createHmac('sha256', process.env.QUOTA_SECRET).update('192.0.2.41').digest('hex');
+  await db.query('INSERT INTO rate_limits(subject, bucket, hits) VALUES ($1, floor(extract(epoch FROM now()) / 60)::bigint, 20)',
+    [`agent:${network}`]);
+  const limited = await ask({ text: 'Hola' }, { ip: '192.0.2.41' });
+  assert.equal(limited.status, 429);
+  assert.equal((await limited.json()).error.code, 'RATE_LIMITED');
+
+  const expiredNetwork = createHmac('sha256', process.env.QUOTA_SECRET).update('192.0.2.40').digest('hex');
+  await db.query("UPDATE guest_trials SET started_at = now() - interval '3 hours' WHERE network_key = $1", [expiredNetwork]);
+  const expired = await ask({ text: 'Quiero una ruta' });
+  assert.equal(expired.status, 403);
+  assert.equal((await expired.json()).error.code, 'AGENT_TIME_EXPIRED');
+
+  const health = await (await agentHandle(new Request(`${base}?action=health`, { headers: { origin } }), '127.0.0.1')).json();
+  assert.equal(health.llm.agentModel, 'qwen2.5:3b');
+  const wrongMethod = await agentHandle(new Request(`${base}?action=agent`, { headers: { origin } }), '127.0.0.1');
+  assert.equal(wrongMethod.status, 405);
 });
