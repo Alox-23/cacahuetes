@@ -5,7 +5,6 @@
  * provider and the screens need no new path. Onboarding keeps the scripted assistant.
  */
 import type { AgentReply, Route, RouteRequest } from '../contract/types'
-import { isApiError } from '../data/errors'
 import { t } from '../i18n'
 import { routeEnd } from '../lib/route'
 import { joinList } from '../lib/text'
@@ -84,14 +83,8 @@ export function createAgentAssistant(deps: AssistantDeps): MockAssistant {
         reuse = undefined
       }
       if (!deps.agent) throw new Error('AGENT_UNAVAILABLE')
-      let reply: AgentReply
-      try {
-        reply = await deps.agent(routeId ? { text, routeId } : { text })
-      } catch (error) {
-        // The server refuses other cities before any model call.
-        if (isApiError(error, 'UNSUPPORTED_CITY')) return { kind: 'question', text: t('request.localOnly') }
-        throw error
-      }
+      // Errors (UNSUPPORTED_CITY, quota, rate limit, network) become replies in the provider's errorReply.
+      let reply: AgentReply = await deps.agent(routeId ? { text, routeId } : { text })
       for (const event of reply.events) {
         if ('routeId' in event && event.routeId) routeId = event.routeId
       }

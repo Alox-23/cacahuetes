@@ -185,6 +185,8 @@ export function errorReply(error: unknown, sessionKind: Session['kind']): RichRe
       options: [{ label: t('assistant.trialAccount'), value: 'nav:account' }],
     }
   }
+  // Feature 5: the agent refuses other cities before any model call (no slot flow, so no city option).
+  if (isApiError(error, 'UNSUPPORTED_CITY')) return { kind: 'question', text: t('request.localOnly') }
   if (isApiError(error, 'RATE_LIMITED')) {
     const raw = Number(error.details.retryAfterSeconds)
     const seconds = Number.isFinite(raw) && raw > 0 ? Math.ceil(raw) : 60
