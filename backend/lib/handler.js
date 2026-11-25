@@ -9,6 +9,7 @@ import { authorizeAgent, rateLimit, trialInfo, visitorNetwork } from './quota.js
 import { buildRoutes, routeInput } from './routes.js';
 import { claimGuest, guestForLogin, tripAction, tripMethods } from './trip-api.js';
 import { isMarbella } from './marbella-scope.js';
+import { llmStatus as ollamaStatus } from './llm.js';
 import { verificationActive } from './mail.js';
 import { exchangeTicket, handleCallback, isProvider, providers, startAuthorization } from './oauth.js';
 import { issueVerification, verifyEmail } from './verification.js';
@@ -33,7 +34,7 @@ function corsHeaders(request) {
   return headers;
 }
 
-export function createHandler(database = getPool) {
+export function createHandler(database = getPool, { llmStatus = ollamaStatus } = {}) {
   return async function handle(request, localIp) {
     const headers = corsHeaders(request);
     const action = new URL(request.url).searchParams.get('action') ?? 'health';
@@ -51,8 +52,11 @@ export function createHandler(database = getPool) {
         throw new ApiError(405, 'METHOD_NOT_ALLOWED', 'Método HTTP no permitido.');
       }
       if (action === 'health') {
+        // The probe runs alongside the database check; it is bounded and cached, and never fails health.
+        const llm = Promise.resolve().then(llmStatus).catch(() => null);
         await database().query('SELECT 1 FROM accounts LIMIT 1');
-        return json({ ok: true, service: 'cacahuete', city: 'Marbella' }, 200, headers);
+        const { model = process.env.OLLAMA_MODEL || 'qwen2.5:7b', reachable = false } = await llm ?? {};
+        return json({ ok: true, service: 'cacahuete', city: 'Marbella', llm: { model, reachable } }, 200, headers);
       }
       if (action === 'catalog') {
         return json({ city: 'Marbella', starts, places: listPlaces() }, 200, headers);

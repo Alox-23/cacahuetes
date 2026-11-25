@@ -33,7 +33,19 @@ New-NetFirewallRule -DisplayName "Cacahuete intranet" -Direction Inbound -Action
 
 Desde un móvil conectado a la misma red abre la URL que aparece junto al adaptador Wi-Fi o Ethernet. Comprueba también `/api/cacahuete?action=health`. Si cambias `PORT`, ajusta la regla del firewall a ese puerto. La red debe permitir conexiones entre sus clientes. Solo Node necesita ser accesible desde los móviles.
 
-El chat llama a `OLLAMA_BASE_URL` (por defecto `http://localhost:11434/v1`) con `OLLAMA_MODEL=qwen2.5:7b`. Admite 500 caracteres por mensaje y 20 peticiones al agente por minuto e IP. Admite dos generaciones simultáneas; a los 30 s de cola o 20 s de generación usa la plantilla. Para comprobar el plan B, detén Ollama y vuelve a pedir una ruta. Las pruebas se ejecutan con `npm --prefix backend test`.
+El chat llama a `OLLAMA_BASE_URL` (por defecto `http://localhost:11434/v1`) con `OLLAMA_MODEL=qwen2.5:7b`. Admite 500 caracteres por mensaje y 20 peticiones al agente por minuto e IP. Si Ollama no responde a tiempo, usa la plantilla. Los límites se ajustan en `backend/.env` con números enteros positivos; un valor vacío o no válido mantiene el valor por defecto:
+
+| Variable | Por defecto | Qué controla |
+| --- | --- | --- |
+| `OLLAMA_TIMEOUT_MS` | `20000` | Tiempo máximo de cada generación |
+| `OLLAMA_QUEUE_MS` | `30000` | Espera máxima en la cola cuando todas las plazas están ocupadas |
+| `OLLAMA_CONCURRENCY` | `2` | Generaciones simultáneas |
+
+**Portátil solo con CPU:** usa `OLLAMA_MODEL=qwen2.5:3b` y `OLLAMA_TIMEOUT_MS=45000` (antes, `ollama pull qwen2.5:3b`). El modelo 7B necesita una GPU o un Mac con Apple Silicon para responder en menos de 20 s.
+
+Cada vez que se usa la plantilla, la consola del servidor muestra `Cacahuete narrator fallback: <motivo>`, sin el mensaje ni la respuesta. Los motivos son `unreachable` (Ollama no responde), `timeout`, `http <estado>`, `length` (respuesta cortada), `empty`, `too-long` (más de seis frases), `invalid` (respuesta no JSON) y `queue` (espera agotada). `/api/cacahuete?action=health` incluye `llm: { model, reachable }`: `reachable` indica si Ollama contesta a `/api/tags` (se comprueba como mucho cada 30 s, con 1,5 s de límite) y nunca hace fallar la comprobación. Para comprobar el plan B, detén Ollama y vuelve a pedir una ruta. Las pruebas se ejecutan con `npm --prefix backend test`.
+
+**Truco de desarrollo:** la prueba gratuita de invitado (3 horas) va asociada a la IP, así que en tu propio equipo se agota y el chat responde `AGENT_TIME_EXPIRED`. Para reiniciarla, ejecuta `DELETE FROM guest_trials;` en la base de datos local.
 
 Para mostrar fotos sin conexión, coloca fotos autorizadas en `frontend/public/places/<id-del-catálogo>.jpg` antes de compilar. También puedes incorporarlas a `frontend/dist/places/` después. La ficha muestra la mascota local si la foto falta o está dañada.
 
