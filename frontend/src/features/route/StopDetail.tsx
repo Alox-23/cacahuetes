@@ -12,6 +12,8 @@ import { useData } from '../../state/AppState'
 import layout from '../../pages/layout.module.css'
 import styles from './StopDetail.module.css'
 
+const MASCOT = '/mascot/cacahuete.svg'
+
 type StopDetailProps = {
   route: Route
   order: number
@@ -31,6 +33,8 @@ export function StopDetail({ route, order, layout: where = 'mobile', onRouteChan
   const stop = route.stops.find((s) => s.order === order)
   const [place, setPlace] = useState<Place | null>(null)
   const [busy, setBusy] = useState(false)
+  // placeId whose photo failed to load: show the mascot instead (only once, so no onError loop).
+  const [photoFailed, setPhotoFailed] = useState<string | null>(null)
 
   const placeId = stop?.placeId
   useEffect(() => {
@@ -53,6 +57,7 @@ export function StopDetail({ route, order, layout: where = 'mobile', onRouteChan
   const onlyStop = route.stops.length <= 1
   const removeHint = stop.locked ? t('stop.lockedHint') : onlyStop ? t('stop.lastHint') : null
   const hintId = `stop-remove-hint-${where}`
+  const fallback = photoFailed === stop.placeId
 
   async function act(fn: () => Promise<Route>, after?: () => void) {
     if (busy) return
@@ -69,8 +74,24 @@ export function StopDetail({ route, order, layout: where = 'mobile', onRouteChan
   return (
     <div className={cx(where === 'desktop' && styles.desktop)} style={where === 'mobile' ? { display: 'contents' } : undefined}>
       <div className={styles.photo}>
-        <span>{t('stop.photo')}</span>
+        <img
+          src={fallback ? MASCOT : `/places/${encodeURIComponent(stop.placeId)}.jpg`}
+          alt={stop.name}
+          className={cx(styles.photoImg, fallback && styles.photoFallback)}
+          onError={() => {
+            if (!fallback) setPhotoFailed(stop.placeId)
+          }}
+        />
         {photoOverlay}
+        {place?.rating ? (
+          <div className={styles.photoRating}>
+            <span className={styles.star} aria-hidden="true">
+              ★
+            </span>
+            <span className={styles.ratingScore}>{place.rating.toFixed(1)}</span>
+            {place.reviewsCount ? <span className={styles.ratingCount}>({place.reviewsCount.toLocaleString('es-ES')})</span> : null}
+          </div>
+        ) : null}
       </div>
       <Sheet className={styles.sheet}>
         <div className={styles.body}>
@@ -87,6 +108,22 @@ export function StopDetail({ route, order, layout: where = 'mobile', onRouteChan
             {must && <Chip>{t('stop.mustInclude')}</Chip>}
             {stop.locked && <Chip>{t('stop.locked')}</Chip>}
           </div>
+          {place?.partner && (
+            <div className={styles.partnerBanner}>
+              <span className={styles.partnerBadge}>{t('stop.partner')}</span>
+              {place.partnerPerk && <span className={styles.partnerPerk}>{place.partnerPerk}</span>}
+            </div>
+          )}
+          {place?.address && (
+            <div className={styles.addressRow}>
+              <span className={styles.addressText}>📍 {place.address}</span>
+              {place.googleMapsUrl && (
+                <a href={place.googleMapsUrl} target="_blank" rel="noopener noreferrer" className={styles.mapsLink}>
+                  {t('stop.openMaps')}
+                </a>
+              )}
+            </div>
+          )}
           {place?.why && (
             <div className={styles.why}>
               <span className={styles.whyTitle}>{t('stop.why')}</span>
@@ -95,15 +132,15 @@ export function StopDetail({ route, order, layout: where = 'mobile', onRouteChan
           )}
           <dl className={styles.facts}>
             <div className={styles.fact}>
-              <dt>{t('stop.hours')}</dt>
+              <dt>🕒 {t('stop.hours')}</dt>
               <dd>{place?.hours ?? t('stop.hoursPlaceholder')}</dd>
             </div>
             <div className={styles.fact}>
-              <dt>{t('stop.price')}</dt>
+              <dt>💶 {t('stop.price')}</dt>
               <dd>{place?.price ?? t('stop.pricePlaceholder')}</dd>
             </div>
             <div className={styles.fact}>
-              <dt>{t('stop.next')}</dt>
+              <dt>🚶 {t('stop.next')}</dt>
               <dd>{stop.travelToNext ? legLabel(stop.travelToNext) : t('stop.end')}</dd>
             </div>
           </dl>
