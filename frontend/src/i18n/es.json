@@ -28,7 +28,17 @@
     "badge": "IA",
     "typing": "Cacahuete está escribiendo",
     "transcriptLabel": "Conversación con Cacahuete",
-    "error": "Vaya, algo ha fallado por mi parte. ¿Lo intentas otra vez?"
+    "error": "Vaya, algo ha fallado por mi parte. ¿Lo intentas otra vez?",
+    "offline": "No consigo conectar. Revisa tu conexión y vuelve a intentarlo.",
+    "trialExpired": "Se han acabado tus 3 horas gratis con Cacahuete. Crea una cuenta o inicia sesión para seguir preparando rutas conmigo.",
+    "trialExpiredAccount": "Se han acabado las 3 horas gratis de tu cuenta. Con premium puedes seguir hablando conmigo sin límite de tiempo.",
+    "trialRegister": "Crear cuenta",
+    "trialLogin": "Iniciar sesión",
+    "trialAccount": "Ver mi cuenta",
+    "rateLimited": "Vas un poco rápido y necesito un respiro. Vuelve a intentarlo en {wait}.",
+    "waitSeconds": "{count} segundos",
+    "waitMinute": "1 minuto",
+    "waitMinutes": "{count} minutos"
   },
   "main": {
     "enter": "Entrar",

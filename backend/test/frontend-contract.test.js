@@ -15,6 +15,8 @@ let server, endpoint;
 before(async () => {
   process.env.FRONTEND_ORIGINS = origin;
   process.env.QUOTA_SECRET = 'integration-guest-quota-test-only-12345';
+  // Never reach a real Ollama: port 9 is a fetch "bad port", so the narrator falls back to the template at once.
+  process.env.OLLAMA_BASE_URL = 'http://127.0.0.1:9/v1';
   delete process.env.VERCEL;
   await applySchema(db);
   server = createServer(async (req, res) => {

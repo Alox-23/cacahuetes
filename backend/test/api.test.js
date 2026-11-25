@@ -18,6 +18,8 @@ const profile = {
 before(async () => {
   process.env.FRONTEND_ORIGINS = origin;
   process.env.QUOTA_SECRET = 'local-test-secret-with-more-than-32-characters';
+  // Never reach a real Ollama: port 9 is a fetch "bad port", so the narrator falls back to the template at once.
+  process.env.OLLAMA_BASE_URL = 'http://127.0.0.1:9/v1';
   process.env.STRIPE_WEBHOOK_SECRET = webhookSecret;
   process.env.DEMO_SCENARIOS = 'true';
   process.env.PARTNER_PLACE_IDS = 'encarnacion,avenida-mar,mercado-central';
