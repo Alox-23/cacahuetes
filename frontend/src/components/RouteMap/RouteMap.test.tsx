@@ -1,4 +1,6 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render as rtlRender, screen } from '@testing-library/react'
+import type { ReactElement, ReactNode } from 'react'
+import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { RouteMap } from './RouteMap'
 
@@ -12,6 +14,11 @@ const GEO = [
   { order: 2, name: 'Alameda', lat: 36.5085, lon: -4.8848 },
   { order: 3, name: 'Paseo Marítimo', lat: 36.506, lon: -4.888 },
 ]
+
+// RouteMap navigates in-app from the popup link, so it renders inside a router.
+const FUTURE = { v7_startTransition: true, v7_relativeSplatPath: true }
+const Router = ({ children }: { children: ReactNode }) => <MemoryRouter future={FUTURE}>{children}</MemoryRouter>
+const render = (ui: ReactElement) => rtlRender(ui, { wrapper: Router })
 
 const pin = (order: number) => document.querySelector(`.leaflet-marker-icon[data-order="${order}"]`) as HTMLElement
 
@@ -70,6 +77,25 @@ describe('RouteMap', () => {
       expect(popup).toHaveTextContent('1. Plaza de los Naranjos')
       expect(popup).toHaveTextContent('★ 4.7 (1234 reseñas)'.replace('1234', (1234).toLocaleString('es-ES')))
       expect(popup.querySelector('a')).toHaveAttribute('href', '/route/r%201/stop/1')
+    })
+
+    it('mobile: the popup link navigates in-app with the route depth', () => {
+      function Stop() {
+        const location = useLocation()
+        return <p>{`stop ${location.pathname} depth ${(location.state as { depth?: number } | null)?.depth}`}</p>
+      }
+      rtlRender(
+        <MemoryRouter initialEntries={['/route/r1']} future={FUTURE}>
+          <Routes>
+            <Route path="/route/:id" element={<RouteMap stops={GEO} variant="full" label="Mapa" routeId="r1" />} />
+            <Route path="/route/:id/stop/:order" element={<Stop />} />
+          </Routes>
+        </MemoryRouter>,
+      )
+      fireEvent.click(pin(2))
+      const link = document.querySelector('.leaflet-popup a') as HTMLAnchorElement
+      expect(fireEvent.click(link)).toBe(false) // default (page load) prevented
+      expect(screen.getByText('stop /route/r1/stop/2 depth 1')).toBeInTheDocument()
     })
 
     it('skips stops without coordinates', () => {

@@ -9,6 +9,7 @@
  */
 import { useEffect, useRef, useState } from 'react'
 import L from 'leaflet'
+import { useNavigate } from 'react-router-dom'
 import catalog from '../../../../backend/lib/marbella.json'
 import 'leaflet/dist/leaflet.css'
 import { cx } from '../../lib/cx'
@@ -97,7 +98,7 @@ function el<K extends keyof HTMLElementTagNameMap>(tag: K, className: string, te
 }
 
 /** Popup card (mobile). Built as DOM nodes so place data is never parsed as HTML. */
-function popupContent(stop: GeoStop, routeId?: string): HTMLElement {
+function popupContent(stop: GeoStop, routeId?: string, open?: (path: string) => void): HTMLElement {
   const root = el('div', styles.popup)
   if (stop.photo?.startsWith('/places/')) {
     const img = el('img', styles.popupPhoto)
@@ -116,7 +117,14 @@ function popupContent(stop: GeoStop, routeId?: string): HTMLElement {
   if (stop.hours) root.append(el('div', styles.popupMuted, `🕒 ${stop.hours}`))
   if (routeId) {
     const link = el('a', styles.popupLink, 'Ver detalles y fotos ↗')
-    link.href = `/route/${encodeURIComponent(routeId)}/stop/${stop.order}`
+    const path = `/route/${encodeURIComponent(routeId)}/stop/${stop.order}`
+    link.href = path
+    // In-app navigation (no page reload); modified clicks keep the browser's default.
+    link.addEventListener('click', (e) => {
+      if (!open || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return
+      e.preventDefault()
+      open(path)
+    })
     root.append(link)
   }
   return root
@@ -144,11 +152,12 @@ export function RouteMap({ stops, variant = 'full', height, label, className, hi
   const containerRef = useRef<HTMLDivElement>(null)
   const markersRef = useRef<ReadonlyMap<number, L.Marker>>(new Map())
   const [map, setMap] = useState<L.Map | null>(null)
+  const navigate = useNavigate()
 
   // Latest props for the Leaflet handlers, so markers are not rebuilt when callbacks change.
-  const latest = useRef({ stops, highlighted, onHighlight, onSelect })
+  const latest = useRef({ stops, highlighted, onHighlight, onSelect, navigate })
   useEffect(() => {
-    latest.current = { stops, highlighted, onHighlight, onSelect }
+    latest.current = { stops, highlighted, onHighlight, onSelect, navigate }
   })
 
   // Map lifecycle: created once the container has a size, resized with it, removed on unmount.
@@ -211,7 +220,9 @@ export function RouteMap({ stops, variant = 'full', height, label, className, hi
           if (e.originalEvent.key === 'Enter') latest.current.onSelect?.(order)
         })
       } else {
-        marker.bindPopup(() => popupContent(stop, routeId), { maxWidth: 270, closeButton: false })
+        // depth 1: the stop detail's back returns here, like the stop list links.
+        const open = (path: string) => latest.current.navigate(path, { state: { depth: 1 } })
+        marker.bindPopup(() => popupContent(stop, routeId, open), { maxWidth: 270, closeButton: false })
       }
       marker.addTo(group)
       const node = marker.getElement()
