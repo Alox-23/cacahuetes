@@ -1,7 +1,6 @@
 import { spawn, spawnSync } from 'node:child_process';
 import { createHash, randomBytes } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { networkInterfaces } from 'node:os';
 import { resolve } from 'node:path';
 import { setTimeout as sleep } from 'node:timers/promises';
 
@@ -30,9 +29,6 @@ npm(['run', 'build'], 'frontend');
 
 const port = Number(process.env.PORT || 3000);
 if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error('PORT debe estar entre 1 y 65535.');
-const addresses = Object.values(networkInterfaces()).flat().filter(i => i?.family === 'IPv4' && !i.internal);
-const origins = ['localhost', '127.0.0.1', ...addresses.map(i => i.address)].map(host => `http://${host}:${port}`);
-process.env.FRONTEND_ORIGINS = [...new Set([...origins, ...(process.env.FRONTEND_ORIGINS || '').split(',').filter(Boolean)])].join(',');
 const secret = resolve(state, 'quota-secret');
 if (!process.env.QUOTA_SECRET) {
   try { writeFileSync(secret, randomBytes(32).toString('hex'), { flag: 'wx', mode: 0o600 }); }
@@ -67,5 +63,4 @@ try {
   if (!warm.ok) throw new Error(`HTTP ${warm.status}`);
   await warm.json();
 } catch (error) { console.warn('Ollama aún no está listo. El chat dispone de plantillas.', error.message); }
-console.log('Direcciones de Cacahuete:\n' + origins.join('\n'));
 await import('../backend/scripts/dev.js');

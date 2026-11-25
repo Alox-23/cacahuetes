@@ -1,6 +1,10 @@
 # Cacahuete en la intranet
 
-El portátil sirve el frontend y la API desde el mismo puerto. Necesita Node 22.13 o posterior de la serie 22, PostgreSQL local y Ollama. Prepara las dependencias y el modelo mientras tengas conexión. Desde la raíz, en PowerShell:
+Para el evento, usa el [lanzador de la raíz](../README.md). Sirve la web y la API en el mismo puerto, detecta la IPv4 de la intranet y usa la base de datos integrada por defecto. Si tienes un `backend/.env` antiguo con `APP_URL`, `PUBLIC_API_URL` o `FRONTEND_ORIGINS` fijados a localhost, quita esos valores para que los enlaces usen la dirección detectada.
+
+### Instalación manual con PostgreSQL
+
+Necesitas Node 22.13 o posterior de la serie 22, PostgreSQL local y Ollama. Prepara las dependencias y el modelo mientras tengas conexión. Desde la raíz, en PowerShell:
 
 ```powershell
 npm --prefix backend ci
@@ -9,10 +13,9 @@ $env:VITE_CACAHUETE_API_URL = '/api/cacahuete'
 npm --prefix frontend run build
 ollama pull qwen2.5:7b
 Copy-Item backend/.env.example backend/.env
-ipconfig
 ```
 
-Crea una base local vacía y configura en `backend/.env` su `DATABASE_URL` y un `QUOTA_SECRET` de al menos 32 caracteres. Para generar el secreto ejecuta `node -e "console.log(require('node:crypto').randomBytes(32).toString('hex'))"`. Conserva el archivo únicamente en el portátil. Usa la IPv4 del adaptador Wi-Fi o Ethernet conectado al evento para definir `FRONTEND_ORIGINS` y `APP_URL`, por ejemplo `http://192.168.1.40:3000`. Mantén vacías las credenciales de servicios externos y usa el modo invitado durante el evento.
+Crea una base local vacía y configura en `backend/.env` su `DATABASE_URL` y un `QUOTA_SECRET` de al menos 32 caracteres. Para generar el secreto ejecuta `node -e "console.log(require('node:crypto').randomBytes(32).toString('hex'))"`. Conserva el archivo únicamente en el portátil. Al servir la web compilada, el servidor detecta su origen a partir de las IPv4 del portátil. Usa el modo invitado durante el evento.
 
 ```powershell
 npm --prefix backend run migrate
@@ -28,7 +31,7 @@ Node escucha en `0.0.0.0` y usa `PORT=3000` por defecto. En PowerShell **como ad
 New-NetFirewallRule -DisplayName "Cacahuete intranet" -Direction Inbound -Action Allow -Protocol TCP -LocalPort 3000 -Profile Private -RemoteAddress LocalSubnet
 ```
 
-Desde un móvil conectado a la misma red abre `http://192.168.1.40:3000/`, sustituyendo la IP de ejemplo. Comprueba también `/api/cacahuete?action=health`. Si cambias el puerto, actualiza la regla y ambos orígenes. La red debe permitir conexiones entre sus clientes. Solo Node necesita ser accesible desde los móviles.
+Desde un móvil conectado a la misma red abre la URL que aparece junto al adaptador Wi-Fi o Ethernet. Comprueba también `/api/cacahuete?action=health`. Si cambias `PORT`, ajusta la regla del firewall a ese puerto. La red debe permitir conexiones entre sus clientes. Solo Node necesita ser accesible desde los móviles.
 
 El chat llama a `OLLAMA_BASE_URL` (por defecto `http://localhost:11434/v1`) con `OLLAMA_MODEL=qwen2.5:7b`. Admite 500 caracteres por mensaje y 20 peticiones al agente por minuto e IP. Admite dos generaciones simultáneas; a los 30 s de cola o 20 s de generación usa la plantilla. Para comprobar el plan B, detén Ollama y vuelve a pedir una ruta. Las pruebas se ejecutan con `npm --prefix backend test`.
 
