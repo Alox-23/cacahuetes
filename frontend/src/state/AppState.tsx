@@ -7,13 +7,15 @@ import {
   useMemo,
   useRef,
   useState,
+  type MutableRefObject,
   type ReactNode,
 } from 'react'
-import { useLocation, useNavigate } from 'react-router-dom'
+import { useInRouterContext, useLocation, useNavigate } from 'react-router-dom'
 import { createAssistant, type MockAssistant } from '../assistant/mockAssistant'
 import type { AssistantDeps, AssistantMode, RichReply } from '../assistant/types'
 import { Toast } from '../components/Toast/Toast'
 import type { DataModule, Preferences, Route, RouteRequest, Session } from '../contract/types'
+import { isApiError } from '../data/errors'
 import { dataModule } from '../data/mockData'
 import { STORAGE_KEYS, createStorage, type JsonStorage } from '../data/storage'
 import { t } from '../i18n'
@@ -138,6 +140,69 @@ type ProviderProps = {
   stepMs?: number
 }
 
+/**
+ * Reply options that leave the chat instead of answering the assistant (the way forward after the free
+ * trial). `send` navigates to their path with the usual account-dialog state; nothing reaches the assistant.
+ */
+export const NAV_OPTIONS: Record<string, string> = {
+  'nav:register': '/register',
+  'nav:login': '/login',
+  'nav:account': '/account',
+}
+
+function waitText(seconds: number): string {
+  if (seconds < 60) return t('assistant.waitSeconds', { count: seconds })
+  const minutes = Math.ceil(seconds / 60)
+  return minutes === 1 ? t('assistant.waitMinute') : t('assistant.waitMinutes', { count: minutes })
+}
+
+/** What the chat says when the assistant fails: the API's quota and rate errors get their own reply. */
+export function errorReply(error: unknown, sessionKind: Session['kind']): RichReply {
+  if (isApiError(error, 'AGENT_TIME_EXPIRED')) {
+    const quota = error.details.quota as { plan?: unknown } | undefined
+    const plan = typeof quota?.plan === 'string' ? quota.plan : sessionKind
+    if (plan === 'guest') {
+      return {
+        kind: 'question',
+        text: t('assistant.trialExpired'),
+        options: [
+          { label: t('assistant.trialRegister'), value: 'nav:register' },
+          { label: t('assistant.trialLogin'), value: 'nav:login' },
+        ],
+      }
+    }
+    return {
+      kind: 'question',
+      text: t('assistant.trialExpiredAccount'),
+      options: [{ label: t('assistant.trialAccount'), value: 'nav:account' }],
+    }
+  }
+  if (isApiError(error, 'RATE_LIMITED')) {
+    const raw = Number(error.details.retryAfterSeconds)
+    const seconds = Number.isFinite(raw) && raw > 0 ? Math.ceil(raw) : 60
+    return { kind: 'question', text: t('assistant.rateLimited', { wait: waitText(seconds) }) }
+  }
+  // fetch() rejects with a TypeError when the network is down (no response at all).
+  if (error instanceof TypeError) return { kind: 'question', text: t('assistant.offline') }
+  return { kind: 'question', text: t('assistant.error') }
+}
+
+type Go = (to: string) => void
+
+/** Hands the router's navigate to the provider without re-rendering it on every navigation. */
+function NavBridge({ go }: { go: MutableRefObject<Go | null> }) {
+  const navigate = useNavigate()
+  const { pathname } = useLocation()
+  useEffect(() => {
+    // Same state as the other account entry points: come back here after signing in (desktop keeps it behind).
+    go.current = (to) => navigate(to, { state: { returnTo: pathname, background: pathname } })
+    return () => {
+      go.current = null
+    }
+  }, [go, navigate, pathname])
+  return null
+}
+
 const noModes = <T,>(value: T): Record<AssistantMode, T> => ({ onboarding: value, request: value, change: value })
 
 /** Mutations that change what a route view or the saved list shows. */
@@ -189,6 +254,10 @@ export function AppStateProvider({
     store.read<string | null>(STORAGE_KEYS.currentRoute, null),
   )
   const [toast, setToast] = useState<{ message: string; id: number } | null>(null)
+  const inRouter = useInRouterContext()
+  const go = useRef<Go | null>(null)
+  const sessionKind = useRef<Session['kind']>(session.kind)
+  sessionKind.current = session.kind
   const [routeRevision, setRouteRevision] = useState(0)
   const bump = useCallback(() => setRouteRevision((r) => r + 1), [])
   const data = useMemo(() => trackMutations(rawData, bump), [rawData, bump])
@@ -270,6 +339,11 @@ export function AppStateProvider({
 
   const send = useCallback(
     async (mode: AssistantMode, input: SendInput, echo?: string) => {
+      const path = input.option ? NAV_OPTIONS[input.option] : undefined
+      if (path) {
+        go.current?.(path)
+        return undefined
+      }
       if (busy.current[mode]) return undefined
       busy.current[mode] = true
       const epoch = epochsRef.current[mode]
@@ -282,8 +356,8 @@ export function AppStateProvider({
       let reply: RichReply
       try {
         reply = await assistantFor(mode).sendMessage(input)
-      } catch {
-        reply = { kind: 'question', text: t('assistant.error') }
+      } catch (error) {
+        reply = errorReply(error, sessionKind.current)
       }
       // A change reply may have edited the route through a path the provider does not see
       // (the API's refineConversation): route views refetch either way.
@@ -495,6 +569,7 @@ export function AppStateProvider({
   if (!loaded) return null
   return (
     <AppStateContext.Provider value={value}>
+      {inRouter && <NavBridge go={go} />}
       {children}
       <Toast key={toast?.id} message={toast?.message ?? null} />
     </AppStateContext.Provider>
