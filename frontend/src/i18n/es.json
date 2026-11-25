@@ -338,7 +338,9 @@
     "unlock": "Quitar fijación",
     "lockedHint": "Las paradas fijadas no se pueden quitar. Quita antes la fijación.",
     "lastHint": "La ruta necesita al menos una parada.",
-    "notFound": "No encontramos esta parada."
+    "notFound": "No encontramos esta parada.",
+    "partner": "⭐ Negocio local afiliado",
+    "openMaps": "Abrir en Google Maps ↗"
   },
   "alternatives": {
     "note": "Al cambiar, los horarios de las paradas siguientes se recalculan.",

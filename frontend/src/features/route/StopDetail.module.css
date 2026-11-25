@@ -19,6 +19,12 @@
   display: block;
 }
 
+/* Mascot when the place has no photo. */
+.photoFallback {
+  object-fit: contain;
+  padding: 24px;
+}
+
 .photoRating {
   position: absolute;
   bottom: 28px;
