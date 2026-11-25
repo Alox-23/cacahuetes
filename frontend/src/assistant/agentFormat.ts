@@ -1,5 +1,5 @@
 /* Feature 5 §5.2: one Spanish bullet per route event of an agent turn. */
-import type { AgentEvent, Route } from '../contract/types'
+import type { AgentEvent, AgentReply, Route } from '../contract/types'
 import { t, tDynamic } from '../i18n'
 import { routeEnd } from '../lib/route'
 import { joinList } from '../lib/text'
@@ -16,8 +16,12 @@ function stopsText(route: Route): string {
   return n === 1 ? t('change.stopsOne') : t('change.stops', { count: n })
 }
 
-/** The bullet for a route event; `route` is the reply's route (it describes the state after the turn). */
-export function describeEvent(event: RouteEvent, route?: Route): string {
+/**
+ * The bullet for a route event; `route` is the reply's route (it describes the state after the turn).
+ * The server's assumptions get their own "He supuesto: …" sentence only on the rules path (`source`
+ * `'rules'`): with the model, the narrator already states them in the reply text.
+ */
+export function describeEvent(event: RouteEvent, route?: Route, source?: AgentReply['source']): string {
   switch (event.type) {
     case 'route_created': {
       const parts: string[] = []
@@ -29,10 +33,10 @@ export function describeEvent(event: RouteEvent, route?: Route): string {
           to: routeEnd(route),
         }))
       } else {
-        parts.push(t('agent.event.changed'))
+        parts.push(t('agent.event.createdShort'))
       }
-      const assumptions = event.assumptions.filter((a) => typeof a === 'string' && a.trim())
-      if (assumptions.length > 0) parts.push(t('agent.event.assumptions', { list: joinList(assumptions) }))
+      const assumptions = source === 'rules' ? event.assumptions.filter((a) => typeof a === 'string' && a.trim()) : []
+      if (assumptions.length > 0) parts.push(t('agent.event.assumptions', { list: joinList(assumptions.map((a) => a.trim())) }))
       return parts.join(' ')
     }
     case 'route_changed': {
