@@ -23,8 +23,20 @@ export type RouteRequest = {
 export type Stop = {
   order: number; placeId: string; name: string;
   arrive: string; visitMinutes: number;
-  travelToNext?: { mode: string; minutes: number };
+  travelToNext?: { mode: string; minutes: number; note?: string };
   locked: boolean;
+  lat?: number;
+  lon?: number;
+  area?: string;
+  photo?: string;
+  hours?: string;
+  price?: string;
+  rating?: number;
+  reviewsCount?: number;
+  address?: string;
+  googleMapsUrl?: string;
+  partner?: boolean;
+  partnerPerk?: string;
 };
 
 export type Route = {
@@ -67,6 +79,26 @@ export type RefineAction =
 export type Place = {
   id: string; name: string; categories: string[];
   why?: string; hours?: string; price?: string; photo?: string;
+  rating?: number; reviewsCount?: number; address?: string; googleMapsUrl?: string;
+  lat?: number; lon?: number; area?: string; partner?: boolean; partnerPerk?: string;
+};
+
+// Añadido en feature 5: agente conversacional.
+export type AgentEvent =
+  | { type: "route_created"; routeId: string; assumptions: string[] }
+  | { type: "route_changed"; routeId: string; change: string }   // "add_stop" | "remove_stop" | "replace_stop" | "lock_stop" | "reschedule" | "menos_caminar" | ...
+  | { type: "undone"; routeId: string }
+  | { type: "preferences_updated"; fields: string[] }
+  | { type: "rejected"; reason: string }                          // a planner refusal, in Spanish
+  | { type: "answered" };                                         // no tool: the model only talked
+
+export type AgentReply = {
+  text: string;               // what Cacahuete says (≤ 6 sentences)
+  suggestions: string[];      // 0..3 short replies the visitor may tap
+  route?: Route;              // present when a route was created or changed this turn
+  routeId?: string;           // the current route after this turn (new or unchanged)
+  events: AgentEvent[];       // what happened, in order
+  source: "agent" | "rules";  // who decided
 };
 
 // Responsable: spec 2 (módulo de datos simulados)
@@ -98,6 +130,8 @@ export interface DataModule {
   signInWith(provider: AuthProvider): Promise<Session>;                                           // Añadido en feature 4
   /** Finishes the provider sign-in on /auth/callback from the URL fragment (state + ticket). */
   completeSignIn(fragment: string): Promise<Session>;                                             // Añadido en feature 4
+  /** Feature 5: one conversational turn decided by the model. Absent in the demo without API. */
+  agent?(input: { text: string; routeId?: string }): Promise<AgentReply>;                        // Añadido en feature 5
 }
 
 // Responsable: spec 1 (guion del asistente simulado)

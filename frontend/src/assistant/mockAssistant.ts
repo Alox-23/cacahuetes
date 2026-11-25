@@ -46,6 +46,8 @@ export interface MockAssistant extends Assistant {
    */
   reset(mode: AssistantMode, ctx?: { route?: Route; request?: RouteRequest }): void
   getState(): { mode: AssistantMode; onboardingStep: number; onboardingComplete: boolean; routeId?: string }
+  /** Feature 5: set by the conversational agent (free text, the model's suggestions); absent on the script. */
+  readonly conversational?: boolean
 }
 
 type Draft = {
