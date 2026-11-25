@@ -53,7 +53,7 @@ Variable	Valor por defecto con el lanzador	Uso
 PORT	3000	Puerto compartido por la web y la API. Si lo cambias, ajusta también el firewall.
 OLLAMA_MODEL	qwen2.5:7b	Modelo que el lanzador comprueba y descarga si falta.
 OLLAMA_BASE_URL	http://127.0.0.1:11434/v1	Dirección de Ollama que utiliza el backend.
-OLLAMA_STOP_ON_EXIT	started	Al detener el lanzador: started detiene el Ollama que arrancó el lanzador y descarga el modelo si ya estaba abierto; always también cierra un Ollama abierto antes; never lo deja todo en ejecución.
+OLLAMA_STOP_ON_EXIT	started	Al detener el lanzador: started detiene el Ollama que arrancó el lanzador y, si Ollama ya estaba abierto, descarga el modelo; always además cierra ese Ollama; never lo deja todo en ejecución.
 DATABASE_URL	Sin definir	Si se configura, el lanzador aplica las migraciones a PostgreSQL.
 
 
